@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @media print {
+    body {
+      background-color: white;
+    }
+    .print-mode .sidebar {
+      display: none !important;
+    }
+    .print-mode .main-header {
+      display: none !important;
+    }
+    .print-mode .main-content {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      max-width: none !important;
+    }
+    /* Set paper size */
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+  }
+}

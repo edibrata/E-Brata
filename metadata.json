@@ -1,0 +1,8 @@
+{
+  "name": "E-Rapor Edi Brata",
+  "description": "Aplikasi Single Page (SPA) berbasis web untuk mengelola dan mencetak rapor Kurikulum Merdeka tingkat Sekolah Dasar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
