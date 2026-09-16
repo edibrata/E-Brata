@@ -215,6 +215,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           sekolahUpdates.allowedKelas = [classes.toString()];
         }
 
+        // PULL/FETCH DARI APLIKASIRAPOR (SINKRONISASI 2 ARAH SAAT REFRESH)
+        const compositeNpsn = `${currentState.sekolah.npsn}_${currentState.sekolah.tahunAjaran || ''}_${currentState.sekolah.semester || ''}_${currentState.sekolah.kelas || ''}_${currentState.sekolah.ruangRombel || ''}`.replace(/\s+/g, '-');
+        
+        try {
+          const { data: raporData, error: raporError } = await supabase
+            .from('aplikasirapor')
+            .select('data_payload')
+            .eq('npsn', compositeNpsn)
+            .maybeSingle();
+
+          if (!raporError && raporData && raporData.data_payload) {
+            setState((prev) => {
+              const newState = deepMerge(prev, raporData.data_payload);
+              if (Object.keys(sekolahUpdates).length > 0) {
+                newState.sekolah = { ...newState.sekolah, ...sekolahUpdates };
+              }
+              return newState;
+            });
+            return; // Selesai sinkronisasi payload terbaru
+          }
+        } catch (err) {
+          console.warn("Gagal menarik payload aplikasirapor pada refresh", err);
+        }
+
+        // FALLBACK: Jika tidak ada data nilai di aplikasirapor, tetap update profil sekolah dari registrasirapor
         if (Object.keys(sekolahUpdates).length > 0) {
           setState((prev) => ({
             ...prev,

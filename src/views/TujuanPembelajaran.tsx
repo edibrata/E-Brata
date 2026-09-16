@@ -8,6 +8,8 @@ import { defaultTpPjok } from '../data/defaultTpPjok';
 import { defaultTpKka } from '../data/defaultTpKka';
 import { defaultTpSeniRupa } from '../data/defaultTpSeniRupa';
 import { defaultTpSeniMusik } from '../data/defaultTpSeniMusik';
+import { defaultTpSeniTeater } from '../data/defaultTpSeniTeater';
+import { defaultTpSeniTari } from '../data/defaultTpSeniTari';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store';
 import { TujuanPembelajaran } from '@/types';
@@ -92,9 +94,11 @@ export default function TujuanPembelajaranView() {
     const isKka = mapelObj.nama.toLowerCase().includes('koding') || mapelObj.nama.toLowerCase().includes('kecerdasan artifisial') || mapelObj.nama.toLowerCase().includes('kka') || mapelObj.nama.toLowerCase().includes('informatika');
     const isSeniRupa = mapelObj.nama.toLowerCase().includes('seni rupa');
     const isSeniMusik = mapelObj.nama.toLowerCase().includes('seni musik');
+    const isSeniTeater = mapelObj.nama.toLowerCase().includes('seni teater');
+    const isSeniTari = mapelObj.nama.toLowerCase().includes('seni tari');
 
-    if (!isPancasila && !isInggris && !isIndonesia && !isMatematika && !isIpas && !isPjok && !isKka && !isSeniRupa && !isSeniMusik) {
-      showNotif("Maaf, muat TP otomatis saat ini baru tersedia untuk mapel: Pancasila, B. Inggris, B. Indonesia, Matematika, IPAS, PJOK, KKA, Seni Rupa, dan Seni Musik.", "error");
+    if (!isPancasila && !isInggris && !isIndonesia && !isMatematika && !isIpas && !isPjok && !isKka && !isSeniRupa && !isSeniMusik && !isSeniTeater && !isSeniTari) {
+      showNotif("Maaf, muat TP otomatis saat ini baru tersedia untuk mapel: Pancasila, B. Inggris, B. Indonesia, Matematika, IPAS, PJOK, KKA, Seni Rupa, Seni Musik, Seni Teater, dan Seni Tari.", "error");
       return;
     }
 
@@ -139,6 +143,8 @@ export default function TujuanPembelajaranView() {
     if (isKka) kelasData = defaultTpKka[parsedKelas];
     if (isSeniRupa) kelasData = defaultTpSeniRupa[parsedKelas];
     if (isSeniMusik) kelasData = defaultTpSeniMusik[parsedKelas];
+    if (isSeniTeater) kelasData = defaultTpSeniTeater[parsedKelas];
+    if (isSeniTari) kelasData = defaultTpSeniTari[parsedKelas];
 
     if (!kelasData) {
       if (isIpas && parseInt(parsedKelas) > 6) {
