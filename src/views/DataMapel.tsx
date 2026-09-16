@@ -217,6 +217,7 @@ export default function DataMapel() {
                 placeholder="contoh: Pendidikan Matematika Terapan"
                 className="w-full border border-gray-300 rounded-lg bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/20 font-bold text-slate-700"
               />
+              <p className="text-[10px] text-gray-500 mt-1.5">Tips: Untuk mapel Seni, ketiklah spesifik cabangnya (misal: "Seni Rupa", "Seni Musik") agar TP otomatis terdeteksi.</p>
             </div>
             <div className="w-full md:w-1/4">
               <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1.5 tracking-wider">Kelompok Mapel</label>

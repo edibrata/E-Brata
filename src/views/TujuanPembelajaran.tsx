@@ -6,6 +6,8 @@ import { defaultTpMatematika } from '../data/defaultTpMatematika';
 import { defaultTpIpas } from '../data/defaultTpIpas';
 import { defaultTpPjok } from '../data/defaultTpPjok';
 import { defaultTpKka } from '../data/defaultTpKka';
+import { defaultTpSeniRupa } from '../data/defaultTpSeniRupa';
+import { defaultTpSeniMusik } from '../data/defaultTpSeniMusik';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store';
 import { TujuanPembelajaran } from '@/types';
@@ -88,9 +90,11 @@ export default function TujuanPembelajaranView() {
     const isIpas = mapelObj.nama.toLowerCase().includes('ipas') || mapelObj.nama.toLowerCase().includes('ilmu pengetahuan alam') || mapelObj.nama.toLowerCase().includes('sains') || mapelObj.nama.toLowerCase().includes('sosial');
     const isPjok = mapelObj.nama.toLowerCase().includes('pjok') || mapelObj.nama.toLowerCase().includes('pendidikan jasmani') || mapelObj.nama.toLowerCase().includes('olahraga') || mapelObj.nama.toLowerCase().includes('kesehatan') || mapelObj.nama.toLowerCase().includes('penjas');
     const isKka = mapelObj.nama.toLowerCase().includes('koding') || mapelObj.nama.toLowerCase().includes('kecerdasan artifisial') || mapelObj.nama.toLowerCase().includes('kka') || mapelObj.nama.toLowerCase().includes('informatika');
+    const isSeniRupa = mapelObj.nama.toLowerCase().includes('seni rupa');
+    const isSeniMusik = mapelObj.nama.toLowerCase().includes('seni musik');
 
-    if (!isPancasila && !isInggris && !isIndonesia && !isMatematika && !isIpas && !isPjok && !isKka) {
-      showNotif("Maaf, muat TP otomatis saat ini baru tersedia untuk mapel: Pancasila, B. Inggris, B. Indonesia, Matematika, IPAS, PJOK, dan KKA.", "error");
+    if (!isPancasila && !isInggris && !isIndonesia && !isMatematika && !isIpas && !isPjok && !isKka && !isSeniRupa && !isSeniMusik) {
+      showNotif("Maaf, muat TP otomatis saat ini baru tersedia untuk mapel: Pancasila, B. Inggris, B. Indonesia, Matematika, IPAS, PJOK, KKA, Seni Rupa, dan Seni Musik.", "error");
       return;
     }
 
@@ -133,6 +137,8 @@ export default function TujuanPembelajaranView() {
     if (isIpas) kelasData = defaultTpIpas[parsedKelas];
     if (isPjok) kelasData = defaultTpPjok[parsedKelas];
     if (isKka) kelasData = defaultTpKka[parsedKelas];
+    if (isSeniRupa) kelasData = defaultTpSeniRupa[parsedKelas];
+    if (isSeniMusik) kelasData = defaultTpSeniMusik[parsedKelas];
 
     if (!kelasData) {
       if (isIpas && parseInt(parsedKelas) > 6) {
