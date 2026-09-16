@@ -230,6 +230,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fetchLatestBaseline();
   }, []);
 
+  // TRIGGER PULL/FETCH OTOMATIS SAAT BERPINDAH KELAS/SEMESTER/TAHUN
+  const prevContextRef = useRef<{kelas?: string, sem?: string, tahun?: string}>({
+    kelas: state.sekolah?.kelas,
+    sem: state.sekolah?.semester,
+    tahun: state.sekolah?.tahunAjaran
+  });
+
+  useEffect(() => {
+    const currentSekolah = state.sekolah;
+    if (!state.isAuthenticated || !currentSekolah?.npsn) return;
+
+    const prev = prevContextRef.current;
+    if (
+      prev.kelas !== currentSekolah.kelas ||
+      prev.sem !== currentSekolah.semester ||
+      prev.tahun !== currentSekolah.tahunAjaran
+    ) {
+      prevContextRef.current = {
+        kelas: currentSekolah.kelas,
+        sem: currentSekolah.semester,
+        tahun: currentSekolah.tahunAjaran
+      };
+      
+      // Lakukan fetch jika kombinasi tidak kosong
+      if (currentSekolah.kelas && currentSekolah.semester && currentSekolah.tahunAjaran) {
+        forceSyncFromCloud();
+      }
+    }
+  }, [state.sekolah?.kelas, state.sekolah?.semester, state.sekolah?.tahunAjaran]);
+
   const forceSyncFromCloud = async () => {
     const currentState = stateRef.current;
     if (!currentState.isAuthenticated || !currentState.sekolah?.npsn) return;

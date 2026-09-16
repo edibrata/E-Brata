@@ -105,10 +105,14 @@ function RootView() {
   return <Dashboard />;
 }
 
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
 export default function App() {
   return (
-    <AppProvider>
-      <RootView />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <RootView />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
