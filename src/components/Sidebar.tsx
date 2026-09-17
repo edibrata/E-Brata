@@ -97,7 +97,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
   };
 
   return (
-    <aside className={`sidebar bg-white border-r border-slate-200 text-slate-800 flex flex-col h-screen fixed lg:sticky top-0 z-40 shadow-sm overflow-hidden transition-all duration-300 ${isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full opacity-0'}`}>
+    <aside className={`sidebar bg-white border-r border-slate-200 text-slate-800 flex flex-col h-[100dvh] fixed lg:sticky top-0 z-40 shadow-sm overflow-hidden transition-all duration-300 ${isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full opacity-0'}`}>
       <div className="h-16 flex items-center justify-center border-b border-slate-200 shrink-0 px-4">
         <div className="flex items-center gap-3 w-full">
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white font-bold font-sans shrink-0 overflow-hidden border border-blue-200 cursor-pointer transition-transform duration-200 hover:scale-110">

@@ -26,7 +26,7 @@ function Dashboard() {
   const [showDevProfileModal, setShowDevProfileModal] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC] text-slate-800 font-sans overflow-hidden">
+    <div className="flex min-h-[100dvh] bg-[#F8FAFC] text-slate-800 font-sans overflow-hidden">
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden backdrop-blur-sm transition-opacity"
@@ -43,7 +43,7 @@ function Dashboard() {
         onOpenDevProfile={() => setShowDevProfileModal(true)} 
       />
       
-      <div className="flex-1 flex flex-col min-w-0 main-content h-screen overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 main-content h-[100dvh] overflow-y-auto">
         <Header toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onOpenDevProfile={() => setShowDevProfileModal(true)} />
         
         <main className="p-6 lg:p-8 md:p-6 p-4 flex-1 overflow-x-hidden">
