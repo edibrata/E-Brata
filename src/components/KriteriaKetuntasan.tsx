@@ -160,7 +160,7 @@ export const KriteriaKetuntasan: React.FC<Props> = ({ mapelId }) => {
                   Sistem telah mengatur interval default (berdasarkan contoh baku panduan Hal. 44-45). Anda berhak menyesuaikan batas angka di bawah ini khusus untuk mata pelajaran <b>{mapel.nama}</b> sesuai tingkat kesulitan materi. Nilai di atas batas kuning (&gt;{tempIntervals[2]}) dianggap <b>TUNTAS</b>.
                 </p>
                 <p className="mt-3 text-indigo-700 font-semibold">
-                  👉 <span className="cursor-pointer hover:underline" onClick={() => { const btn = document.querySelector('[aria-label="Panduan Asesmen 2025"]') || document.evaluate('//button[contains(., "Panduan Asesmen 2025")]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue; if(btn) btn.click(); }}>Baca penjelasan lengkap tentang Panduan Penilaian 2025 di sini.</span>
+                  👉 <span className="cursor-pointer hover:underline" onClick={() => { const btn = (document.querySelector('[aria-label="Panduan Asesmen 2025"]') || document.evaluate('//button[contains(., "Panduan Asesmen 2025")]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue) as HTMLElement | null; if(btn) btn.click(); }}>Baca penjelasan lengkap tentang Panduan Penilaian 2025 di sini.</span>
                 </p>
               </div>
             </div>

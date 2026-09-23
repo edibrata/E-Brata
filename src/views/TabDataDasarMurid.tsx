@@ -468,14 +468,19 @@ export default function TabDataDasarMurid() {
                         <option value="Perempuan">Perempuan</option>
                       </select>
                     </td>
-                    <td className="px-4 py-1.5">
-                      <input
-                        type="text"
-                        value={s.agama || ''}
+                    <td className="px-4 py-1.5 text-center">
+                      <select
+                        value={s.agama || 'Islam'}
                         onChange={(e) => handleUpdate(s.id, 'agama', e.target.value)}
-                        placeholder="Agama"
-                        className="w-full px-1.5 py-0.5 border border-transparent hover:border-gray-200 focus:border-indigo-400 rounded outline-none text-[11px] bg-transparent focus:bg-white transition-colors text-center text-slate-700 min-w-[80px]"
-                      />
+                        className="w-full px-1 py-0.5 border border-transparent hover:border-gray-200 focus:border-indigo-400 rounded outline-none bg-transparent hover:bg-slate-50 focus:bg-white transition-colors text-[11px] text-slate-700 cursor-pointer min-w-[90px] text-center font-medium"
+                      >
+                        <option value="Islam">Islam</option>
+                        <option value="Kristen">Kristen</option>
+                        <option value="Katolik">Katolik</option>
+                        <option value="Hindu">Hindu</option>
+                        <option value="Buddha">Buddha</option>
+                        <option value="Khonghucu">Khonghucu</option>
+                      </select>
                     </td>
                     <td className="px-4 py-1.5">
                       <input

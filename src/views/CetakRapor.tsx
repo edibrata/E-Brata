@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { Printer } from 'lucide-react';
+import { isPabpMapel, filterTpsForStudent, cleanTpDeskripsi } from '@/lib/agamaUtils';
 
 export default function CetakRapor() {
   const { state } = useAppStore();
@@ -33,7 +34,15 @@ export default function CetakRapor() {
     const n = nilai[studentId]?.[mapelId];
     if (!n) return { finalScore: null, deskripsiTertinggi: '', deskripsiTerendah: '' };
 
-    const mapelTps = tujuanPembelajaran.filter(tp => tp.mapelId === mapelId);
+    const student = siswa.find(sw => sw.id === studentId);
+    const mapelObj = mapel.find(m => m.id === mapelId);
+    const isPabp = isPabpMapel(mapelObj?.nama, mapelObj?.kode);
+
+    const allMapelTps = tujuanPembelajaran.filter(tp => tp.mapelId === mapelId);
+    const mapelTps = isPabp
+      ? filterTpsForStudent(allMapelTps, student?.agama, true)
+      : allMapelTps;
+
     let totalTp = 0;
     let countTp = 0;
     let maxTp: { id: string, score: number } | null = null;
@@ -72,11 +81,17 @@ export default function CetakRapor() {
 
     if (maxTp && maxTp.score >= 70) {
       const tp = mapelTps.find(t => t.id === maxTp!.id);
-      if (tp) deskTer = `Menunjukkan penguasaan yang sangat baik dalam ${tp.deskripsi.toLowerCase()}.`;
+      if (tp) {
+        const cleanDesc = cleanTpDeskripsi(tp.deskripsi);
+        deskTer = `Menunjukkan penguasaan yang sangat baik dalam ${cleanDesc.toLowerCase()}.`;
+      }
     }
     if (minTp && minTp.score < 70) {
       const tp = mapelTps.find(t => t.id === minTp!.id);
-      if (tp) deskRendah = `Perlu bimbingan dalam ${tp.deskripsi.toLowerCase()}.`;
+      if (tp) {
+        const cleanDesc = cleanTpDeskripsi(tp.deskripsi);
+        deskRendah = `Perlu bimbingan dalam ${cleanDesc.toLowerCase()}.`;
+      }
     }
 
     return { 
@@ -188,7 +203,22 @@ export default function CetakRapor() {
                 return (
                   <tr key={m.id} className="even:bg-slate-50/50 print:even:bg-transparent">
                     <td className="border border-slate-800 p-2 text-center align-top font-mono text-xs">{idx + 1}</td>
-                    <td className="border border-slate-800 p-2 font-semibold align-top text-slate-800">{m.nama}</td>
+                    <td className="border border-slate-800 p-2 font-semibold align-top text-slate-800">
+                      {(() => {
+                        const isPabp = isPabpMapel(m.nama, m.kode);
+                        if (isPabp && s.agama) {
+                          const base = m.nama;
+                          if (base.toLowerCase().includes('pendidikan agama dan budi pekerti')) {
+                            return `Pendidikan Agama ${s.agama} dan Budi Pekerti`;
+                          }
+                          if (base.toLowerCase().includes('pendidikan agama')) {
+                            return `${base} (${s.agama})`;
+                          }
+                          return `${base} (${s.agama})`;
+                        }
+                        return m.nama;
+                      })()}
+                    </td>
                     {!isTanpaAngka && (
                       <td className="border border-slate-800 p-2 text-center font-bold align-top text-slate-800 bg-slate-50/30 print:bg-transparent">
                         {finalScore !== null ? finalScore : ''}

@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store';
+import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
 
 export default function Leger() {
   const { state } = useAppStore();
@@ -9,7 +10,15 @@ export default function Leger() {
     const s = nilai[studentId]?.[mapelId];
     if (!s) return null;
 
-    const mapelTps = tujuanPembelajaran.filter(tp => tp.mapelId === mapelId);
+    const student = siswa.find(sw => sw.id === studentId);
+    const mapelObj = mapel.find(m => m.id === mapelId);
+    const isPabp = isPabpMapel(mapelObj?.nama, mapelObj?.kode);
+
+    const allMapelTps = tujuanPembelajaran.filter(tp => tp.mapelId === mapelId);
+    const mapelTps = isPabp
+      ? filterTpsForStudent(allMapelTps, student?.agama, true)
+      : allMapelTps;
+
     let totalTp = 0;
     let countTp = 0;
 

@@ -274,6 +274,16 @@ export default function DataSekolah() {
     e.target.value = '';
   };
 
+  const handleReset = () => {
+    if (window.confirm('Apakah Anda yakin ingin mereset formulir Data Sekolah ke pengaturan awal?')) {
+      Object.keys(INITIAL_STATE.sekolah).forEach((key) => {
+        updateSekolah(key as any, (INITIAL_STATE.sekolah as any)[key]);
+      });
+      setErrors({});
+      showToast('Data Sekolah berhasil direset ke default.');
+    }
+  };
+
   const isLocked = state.isAuthenticated;
   
   const getSelectValue = (val: any) => {

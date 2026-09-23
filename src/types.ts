@@ -48,8 +48,22 @@ export interface Siswa {
   jk: 'L' | 'P' | 'Laki-Laki' | 'Perempuan' | '';
   tempatLahir?: string;
   tanggalLahir?: string;
+  tanggalMasuk?: string;
+  agama?: string;
+  pendidikanSebelumnya?: string;
   alamat?: string;
+  namaAyah?: string;
+  pekerjaanAyah?: string;
+  namaIbu?: string;
+  pekerjaanIbu?: string;
+  jalanOrtu?: string;
+  desaKelurahanOrtu?: string;
+  kecamatanOrtu?: string;
+  kabupatenKotaOrtu?: string;
+  provinsiOrtu?: string;
   namaWali?: string;
+  pekerjaanWali?: string;
+  alamatWali?: string;
 }
 
 export interface Mapel {
@@ -66,6 +80,7 @@ export interface TujuanPembelajaran {
   mapelId: string;
   kode: string;
   deskripsi: string;
+  agama?: string; // 'Islam' | 'Kristen' | 'Katolik' | 'Hindu' | 'Buddha' | 'Khonghucu'
 }
 
 export interface Ekstrakurikuler {
