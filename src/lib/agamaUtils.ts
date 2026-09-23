@@ -23,6 +23,23 @@ export const isPabpMapel = (nama?: string, kode?: string): boolean => {
 };
 
 /**
+ * Mendeteksi apakah mata pelajaran terikat pada agama tertentu secara spesifik
+ */
+export const getMapelAgama = (nama?: string, kode?: string): AgamaType | null => {
+  const n = (nama || '').toLowerCase().trim();
+  const k = (kode || '').toLowerCase().trim();
+
+  if (n.includes('islam') || k === 'pai' || k.includes('isl')) return 'Islam';
+  if (n.includes('kristen') || n.includes('protestan') || k === 'pak' || k.includes('krs')) return 'Kristen';
+  if (n.includes('katolik') || k === 'pkat' || k.includes('kat')) return 'Katolik';
+  if (n.includes('hindu') || k === 'pah' || k.includes('hin')) return 'Hindu';
+  if (n.includes('buddha') || n.includes('budha') || k === 'pab' || k.includes('bud')) return 'Buddha';
+  if (n.includes('khonghucu') || n.includes('konghucu') || k === 'pakong' || k.includes('kong')) return 'Khonghucu';
+
+  return null;
+};
+
+/**
  * Menstandarkan penamaan agama
  */
 export const normalizeAgama = (agamaStr?: string): AgamaType | null => {
@@ -74,10 +91,7 @@ export const doesStudentMatchTp = (
   // Jika TP ini sifatnya umum (tidak terikat agama tertentu), semua siswa berhak
   if (!tpAgama) return true;
 
-  // Jika siswa belum diset agamanya, tetap izinkan tampil agar tidak tersembunyi tanpa sengaja
-  const sAgama = normalizeAgama(studentAgama);
-  if (!sAgama) return true;
-
+  const sAgama = normalizeAgama(studentAgama) || 'Islam';
   return sAgama === tpAgama;
 };
 

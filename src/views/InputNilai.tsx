@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store';
-import { isPabpMapel, getTpAgama, doesStudentMatchTp, AGAMA_LIST } from '@/lib/agamaUtils';
+import { isPabpMapel, getMapelAgama, getTpAgama, doesStudentMatchTp, normalizeAgama, AGAMA_LIST } from '@/lib/agamaUtils';
 import { hitungNilaiMapel, hitungDefaultBobotTp, getAmbangBatasKktp } from '@/lib/penilaianUtils';
 import Tooltip from '@/components/Tooltip';
 import { 
   Download, 
   Upload, 
-  Settings2, 
   Info, 
   AlertCircle, 
   CheckCircle2, 
   RotateCcw,
   Sliders,
-  ChevronDown,
-  Equal,
-  Percent
+  Filter
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -23,7 +20,7 @@ export default function InputNilai() {
   const { siswa, mapel, tujuanPembelajaran, nilai } = state;
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [agamaFilter, setAgamaFilter] = useState<string>('ALL');
-  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +35,18 @@ export default function InputNilai() {
     return mapel.find(m => m.id === selectedMapel) || mapel[0];
   }, [mapel, selectedMapel]);
 
+  // Otomatis deteksi dan set filter agama saat mata pelajaran berganti
+  useEffect(() => {
+    if (selectedMapelData) {
+      const specificAgama = getMapelAgama(selectedMapelData.nama, selectedMapelData.kode);
+      if (specificAgama) {
+        setAgamaFilter(specificAgama);
+      } else {
+        setAgamaFilter('ALL');
+      }
+    }
+  }, [selectedMapel, selectedMapelData]);
+
   const mapelTps = useMemo(() => {
     return tujuanPembelajaran.filter(tp => tp.mapelId === selectedMapel);
   }, [tujuanPembelajaran, selectedMapel]);
@@ -46,10 +55,14 @@ export default function InputNilai() {
     return isPabpMapel(selectedMapelData?.nama, selectedMapelData?.kode);
   }, [selectedMapelData]);
 
-  // Filter siswa jika PABP filter aktif
+  const getStudentAgama = (s: { agama?: string }) => {
+    return normalizeAgama(s?.agama) || 'Islam';
+  };
+
+  // Filter siswa jika PABP filter aktif (mengambil real-time dari Data Murid / state.siswa)
   const displayedSiswa = useMemo(() => {
     if (isPabp && agamaFilter !== 'ALL') {
-      return siswa.filter(s => (s.agama || '').toLowerCase().includes(agamaFilter.toLowerCase()));
+      return siswa.filter(s => getStudentAgama(s) === agamaFilter);
     }
     return siswa;
   }, [siswa, isPabp, agamaFilter]);
@@ -57,10 +70,12 @@ export default function InputNilai() {
   // Filter TP jika PABP filter aktif
   const displayedTps = useMemo(() => {
     if (isPabp && agamaFilter !== 'ALL') {
-      return mapelTps.filter(tp => {
+      const filtered = mapelTps.filter(tp => {
         const tpAg = getTpAgama(tp);
         return !tpAg || tpAg.toLowerCase() === agamaFilter.toLowerCase();
       });
+      // Jika tidak ada TP terfilter untuk agama ini, tetap tampilkan semua TP
+      return filtered.length > 0 ? filtered : mapelTps;
     }
     return mapelTps;
   }, [mapelTps, isPabp, agamaFilter]);
@@ -108,28 +123,9 @@ export default function InputNilai() {
     updateMapelSetting({ bobotTp: newBobot });
   };
 
-  // Handler bagi rata bobot TP secara instan (Tingkat 1)
-  const handleResetBobotTpToEqual = () => {
-    const equalBobot = hitungDefaultBobotTp(displayedTps);
-    updateMapelSetting({ bobotTp: equalBobot });
-    showNotification('Bobot seluruh TP berhasil dibagi rata proporsional (Total 100%)!');
-  };
-
-  // Handler ubah rasio komposit SLM vs SAS (Tingkat 2)
-  const handleRasioSlmChange = (slmVal: number) => {
-    const slm = Math.max(0, Math.min(100, slmVal));
-    const sas = 100 - slm;
-    updateMapelSetting({ rasioSlmSas: { slm, sas } });
-  };
-
-  const handleRasioSasChange = (sasVal: number) => {
-    const sas = Math.max(0, Math.min(100, sasVal));
-    const slm = 100 - sas;
-    updateMapelSetting({ rasioSlmSas: { slm, sas } });
-  };
-
   const getAgamaBadgeColor = (ag?: string | null) => {
-    switch (ag) {
+    const norm = normalizeAgama(ag || undefined);
+    switch (norm) {
       case 'Islam': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
       case 'Kristen': return 'bg-sky-100 text-sky-800 border-sky-300';
       case 'Katolik': return 'bg-indigo-100 text-indigo-800 border-indigo-300';
@@ -225,19 +221,20 @@ export default function InputNilai() {
     headers.push('Nilai_Akhir_Rapor');
 
     const rows = displayedSiswa.map((s, idx) => {
+      const sAgama = getStudentAgama(s);
       const sNilai = nilai[s.id]?.[selectedMapel];
-      const validTpsForStudent = displayedTps.filter(tp => !isPabp || doesStudentMatchTp(s.agama, tp));
+      const validTpsForStudent = displayedTps.filter(tp => !isPabp || doesStudentMatchTp(sAgama, tp));
       const res = hitungNilaiMapel(selectedMapelData, validTpsForStudent, sNilai);
 
       const rowData: (string | number)[] = [
         idx + 1,
         s.nisn || '',
         s.nama,
-        s.agama || ''
+        sAgama
       ];
 
       displayedTps.forEach(tp => {
-        const isMatch = !isPabp || doesStudentMatchTp(s.agama, tp);
+        const isMatch = !isPabp || doesStudentMatchTp(sAgama, tp);
         if (!isMatch) {
           rowData.push('-');
         } else {
@@ -349,10 +346,7 @@ export default function InputNilai() {
   };
 
   // Reset semua nilai pada mapel ini
-  const handleResetMapelScores = () => {
-    if (!window.confirm(`Yakin ingin mengosongkan seluruh nilai mata pelajaran ${selectedMapelData?.nama}? Tindakan ini tidak dapat dibatalkan.`)) {
-      return;
-    }
+  const handleConfirmReset = () => {
     const updatedNilai = { ...nilai };
     siswa.forEach(s => {
       if (updatedNilai[s.id]?.[selectedMapel]) {
@@ -360,7 +354,8 @@ export default function InputNilai() {
       }
     });
     updateState('nilai', updatedNilai);
-    showNotification('Nilai mata pelajaran ini berhasil dikosongkan.', 'info');
+    setIsResetConfirmOpen(false);
+    showNotification(`Seluruh nilai mata pelajaran ${selectedMapelData?.nama} berhasil dikosongkan.`, 'info');
   };
 
   // Hitung Analisis Ringkasan Kelas (Footer Table)
@@ -452,52 +447,73 @@ export default function InputNilai() {
       <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
         
         {/* Top Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
-                <Sliders size={20} />
-              </span>
-              <h2 className="text-lg font-bold text-slate-800">
-                Input Nilai Sumatif Lingkup Materi
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Asesmen sumatif dua tingkat: Pembobotan TP (NA-SLM) dan Pembobotan Komposit Rapor (+ SAS). Rujukan Panduan 2025 Hal. 55–58.
-            </p>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+              <Sliders size={20} />
+            </span>
+            <h2 className="text-lg font-bold text-slate-800">
+              Input Nilai Sumatif
+            </h2>
           </div>
 
-          {/* Action Tools */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSettings(!showSettings)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border ${
-                showSettings 
-                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-2xs' 
-                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Settings2 size={15} />
-              <span>Sistem Pembobotan & KKTP</span>
-              <ChevronDown size={14} className={`transition-transform duration-200 ${showSettings ? 'rotate-180' : ''}`} />
-            </button>
+          {/* Action Tools: Dropdown Mapel, Dropdown Filter Agama (PABP), & Ikon Aksi */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="min-w-[200px] sm:min-w-[240px]">
+              <select
+                value={selectedMapel}
+                onChange={(e) => {
+                  setSelectedMapel(e.target.value);
+                  setAgamaFilter('ALL');
+                }}
+                className="w-full border border-slate-200 rounded-xl bg-slate-50/70 hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+              >
+                {mapel.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.nama} ({m.kode})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <Tooltip content="Unduh format spreadsheet untuk input nilai offline" position="bottom">
+            {/* Dropdown Filter Agama: Muncul di samping setelah dropdown Mata Pelajaran jika PABP */}
+            {isPabp && (
+              <div className="min-w-[170px] sm:min-w-[200px]">
+                <select
+                  value={agamaFilter}
+                  onChange={(e) => setAgamaFilter(e.target.value)}
+                  className="w-full border border-emerald-300 rounded-xl bg-emerald-50/60 hover:bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition cursor-pointer"
+                >
+                  <option value="ALL">Semua Agama ({siswa.length} Siswa)</option>
+                  {AGAMA_LIST.map(ag => {
+                    const countSiswa = siswa.filter(s => getStudentAgama(s) === ag).length;
+                    const countTp = mapelTps.filter(tp => getTpAgama(tp) === ag).length;
+
+                    if (countSiswa === 0 && countTp === 0) return null;
+
+                    return (
+                      <option key={ag} value={ag}>
+                        {ag} ({countSiswa} Siswa{countTp > 0 ? ` • ${countTp} TP` : ''})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+
+            <Tooltip content="Ekspor Nilai ke Excel (.xlsx)" position="bottom">
               <button
                 type="button"
                 onClick={handleExportXLSX}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-2xs border border-slate-200 transition cursor-pointer"
               >
-                <Download size={14} className="text-slate-500" />
-                <span>Ekspor Excel</span>
+                <Download size={15} />
               </button>
             </Tooltip>
 
-            <Tooltip content="Unggah nilai dari file Excel / CSV" position="bottom">
-              <label className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                <Upload size={14} className="text-slate-500" />
-                <span>Impor Excel</span>
+            <Tooltip content="Impor Nilai dari File Excel (.xlsx, .xls, .csv)" position="bottom">
+              <label className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-2xs border border-emerald-200 transition cursor-pointer">
+                <Upload size={15} />
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -508,295 +524,17 @@ export default function InputNilai() {
               </label>
             </Tooltip>
 
-            <Tooltip content="Kosongkan nilai seluruh siswa untuk mata pelajaran ini" position="bottom">
+            <Tooltip content={`Kosongkan Nilai (${selectedMapelData?.nama})`} position="bottom">
               <button
                 type="button"
-                onClick={handleResetMapelScores}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition cursor-pointer"
+                onClick={() => setIsResetConfirmOpen(true)}
+                className="w-8 h-8 flex items-center justify-center bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg shadow-2xs border border-rose-200 transition cursor-pointer"
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={15} />
               </button>
             </Tooltip>
           </div>
         </div>
-
-        {/* Filter Mapel & PABP Bar */}
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-xs w-full">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Pilih Mata Pelajaran
-            </label>
-            <select
-              value={selectedMapel}
-              onChange={(e) => setSelectedMapel(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl bg-slate-50/70 hover:bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
-            >
-              {mapel.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.nama} ({m.kode})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter Agama for PABP */}
-          {isPabp && (
-            <div className="flex items-center gap-1.5 overflow-x-auto bg-slate-50 p-1.5 rounded-xl border border-slate-200 text-xs">
-              <span className="text-[11px] font-bold text-slate-500 px-2 shrink-0">Filter Agama:</span>
-              <button
-                type="button"
-                onClick={() => setAgamaFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                  agamaFilter === 'ALL'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                Semua ({siswa.length})
-              </button>
-              {AGAMA_LIST.map(ag => {
-                const count = siswa.filter(s => (s.agama || '').toLowerCase().includes(ag.toLowerCase())).length;
-                if (count === 0) return null;
-                return (
-                  <button
-                    key={ag}
-                    type="button"
-                    onClick={() => setAgamaFilter(ag)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer flex items-center gap-1 ${
-                      agamaFilter === ag
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>{ag}</span>
-                    <span className={`text-[10px] px-1 rounded-full ${agamaFilter === ag ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Panel Pengaturan Dua Tingkat Pembobotan (Collapsible) */}
-        {showSettings && (
-          <div className="mt-4 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/30 border border-indigo-150 animate-in fade-in duration-200 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Settings2 size={18} className="text-indigo-600" />
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                    Pengaturan Pengolahan Nilai Rapor: {selectedMapelData?.nama}
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Tersinkronisasi langsung dengan Pengaturan Mata Pelajaran
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-emerald-700 bg-emerald-50 font-semibold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Sinkron Perencanaan
-                </span>
-                <span className="text-[11px] text-indigo-700 bg-indigo-50 font-semibold px-2.5 py-1 rounded-full border border-indigo-200">
-                  Panduan 2025 Hal. 56–58
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-xs">
-              
-              {/* TINGKAT 1: Pengolahan Nilai Lingkup Materi (Antar-TP) */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">1</span>
-                    <span>Tingkat 1: Pembobotan TP → NA-SLM</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-slate-50 transition">
-                    <input
-                      type="radio"
-                      name="opsiPengolahan"
-                      value="rata-rata"
-                      checked={opsiPengolahan === 'rata-rata'}
-                      onChange={() => updateMapelSetting({ opsiPengolahan: 'rata-rata' })}
-                      className="mt-0.5 text-indigo-600"
-                    />
-                    <div>
-                      <span className="font-semibold text-slate-800">Opsi 1: Rata-Rata SLM (Standar)</span>
-                      <p className="text-[11px] text-slate-500">Materi bersifat lepas; bobot setiap TP sama rata.</p>
-                    </div>
-                  </label>
-
-                  <label className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-slate-50 transition">
-                    <input
-                      type="radio"
-                      name="opsiPengolahan"
-                      value="pembobotan"
-                      checked={opsiPengolahan === 'pembobotan'}
-                      onChange={() => updateMapelSetting({ opsiPengolahan: 'pembobotan' })}
-                      className="mt-0.5 text-indigo-600"
-                    />
-                    <div>
-                      <span className="font-semibold text-slate-800">Opsi 2: Pembobotan Inter-TP</span>
-                      <p className="text-[11px] text-slate-500">Materi progresif/kompleks; bobot ditentukan manual per-TP.</p>
-                    </div>
-                  </label>
-                </div>
-
-                {opsiPengolahan === 'pembobotan' && (
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={handleResetBobotTpToEqual}
-                      className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] flex items-center gap-1 transition"
-                    >
-                      <Equal size={13} />
-                      <span>Bagi Rata Otomatis</span>
-                    </button>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${
-                      totalBobotTp === 100 
-                        ? 'bg-emerald-100 text-emerald-800' 
-                        : 'bg-rose-100 text-rose-800'
-                    }`}>
-                      Total: {totalBobotTp}% {totalBobotTp === 100 ? '✓' : `(${totalBobotTp < 100 ? 'Kurang' : 'Kelebihan'} ${Math.abs(100 - totalBobotTp)}%)`}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* TINGKAT 2: Komposit NA-SLM vs SAS Menuju Nilai Rapor */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">2</span>
-                    <span>Tingkat 2: Rasio Rapor (NA-SLM + SAS)</span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pakaiSas}
-                      onChange={(e) => updateMapelSetting({ pakaiSas: e.target.checked })}
-                      className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                    />
-                    <span className="font-semibold text-slate-800 text-xs">Sertakan Sumatif Akhir Semester (SAS)</span>
-                  </label>
-
-                  {pakaiSas ? (
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2.5">
-                      <p className="text-[11px] text-slate-600">
-                        Atur persentase bobot komposit rapor (Total wajib 100%):
-                      </p>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white p-2.5 rounded-lg border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 text-center">
-                            Bobot NA-SLM (%)
-                          </label>
-                          <div className="flex items-center justify-center gap-1">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={rasioSlmSas.slm}
-                              onChange={(e) => handleRasioSlmChange(parseInt(e.target.value, 10) || 0)}
-                              className="w-16 text-center text-lg font-black text-indigo-600 border border-slate-200 rounded-lg py-0.5 focus:outline-none focus:border-indigo-500 bg-slate-50/50"
-                            />
-                            <span className="text-xs font-bold text-indigo-400">%</span>
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-2.5 rounded-lg border border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition">
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 text-center">
-                            Bobot SAS (%)
-                          </label>
-                          <div className="flex items-center justify-center gap-1">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={rasioSlmSas.sas}
-                              onChange={(e) => handleRasioSasChange(parseInt(e.target.value, 10) || 0)}
-                              className="w-16 text-center text-lg font-black text-slate-700 border border-slate-200 rounded-lg py-0.5 focus:outline-none focus:border-indigo-500 bg-slate-50/50"
-                            />
-                            <span className="text-xs font-bold text-slate-400">%</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/60">
-                        <span className="text-slate-500 font-medium">Pilihan cepat:</span>
-                        <div className="flex gap-1.5">
-                          {[
-                            { slm: 75, sas: 25, label: '75 : 25' },
-                            { slm: 60, sas: 40, label: '60 : 40' },
-                            { slm: 70, sas: 30, label: '70 : 30' },
-                            { slm: 50, sas: 50, label: '50 : 50' }
-                          ].map(preset => {
-                            const isSelected = rasioSlmSas.slm === preset.slm && rasioSlmSas.sas === preset.sas;
-                            return (
-                              <button
-                                key={preset.label}
-                                type="button"
-                                onClick={() => updateMapelSetting({ rasioSlmSas: { slm: preset.slm, sas: preset.sas } })}
-                                className={`px-2.5 py-0.5 rounded text-[10px] font-bold transition ${
-                                  isSelected
-                                    ? 'bg-indigo-600 text-white shadow-2xs'
-                                    : 'bg-white border border-slate-300 hover:bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                {preset.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-800 text-[11px]">
-                      SAS dinonaktifkan. Nilai Akhir Rapor <strong>100%</strong> otomatis bersumber dari nilai sumatif lingkup materi (NA-SLM).
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* KKTP & Petunjuk Regulasi */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                    <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px]">★</span>
-                    <span>Interval Ketercapaian (KKTP)</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 font-medium">Batas Tuntas TP:</span>
-                    <span className="px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-900 font-bold text-xs">
-                      &gt; {kktp}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Berdasarkan <strong>Interval Ketercapaian TP</strong> di menu <em>Tujuan Pembelajaran</em> (Panduan 2025 Hal. 44–47). Skor di bawah <strong className="text-rose-600">≤ {kktp}</strong> otomatis ditandai bintang merah (<span className="text-rose-600 font-bold">*</span>) sebagai materi butuh bimbingan/remedial.
-                  </p>
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Rentang Interval:</span>
-                    <span className="font-mono text-slate-600 font-semibold text-[10px]">
-                      {intervalBatas.join(' • ')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
 
         {/* Matrix Input Table */}
         <div className="mt-5">
@@ -818,9 +556,14 @@ export default function InputNilai() {
                       <th rowSpan={2} className="border border-slate-200 p-3 w-12 text-center bg-slate-100">
                         No
                       </th>
-                      <th rowSpan={2} className="border border-slate-200 p-3 text-left min-w-[220px] max-w-[280px] bg-slate-100 sticky left-0 z-30 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]">
+                      <th rowSpan={2} className="border border-slate-200 p-3 text-left min-w-[200px] max-w-[260px] bg-slate-100 sticky left-0 z-30 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]">
                         Nama Siswa
                       </th>
+                      {isPabp && (
+                        <th rowSpan={2} className="border border-slate-200 p-2 text-center w-28 bg-emerald-50/90 text-emerald-950 text-xs font-bold uppercase tracking-wider">
+                          Agama Murid
+                        </th>
+                      )}
                       
                       {/* Grup SLM */}
                       <th 
@@ -936,8 +679,9 @@ export default function InputNilai() {
                   {/* Body Siswa & Input Nilai */}
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {displayedSiswa.map((s, studentIndex) => {
+                      const sAgama = getStudentAgama(s);
                       const sNilai = nilai[s.id]?.[selectedMapel];
-                      const validTpsForStudent = displayedTps.filter(tp => !isPabp || doesStudentMatchTp(s.agama, tp));
+                      const validTpsForStudent = displayedTps.filter(tp => !isPabp || doesStudentMatchTp(sAgama, tp));
                       const res = hitungNilaiMapel(selectedMapelData, validTpsForStudent, sNilai);
 
                       return (
@@ -954,24 +698,28 @@ export default function InputNilai() {
                                 <span className="font-semibold text-slate-800 text-xs">{s.nama}</span>
                                 {s.nisn && <span className="block text-[10px] text-slate-400 font-mono">{s.nisn}</span>}
                               </div>
-                              {isPabp && s.agama && (
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border shrink-0 ${getAgamaBadgeColor(s.agama)}`}>
-                                  {s.agama}
-                                </span>
-                              )}
                             </div>
                           </td>
 
+                          {/* Kolom Khusus Agama Murid (PABP) */}
+                          {isPabp && (
+                            <td className="border border-slate-200 p-2 text-center bg-emerald-50/20">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border inline-block ${getAgamaBadgeColor(sAgama)}`}>
+                                {sAgama}
+                              </span>
+                            </td>
+                          )}
+
                           {/* Input Nilai per TP */}
                           {displayedTps.map(tp => {
-                            const isMatch = !isPabp || doesStudentMatchTp(s.agama, tp);
+                            const isMatch = !isPabp || doesStudentMatchTp(sAgama, tp);
                             if (!isMatch) {
                               return (
                                 <td 
                                   key={tp.id} 
                                   className="border border-slate-200 p-0 text-center bg-slate-100/70 text-slate-300 font-mono text-xs select-none"
                                 >
-                                  <Tooltip content={`Siswa beragama ${s.agama || 'Belum diisi'}, TP ini khusus untuk ${getTpAgama(tp) || 'agama lain'}`} position="top">
+                                  <Tooltip content={`Siswa beragama ${sAgama}, TP ini khusus untuk ${getTpAgama(tp) || 'agama lain'}`} position="top">
                                     <span className="cursor-not-allowed inline-block w-full py-2">
                                       —
                                     </span>
@@ -1078,7 +826,7 @@ export default function InputNilai() {
                   <tfoot className="bg-slate-100 text-slate-700 text-xs font-bold border-t-2 border-slate-300">
                     {/* Rata-Rata Kelas */}
                     <tr>
-                      <td colSpan={2} className="border border-slate-200 p-2.5 text-right font-extrabold sticky left-0 bg-slate-100 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] z-10">
+                      <td colSpan={isPabp ? 3 : 2} className="border border-slate-200 p-2.5 text-right font-extrabold sticky left-0 bg-slate-100 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] z-10">
                         Rata-Rata Nilai Kelas:
                       </td>
                       {displayedTps.map(tp => {
@@ -1110,7 +858,7 @@ export default function InputNilai() {
 
                     {/* Murid Tuntas per TP */}
                     <tr className="text-[11px] text-emerald-800 bg-emerald-50/50">
-                      <td colSpan={2} className="border border-slate-200 p-2 text-right sticky left-0 bg-emerald-50/90 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] z-10 font-semibold">
+                      <td colSpan={isPabp ? 3 : 2} className="border border-slate-200 p-2 text-right sticky left-0 bg-emerald-50/90 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] z-10 font-semibold">
                         Siswa Tuntas (≥ {kktp}):
                       </td>
                       {displayedTps.map(tp => {
@@ -1133,7 +881,7 @@ export default function InputNilai() {
 
                     {/* Murid Perlu Remedial (*) per TP */}
                     <tr className="text-[11px] text-rose-800 bg-rose-50/50">
-                      <td colSpan={2} className="border border-slate-200 p-2 text-right sticky left-0 bg-rose-50/90 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] z-10 font-semibold">
+                      <td colSpan={isPabp ? 3 : 2} className="border border-slate-200 p-2 text-right sticky left-0 bg-rose-50/90 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] z-10 font-semibold">
                         Perlu Remedial / Bimbingan (*):
                       </td>
                       {displayedTps.map(tp => {
@@ -1191,6 +939,52 @@ export default function InputNilai() {
         </div>
 
       </div>
+
+      {/* Modal Dialog Konfirmasi Reset Nilai (Tailwind CSS) */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 p-6 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">
+                  Kosongkan Seluruh Nilai?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Mata Pelajaran: <strong>{selectedMapelData?.nama}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-rose-50/70 border border-rose-200 rounded-xl text-xs text-rose-800 leading-relaxed mb-5">
+              Seluruh nilai sumatif (TP dan SAS) untuk mata pelajaran <strong>{selectedMapelData?.nama}</strong> pada seluruh ({siswa.length}) siswa akan <strong>dikosongkan</strong>. Tindakan ini tidak dapat dibatalkan.
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm cursor-pointer transition flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Ya, Kosongkan Nilai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

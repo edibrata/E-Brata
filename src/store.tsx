@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { AppState } from './types';
 import { INITIAL_STATE } from './constants';
 import { supabase } from '@/lib/supabase';
+import { normalizeAgama } from '@/lib/agamaUtils';
 
 export type SyncStatus = 'synced' | 'syncing' | 'error';
 
@@ -57,6 +58,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               return { ...m, rasioSlmSas: { slm: 75, sas: 25 } };
             }
             return m;
+          });
+        }
+        // Migrasi data siswa: jadikan agama di Data Murid sebagai patokan riil
+        if (Array.isArray(merged.siswa)) {
+          merged.siswa = merged.siswa.map((s: any) => {
+            const norm = normalizeAgama(s.agama);
+            return {
+              ...s,
+              agama: norm || (s.agama && s.agama.trim() ? s.agama.trim() : 'Islam')
+            };
           });
         }
         return merged;
@@ -280,6 +291,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateState = <K extends keyof AppState>(key: K, data: AppState[K]) => {
+    if (key === 'siswa' && Array.isArray(data)) {
+      const normalizedSiswa = (data as any[]).map(s => ({
+        ...s,
+        agama: normalizeAgama(s.agama) || (s.agama && String(s.agama).trim() ? String(s.agama).trim() : 'Islam'),
+        jk: s.jk || 'Laki-Laki'
+      }));
+      setState((prev) => ({ ...prev, [key]: normalizedSiswa }));
+      return;
+    }
     setState((prev) => ({ ...prev, [key]: data }));
   };
 

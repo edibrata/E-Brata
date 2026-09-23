@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAppStore } from '@/store';
 import { Siswa } from '@/types';
 import Tooltip from '@/components/Tooltip';
+import { normalizeAgama } from '@/lib/agamaUtils';
 import { Plus, Trash2, GripVertical, Upload, Download, UploadCloud } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -109,7 +110,7 @@ export default function TabDataDasarMurid() {
               jk: String(jk).trim().toLowerCase() === 'perempuan' ? 'Perempuan' : 'Laki-Laki',
               tempatLahir: tptLahir ? String(tptLahir).trim() : '',
               tanggalLahir: tglLahir ? String(tglLahir).trim() : '',
-              agama: agama ? String(agama).trim() : '',
+              agama: normalizeAgama(agama) || (agama && String(agama).trim() ? String(agama).trim() : 'Islam'),
               pendidikanSebelumnya: pdkSblm ? String(pdkSblm).trim() : '',
               alamat: alamatMurid ? String(alamatMurid).trim() : '',
               namaAyah: nmAyah ? String(nmAyah).trim() : '',
@@ -145,6 +146,7 @@ export default function TabDataDasarMurid() {
       nama: 'Siswa Baru',
       nisn: '',
       jk: 'Laki-Laki',
+      agama: 'Islam',
     };
     updateState('siswa', [...siswa, s]);
   };
@@ -472,7 +474,7 @@ export default function TabDataDasarMurid() {
                     </td>
                     <td className="px-4 py-1.5 text-center">
                       <select
-                        value={s.agama || 'Islam'}
+                        value={normalizeAgama(s.agama) || 'Islam'}
                         onChange={(e) => handleUpdate(s.id, 'agama', e.target.value)}
                         className="w-full px-1 py-0.5 border border-transparent hover:border-gray-200 focus:border-indigo-400 rounded outline-none bg-transparent hover:bg-slate-50 focus:bg-white transition-colors text-[11px] text-slate-700 cursor-pointer min-w-[90px] text-center font-medium"
                       >
