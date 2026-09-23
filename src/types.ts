@@ -68,6 +68,14 @@ export interface Siswa {
 
 export interface Mapel {
   intervalBatas?: number[]; // [batas1, batas2, batas3, batas4] e.g. [20, 40, 60, 80]
+  kktp?: number; // ambang batas ketercapaian TP (default: 70)
+  opsiPengolahan?: 'rata-rata' | 'pembobotan';
+  // Tingkat 1: Pembobotan antar TP (Total 100%)
+  bobotTp?: Record<string, number>; // tpId -> bobot persen (default dibagi rata)
+  // Tingkat 2: Pembobotan Komposit NA-SLM vs SAS (Total 100%)
+  pakaiSas?: boolean; // apakah menyertakan Sumatif Akhir Semester (SAS opsional)
+  rasioSlmSas?: { slm: number; sas: number }; // default { slm: 60, sas: 40 }
+  bobotSas?: number; // fallback backward-compatibility
   id: string;
   nama: string;
   kode: string;

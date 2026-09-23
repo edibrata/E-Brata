@@ -697,32 +697,51 @@ export default function DataSekolah() {
                 </div>
               </div>
 
-              {/* Bobot Panel */}
-              <div className="bg-slate-50/50 rounded-md border border-slate-100 p-6">
-                  <h4 className="font-bold text-xs tracking-widest text-slate-800 uppercase mb-4 border-b border-slate-100 pb-2">Rasio Bobot Penilaian Rapor</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <div className="space-y-3 flex flex-col items-center text-center">
-                      <label htmlFor="bobotSumatifLingkup" className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 text-center">Bobot Sumatif Lingkup Materi</label>
-                      <div className="flex items-center justify-center gap-3">
-                        <input id="bobotSumatifLingkup" name="bobotSumatifLingkup" type="number" min="0" max="100" value={sekolah.bobotSumatifLingkup === '' ? '' : (sekolah.bobotSumatifLingkup !== undefined ? String(sekolah.bobotSumatifLingkup) : '75')} onChange={handleChange} className="w-20 rounded-lg px-3 py-2.5 text-base font-bold text-center border-slate-200 border bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 shadow-sm" />
-                        <span className="text-slate-900 font-bold text-lg">%</span>
-                      </div>
-                    </div>
-                    <div className="space-y-3 flex flex-col items-center text-center">
-                      <label htmlFor="bobotSumatifSemester" className="block text-[10px] font-bold uppercase tracking-wider text-slate-700 text-center">Bobot Sumatif Akhir Semester</label>
-                      <div className="flex items-center justify-center gap-3">
-                        <input id="bobotSumatifSemester" name="bobotSumatifSemester" type="number" min="0" max="100" value={sekolah.bobotSumatifSemester === '' ? '' : (sekolah.bobotSumatifSemester !== undefined ? String(sekolah.bobotSumatifSemester) : '25')} onChange={handleChange} className="w-20 rounded-lg px-3 py-2.5 text-base font-bold text-center border-slate-200 border bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 shadow-sm" />
-                        <span className="text-slate-900 font-bold text-lg">%</span>
-                      </div>
-                    </div>
+              {/* Informasi Integrasi Pembobotan Asesmen 2025 (Menghilangkan Redundansi) */}
+              <div className="bg-indigo-50/50 rounded-xl border border-indigo-150 p-6 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-1.5 bg-indigo-100 text-indigo-700 rounded-lg">
+                    <Percent size={18} />
+                  </span>
+                  <div>
+                    <h4 className="font-bold text-xs tracking-wider text-indigo-950 uppercase">
+                      Pengaturan Bobot Asesmen Rapor (Panduan 2025)
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Sistem Pembobotan Dua Tingkat (Inter-TP dan Komposit SLM + SAS)
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Sesuai prinsip Kurikulum Merdeka, perencanaan <strong>Kriteria Ketuntasan TP (KKTP)</strong>, <strong>Opsi Pengolahan (Rata-rata/Pembobotan/Persentase)</strong>, serta <strong>Rasio Komposit SAS</strong> telah dipusatkan dan dikelola secara mandiri pada menu:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      1. Tahap Perencanaan
+                    </span>
+                    <span className="font-bold text-xs text-slate-800 block">
+                      Kegiatan Akademik &gt; Mata Pelajaran
+                    </span>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Menetapkan KKTP dan metode perhitungan resmi per mata pelajaran.
+                    </p>
                   </div>
 
-                  {totalBobot !== 100 && (
-                    <div className="mt-5 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-3">
-                      <AlertCircle size={18} className="shrink-0" />
-                      <p>Total bobot wajib berjumlah 100%. Pembobotan Anda saat ini: {totalBobot}%. Silakan sesuaikan rasio.</p>
-                    </div>
-                  )}
+                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      2. Tahap Penilaian
+                    </span>
+                    <span className="font-bold text-xs text-slate-800 block">
+                      Nilai Intrakurikuler &gt; Input Nilai
+                    </span>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Input nilai cepat, penyesuaian bobot manual TP, dan rasio SLM : SAS.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

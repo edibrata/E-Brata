@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { Printer } from 'lucide-react';
-import { isPabpMapel, filterTpsForStudent, cleanTpDeskripsi } from '@/lib/agamaUtils';
+import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
+import { hitungNilaiMapel } from '@/lib/penilaianUtils';
 
 export default function CetakRapor() {
   const { state } = useAppStore();
@@ -32,72 +33,22 @@ export default function CetakRapor() {
 
   const getNilaiDanDeskripsi = (studentId: string, mapelId: string) => {
     const n = nilai[studentId]?.[mapelId];
-    if (!n) return { finalScore: null, deskripsiTertinggi: '', deskripsiTerendah: '' };
+    const mapelObj = mapel.find(m => m.id === mapelId);
+    if (!mapelObj) return { finalScore: null, deskripsiTertinggi: '', deskripsiTerendah: '' };
 
     const student = siswa.find(sw => sw.id === studentId);
-    const mapelObj = mapel.find(m => m.id === mapelId);
-    const isPabp = isPabpMapel(mapelObj?.nama, mapelObj?.kode);
+    const isPabp = isPabpMapel(mapelObj.nama, mapelObj.kode);
 
     const allMapelTps = tujuanPembelajaran.filter(tp => tp.mapelId === mapelId);
     const mapelTps = isPabp
       ? filterTpsForStudent(allMapelTps, student?.agama, true)
       : allMapelTps;
 
-    let totalTp = 0;
-    let countTp = 0;
-    let maxTp: { id: string, score: number } | null = null;
-    let minTp: { id: string, score: number } | null = null;
-
-    mapelTps.forEach(tp => {
-      const score = n.tpScores[tp.id];
-      if (typeof score === 'number') {
-        totalTp += score;
-        countTp++;
-        
-        if (!maxTp || score > maxTp.score) maxTp = { id: tp.id, score };
-        if (!minTp || score < minTp.score) minTp = { id: tp.id, score };
-      }
-    });
-
-    const avgFormatif = countTp > 0 ? totalTp/countTp : 0;
-    const sumatif = n.sumatifAkhir ?? 0;
-
-    let totalComponents = 0;
-    let finalScore = 0;
-
-    if (countTp > 0) {
-      finalScore += avgFormatif;
-      totalComponents++;
-    }
-    if (n.sumatifAkhir !== null) {
-      finalScore += sumatif;
-      totalComponents++;
-    }
-
-    const finalRata = totalComponents > 0 ? Math.round(finalScore/totalComponents) : null;
-
-    let deskTer = '';
-    let deskRendah = '';
-
-    if (maxTp && maxTp.score >= 70) {
-      const tp = mapelTps.find(t => t.id === maxTp!.id);
-      if (tp) {
-        const cleanDesc = cleanTpDeskripsi(tp.deskripsi);
-        deskTer = `Menunjukkan penguasaan yang sangat baik dalam ${cleanDesc.toLowerCase()}.`;
-      }
-    }
-    if (minTp && minTp.score < 70) {
-      const tp = mapelTps.find(t => t.id === minTp!.id);
-      if (tp) {
-        const cleanDesc = cleanTpDeskripsi(tp.deskripsi);
-        deskRendah = `Perlu bimbingan dalam ${cleanDesc.toLowerCase()}.`;
-      }
-    }
-
-    return { 
-      finalScore: finalRata, 
-      deskripsiTertinggi: deskTer, 
-      deskripsiTerendah: deskRendah 
+    const res = hitungNilaiMapel(mapelObj, mapelTps, n);
+    return {
+      finalScore: res.finalScore,
+      deskripsiTertinggi: res.deskripsiTertinggi,
+      deskripsiTerendah: res.deskripsiTerendah
     };
   };
 

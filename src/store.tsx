@@ -49,7 +49,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        return deepMerge(INITIAL_STATE, parsed);
+        const merged = deepMerge(INITIAL_STATE, parsed);
+        // Migrasi default rasio komposit rapor ke 75% NA-SLM : 25% N-SAS
+        if (Array.isArray(merged.mapel)) {
+          merged.mapel = merged.mapel.map((m: any) => {
+            if (!m.rasioSlmSas || (m.rasioSlmSas.slm === 60 && m.rasioSlmSas.sas === 40)) {
+              return { ...m, rasioSlmSas: { slm: 75, sas: 25 } };
+            }
+            return m;
+          });
+        }
+        return merged;
       }
     } catch (e) {
       console.error('Failed to load state from LS', e);

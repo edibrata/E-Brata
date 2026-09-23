@@ -1,4 +1,4 @@
-import { KriteriaKetuntasan } from '../components/KriteriaKetuntasan';
+import { ModalKktp } from '../components/ModalKktp';
 import { ModalPilihTpSeni } from '../components/ModalPilihTpSeni';
 import { isPabpMapel, getTpAgama, normalizeAgama, AGAMA_LIST } from '../lib/agamaUtils';
 import { defaultTpPabp, AgamaKey } from '../data/defaultTpPabp';
@@ -16,7 +16,8 @@ import { defaultTpSeniTari } from '../data/defaultTpSeniTari';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store';
 import { TujuanPembelajaran } from '@/types';
-import { Plus, Trash2, Target, Download, Upload, Sparkles, AlertCircle, CheckCircle2, GripVertical } from 'lucide-react';
+import Tooltip from '@/components/Tooltip';
+import { Plus, Trash2, Target, Download, Upload, Sparkles, AlertCircle, CheckCircle2, GripVertical, SlidersHorizontal } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function TujuanPembelajaranView() {
@@ -25,6 +26,7 @@ export default function TujuanPembelajaranView() {
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [notification, setNotification] = useState<{message: string, type: 'error' | 'success'} | null>(null);
   const [isSeniModalOpen, setIsSeniModalOpen] = useState(false);
+  const [isKktpModalOpen, setIsKktpModalOpen] = useState(false);
   // Menentukan agama awal: prioritas pada agama murid yang ada di rombel, fallback ke 'Islam'
   const getDefaultAgama = (): string => {
     for (const s of state.siswa) {
@@ -52,6 +54,8 @@ export default function TujuanPembelajaranView() {
 
   const tps = state.tujuanPembelajaran.filter(tp => tp.mapelId === selectedMapel);
   const activeMapel = mapel.find(m => m.id === selectedMapel);
+  const activeIntervals = activeMapel?.intervalBatas || [20, 40, 60, 80];
+  const activeBatasTuntas = activeIntervals[2] || 60;
 
   const getParsedKelas = () => {
     const { kelas } = state.sekolah;
@@ -573,7 +577,7 @@ export default function TujuanPembelajaranView() {
             <select 
               value={selectedMapel} 
               onChange={(e) => setSelectedMapel(e.target.value)} 
-              className="border border-slate-200 rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500/20 cursor-pointer"
+              className="border border-slate-200 rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500/20 cursor-pointer max-w-[210px] truncate"
             >
               {mapel.map(m => (
                 <option key={m.id} value={m.id}>{m.nama}</option>
@@ -581,7 +585,22 @@ export default function TujuanPembelajaranView() {
             </select>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Tombol Pengaturan Interval KKTP */}
+            <Tooltip content={`Pengaturan Interval KKTP (${activeMapel?.nama || 'Mapel'}). Ambang Tuntas: >${activeBatasTuntas}`} position="bottom">
+              <button
+                type="button"
+                onClick={() => setIsKktpModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs rounded-lg border border-indigo-200 shadow-2xs transition cursor-pointer"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Pengaturan KKTP</span>
+                <span className="bg-indigo-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full">
+                  &gt;{activeBatasTuntas}
+                </span>
+              </button>
+            </Tooltip>
+
             <input 
               type="file" 
               accept=".xlsx, .xls" 
@@ -589,56 +608,56 @@ export default function TujuanPembelajaranView() {
               onChange={handleFileUpload} 
               className="hidden" 
             />
-            <button 
-              onClick={handleImportClick} 
-              className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition focus:outline-none group/tooltip relative"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                Import Excel (Multi-Sheet)
-              </span>
-            </button>
-            <button 
-              onClick={handleDownloadTemplate} 
-              className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-sm border border-gray-200 transition focus:outline-none group/tooltip relative"
-            >
-              <Download className="w-4 h-4" />
-              <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                Template Excel (Semua Mapel)
-              </span>
-            </button>
-            <button 
-              onClick={handleGenerateDefaultTp} 
-              className={`w-8 h-8 flex items-center justify-center rounded-lg shadow-sm border transition focus:outline-none group/tooltip relative ${
-                isCurrentPabp
-                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
-                  : isCurrentSeniBudaya 
-                    ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200' 
-                    : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                {isCurrentPabp 
-                  ? `Muat TP ${selectedAgamaFilter} Otomatis`
+            <Tooltip content="Import TP dari File Excel (Multi-Sheet)" position="bottom">
+              <button 
+                onClick={handleImportClick} 
+                className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition cursor-pointer"
+              >
+                <Upload className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Unduh Template Excel (Semua Mapel)" position="bottom">
+              <button 
+                onClick={handleDownloadTemplate} 
+                className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-sm border border-gray-200 transition cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip 
+              content={
+                isCurrentPabp 
+                  ? `Muat TP ${selectedAgamaFilter} Otomatis (BSKAP 046/2025)`
                   : isCurrentSeniBudaya 
                     ? 'Pilih TP Seni (Rupa, Musik, Tari, Teater)' 
-                    : 'Muat TP Default'}
-              </span>
-            </button>
-            <button 
-              onClick={handleAdd} 
-              className="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition group/tooltip relative"
+                    : 'Muat TP Default Otomatis'
+              } 
+              position="bottom"
             >
-              <Plus className="w-4 h-4" />
-              <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                Tambah TP Manual
-              </span>
-            </button>
+              <button 
+                onClick={handleGenerateDefaultTp} 
+                className={`w-8 h-8 flex items-center justify-center rounded-lg shadow-sm border transition cursor-pointer ${
+                  isCurrentPabp
+                    ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200'
+                    : isCurrentSeniBudaya 
+                      ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200' 
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Tambah TP Baru Secara Manual" position="bottom">
+              <button 
+                onClick={handleAdd} 
+                className="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>
-      {selectedMapel && <KriteriaKetuntasan mapelId={selectedMapel} />}
 
       {/* Tab Navigasi Permanen untuk 6 Agama Resmi jika PABP */}
       {isCurrentPabp && (
@@ -665,10 +684,9 @@ export default function TujuanPembelajaranView() {
                   }`}
                 >
                   {studentCount > 0 && (
-                    <span
-                      className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white shrink-0"
-                      title={`Terdapat ${studentCount} murid beragama ${ag} di kelas ini`}
-                    />
+                    <Tooltip content={`Terdapat ${studentCount} murid beragama ${ag} di kelas ini`} position="top">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white shrink-0 block" />
+                    </Tooltip>
                   )}
                   <span>{ag}</span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
@@ -728,20 +746,23 @@ export default function TujuanPembelajaranView() {
         <table className="w-full text-left text-xs whitespace-nowrap">
           <thead className="bg-[#F8FAFC] text-slate-500 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-2 py-2 w-8 text-center text-[10px] uppercase tracking-wider" title="Geser urutan TP">
-                <GripVertical className="w-3.5 h-3.5 mx-auto text-slate-400" />
+              <th className="px-2 py-2 w-8 text-center text-[10px] uppercase tracking-wider">
+                <Tooltip content="Geser baris untuk memindahkan urutan TP" position="bottom">
+                  <GripVertical className="w-3.5 h-3.5 mx-auto text-slate-400" />
+                </Tooltip>
               </th>
               <th className="px-2 py-2 w-8 text-center text-[10px] uppercase tracking-wider">
-                <input
-                  type="checkbox"
-                  checked={isAllSelected}
-                  ref={input => {
-                    if (input) input.indeterminate = isSomeSelected;
-                  }}
-                  onChange={handleToggleSelectAll}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer accent-indigo-600"
-                  title={isAllSelected ? "Batalkan pilihan semua" : "Pilih semua TP yang tampil"}
-                />
+                <Tooltip content={isAllSelected ? "Batalkan pilihan semua" : "Pilih semua TP yang tampil"} position="bottom">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={input => {
+                      if (input) input.indeterminate = isSomeSelected;
+                    }}
+                    onChange={handleToggleSelectAll}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer accent-indigo-600"
+                  />
+                </Tooltip>
               </th>
               <th className="px-3 py-2 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
               <th className="px-4 py-2 w-48 text-left text-[10px] uppercase tracking-wider">Kode TP</th>
@@ -839,11 +860,10 @@ export default function TujuanPembelajaranView() {
                   }`}
                 >
                   {/* Grip Handle Drag Column */}
-                  <td 
-                    className="px-2 py-3 text-center text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing select-none"
-                    title="Klik dan geser untuk memindahkan urutan TP ini"
-                  >
-                    <GripVertical className="w-4 h-4 mx-auto" />
+                  <td className="px-2 py-3 text-center text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing select-none">
+                    <Tooltip content="Klik & seret untuk memindahkan urutan TP" position="right">
+                      <GripVertical className="w-4 h-4 mx-auto" />
+                    </Tooltip>
                   </td>
 
                   {/* Checkbox Column */}
@@ -873,16 +893,17 @@ export default function TujuanPembelajaranView() {
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${styles?.badge || 'bg-slate-50 text-slate-700 border-slate-200'}`}>
                             {tpAg}
                           </span>
-                          <select
-                            value={tpAg}
-                            onChange={(e) => handleUpdate(tp.id, 'agama', e.target.value)}
-                            className="text-[10px] text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer outline-none p-0"
-                            title="Pindahkan TP ini ke Agama lain"
-                          >
-                            {AGAMA_LIST.map(ag => (
-                              <option key={ag} value={ag}>{ag}</option>
-                            ))}
-                          </select>
+                          <Tooltip content="Pindahkan TP ini ke Agama lain" position="right">
+                            <select
+                              value={tpAg}
+                              onChange={(e) => handleUpdate(tp.id, 'agama', e.target.value)}
+                              className="text-[10px] text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer outline-none p-0"
+                            >
+                              {AGAMA_LIST.map(ag => (
+                                <option key={ag} value={ag}>{ag}</option>
+                              ))}
+                            </select>
+                          </Tooltip>
                         </div>
                       )}
                     </div>
@@ -951,6 +972,16 @@ export default function TujuanPembelajaranView() {
           semester={state.sekolah.semester || '1'}
           existingTpCount={tps.length}
           onApply={handleApplySeniTps}
+        />
+      )}
+
+      {selectedMapel && (
+        <ModalKktp
+          isOpen={isKktpModalOpen}
+          onClose={() => setIsKktpModalOpen(false)}
+          mapelId={selectedMapel}
+          onSuccess={(msg) => showNotif(msg, 'success')}
+          onSelectMapel={(newMapelId) => setSelectedMapel(newMapelId)}
         />
       )}
     </div>

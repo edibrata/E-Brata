@@ -1,15 +1,15 @@
 import { Mapel, AppState } from './types';
 
 export const DAFTAR_MAPEL: Mapel[] = [
-  { id: 'm1', nama: 'Pendidikan Agama dan Budi Pekerti', kode: 'pabp', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm2', nama: 'Pendidikan Pancasila', kode: 'pp', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm3', nama: 'Bahasa Indonesia', kode: 'ind', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm4', nama: 'Matematika', kode: 'mtk', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm5', nama: 'Ilmu Pengetahuan Alam dan Sosial', kode: 'ipas', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm6', nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode: 'pjok', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm7', nama: 'Seni dan Budaya', kode: 'sdb', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm8', nama: 'Bahasa Inggris', kode: 'eng', kelompok: 'Pokok', tampilRapor: true },
-  { id: 'm9', nama: 'Bahasa Sunda', kode: 'sunda', kelompok: 'Muatan Lokal', tampilRapor: true },
+  { id: 'm1', nama: 'Pendidikan Agama dan Budi Pekerti', kode: 'pabp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm2', nama: 'Pendidikan Pancasila', kode: 'pp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm3', nama: 'Bahasa Indonesia', kode: 'ind', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm4', nama: 'Matematika', kode: 'mtk', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm5', nama: 'Ilmu Pengetahuan Alam dan Sosial', kode: 'ipas', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm6', nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode: 'pjok', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm7', nama: 'Seni dan Budaya', kode: 'sdb', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm8', nama: 'Bahasa Inggris', kode: 'eng', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
+  { id: 'm9', nama: 'Bahasa Sunda', kode: 'sunda', kelompok: 'Muatan Lokal', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
 ];
 
 const now = new Date();
