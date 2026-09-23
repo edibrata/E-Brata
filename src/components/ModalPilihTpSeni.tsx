@@ -41,10 +41,10 @@ export const ModalPilihTpSeni: React.FC<ModalPilihTpSeniProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const branches = useMemo(() => [
-    { id: 'rupa' as const, label: 'Seni Rupa', tag: 'Rupa', icon: '🎨', data: defaultTpSeniRupa, color: 'text-rose-600 bg-rose-50 border-rose-200' },
-    { id: 'musik' as const, label: 'Seni Musik', tag: 'Musik', icon: '🎵', data: defaultTpSeniMusik, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-    { id: 'tari' as const, label: 'Seni Tari', tag: 'Tari', icon: '💃', data: defaultTpSeniTari, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    { id: 'teater' as const, label: 'Seni Teater', tag: 'Teater', icon: '🎭', data: defaultTpSeniTeater, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
+    { id: 'rupa' as const, label: 'Seni Rupa', tag: 'Rupa', data: defaultTpSeniRupa, color: 'text-rose-600 bg-rose-50 border-rose-200' },
+    { id: 'musik' as const, label: 'Seni Musik', tag: 'Musik', data: defaultTpSeniMusik, color: 'text-amber-600 bg-amber-50 border-amber-200' },
+    { id: 'tari' as const, label: 'Seni Tari', tag: 'Tari', data: defaultTpSeniTari, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+    { id: 'teater' as const, label: 'Seni Teater', tag: 'Teater', data: defaultTpSeniTeater, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
   ], []);
 
   // Normalize semester
@@ -198,7 +198,6 @@ export const ModalPilihTpSeni: React.FC<ModalPilihTpSeniProps> = ({
                       : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
                   }`}
                 >
-                  <span className="text-sm">{branch.icon}</span>
                   <span>{branch.label}</span>
                   {count > 0 && (
                     <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${

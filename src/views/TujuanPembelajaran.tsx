@@ -16,7 +16,7 @@ import { defaultTpSeniTari } from '../data/defaultTpSeniTari';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store';
 import { TujuanPembelajaran } from '@/types';
-import { Plus, Trash2, Target, Download, Upload, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Target, Download, Upload, Sparkles, AlertCircle, CheckCircle2, GripVertical } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function TujuanPembelajaranView() {
@@ -88,6 +88,18 @@ export default function TujuanPembelajaranView() {
   ) : false;
 
   const isCurrentPabp = activeMapel ? isPabpMapel(activeMapel.nama, activeMapel.kode) : false;
+  const displayedTps = isCurrentPabp
+    ? tps.filter(tp => (tp.agama || getTpAgama(tp)) === selectedAgamaFilter)
+    : tps;
+
+  const [selectedTpIds, setSelectedTpIds] = useState<string[]>([]);
+  const [draggedTpId, setDraggedTpId] = useState<string | null>(null);
+  const [dragOverTpId, setDragOverTpId] = useState<string | null>(null);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    setSelectedTpIds([]);
+  }, [selectedMapel, selectedAgamaFilter]);
 
   const studentAgamaCounts: Record<string, number> = {};
   state.siswa.forEach(s => {
@@ -203,6 +215,72 @@ export default function TujuanPembelajaranView() {
       updateState('trash', [...(state.trash || []), newTrashItem]);
     }
     updateState('tujuanPembelajaran', state.tujuanPembelajaran.filter(tp => tp.id !== id));
+    setSelectedTpIds(prev => prev.filter(item => item !== id));
+    showNotif("1 TP dipindahkan ke Kotak Sampah.", "success");
+  };
+
+  const isAllSelected = displayedTps.length > 0 && displayedTps.every(tp => selectedTpIds.includes(tp.id));
+  const isSomeSelected = displayedTps.some(tp => selectedTpIds.includes(tp.id)) && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      const displayedIdSet = new Set(displayedTps.map(tp => tp.id));
+      setSelectedTpIds(prev => prev.filter(id => !displayedIdSet.has(id)));
+    } else {
+      const displayedIds = displayedTps.map(tp => tp.id);
+      setSelectedTpIds(prev => Array.from(new Set([...prev, ...displayedIds])));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedTpIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleReorder = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+
+    const fromIndex = displayedTps.findIndex(tp => tp.id === sourceId);
+    const toIndex = displayedTps.findIndex(tp => tp.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const reorderedSubset = [...displayedTps];
+    const [moved] = reorderedSubset.splice(fromIndex, 1);
+    reorderedSubset.splice(toIndex, 0, moved);
+
+    const subsetIdSet = new Set(displayedTps.map(tp => tp.id));
+    let subsetIdx = 0;
+    const newAllTps = state.tujuanPembelajaran.map(tp => {
+      if (subsetIdSet.has(tp.id)) {
+        return reorderedSubset[subsetIdx++];
+      }
+      return tp;
+    });
+
+    updateState('tujuanPembelajaran', newAllTps);
+  };
+
+  const handleConfirmBulkDelete = () => {
+    if (selectedTpIds.length === 0) return;
+    const itemsToDelete = state.tujuanPembelajaran.filter(tp => selectedTpIds.includes(tp.id));
+    if (itemsToDelete.length === 0) return;
+
+    const newTrashItems = itemsToDelete.map(tp => ({
+      id: 'trash_' + Date.now() + Math.random().toString(36).substring(2, 9),
+      originalId: tp.id,
+      type: 'tp' as const,
+      label: `TP ${tp.kode} - ${activeMapel?.nama || 'Mapel'}`,
+      data: tp,
+      deletedAt: new Date().toISOString()
+    }));
+
+    updateState('trash', [...(state.trash || []), ...newTrashItems]);
+    updateState('tujuanPembelajaran', state.tujuanPembelajaran.filter(tp => !selectedTpIds.includes(tp.id)));
+    showNotif(`Berhasil menghapus ${itemsToDelete.length} TP (dipindahkan ke Kotak Sampah).`, "success");
+    setSelectedTpIds([]);
+    setIsBulkDeleteConfirmOpen(false);
   };
 
       const handleGenerateDefaultTp = () => {
@@ -615,23 +693,65 @@ export default function TujuanPembelajaranView() {
         </div>
       )}
 
+      {/* Bilah Aksi Hapus Massal (Bulk Action Toolbar) */}
+      {selectedTpIds.length > 0 && (
+        <div className="px-5 py-2.5 bg-gradient-to-r from-rose-50 via-rose-100/60 to-rose-50 border-t border-b border-rose-200 flex items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-[11px] shadow-xs">
+              {selectedTpIds.length}
+            </span>
+            <span className="font-bold text-rose-950">
+              {selectedTpIds.length} Tujuan Pembelajaran dipilih
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedTpIds([])}
+              className="px-3 py-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-100/70 text-rose-700 font-semibold transition cursor-pointer text-xs"
+            >
+              Batal Pilih
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsBulkDeleteConfirmOpen(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer text-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Hapus yang Dipilih ({selectedTpIds.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-auto bg-white rounded-b-2xl border-t border-gray-200" style={{ maxHeight: 'calc(100vh - 250px)' }}>
         <table className="w-full text-left text-xs whitespace-nowrap">
           <thead className="bg-[#F8FAFC] text-slate-500 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-4 py-2 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
+              <th className="px-2 py-2 w-8 text-center text-[10px] uppercase tracking-wider" title="Geser urutan TP">
+                <GripVertical className="w-3.5 h-3.5 mx-auto text-slate-400" />
+              </th>
+              <th className="px-2 py-2 w-8 text-center text-[10px] uppercase tracking-wider">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={input => {
+                    if (input) input.indeterminate = isSomeSelected;
+                  }}
+                  onChange={handleToggleSelectAll}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer accent-indigo-600"
+                  title={isAllSelected ? "Batalkan pilihan semua" : "Pilih semua TP yang tampil"}
+                />
+              </th>
+              <th className="px-3 py-2 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
               <th className="px-4 py-2 w-48 text-left text-[10px] uppercase tracking-wider">Kode TP</th>
               <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wider">Deskripsi Tujuan Pembelajaran</th>
-              <th className="px-4 py-2 w-20 text-center text-[10px] uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {(isCurrentPabp
-              ? tps.filter(tp => (tp.agama || getTpAgama(tp)) === selectedAgamaFilter)
-              : tps
-            ).length === 0 ? (
+            {displayedTps.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
+                <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
                   {isCurrentPabp ? (
                     <div className="flex flex-col items-center justify-center gap-2">
                       <p className="text-slate-500 font-medium">
@@ -664,16 +784,82 @@ export default function TujuanPembelajaranView() {
                 </td>
               </tr>
             ) : null}
-            {(isCurrentPabp
-              ? tps.filter(tp => (tp.agama || getTpAgama(tp)) === selectedAgamaFilter)
-              : tps
-            ).map((tp, i) => {
+            {displayedTps.map((tp, i) => {
               const tpAg = tp.agama || getTpAgama(tp);
               const styles = tpAg ? getAgamaStyle(tpAg) : null;
+              const isChecked = selectedTpIds.includes(tp.id);
 
               return (
-                <tr key={tp.id} className="hover:bg-slate-50/80 transition-colors group align-top">
-                  <td className="px-4 py-2 text-center text-gray-400 font-mono text-[11px] pt-3">{i + 1}</td>
+                <tr 
+                  key={tp.id} 
+                  draggable
+                  onDragStart={(e) => {
+                    const targetTag = (e.target as HTMLElement).tagName.toLowerCase();
+                    if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select') {
+                      e.preventDefault();
+                      return;
+                    }
+                    e.dataTransfer.setData('text/plain', tp.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggedTpId(tp.id);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverTpId !== tp.id) {
+                      setDragOverTpId(tp.id);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverTpId === tp.id) {
+                      setDragOverTpId(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const sourceId = e.dataTransfer.getData('text/plain') || draggedTpId;
+                    if (sourceId && sourceId !== tp.id) {
+                      handleReorder(sourceId, tp.id);
+                    }
+                    setDraggedTpId(null);
+                    setDragOverTpId(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedTpId(null);
+                    setDragOverTpId(null);
+                  }}
+                  className={`transition-colors group align-top ${
+                    draggedTpId === tp.id
+                      ? 'opacity-40 bg-indigo-50/60'
+                      : dragOverTpId === tp.id
+                        ? 'bg-indigo-50/90 border-t-2 border-indigo-500'
+                        : isChecked
+                          ? 'bg-rose-50/40 hover:bg-rose-50/70'
+                          : 'hover:bg-slate-50/80'
+                  }`}
+                >
+                  {/* Grip Handle Drag Column */}
+                  <td 
+                    className="px-2 py-3 text-center text-slate-300 group-hover:text-slate-500 cursor-grab active:cursor-grabbing select-none"
+                    title="Klik dan geser untuk memindahkan urutan TP ini"
+                  >
+                    <GripVertical className="w-4 h-4 mx-auto" />
+                  </td>
+
+                  {/* Checkbox Column */}
+                  <td className="px-2 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggleSelect(tp.id)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer accent-indigo-600"
+                    />
+                  </td>
+
+                  {/* Nomor Urut */}
+                  <td className="px-3 py-2 text-center text-gray-400 font-mono text-[11px] pt-3">{i + 1}</td>
+
+                  {/* Kode TP */}
                   <td className="px-4 py-1.5">
                     <div className="flex flex-col gap-1">
                       <input 
@@ -701,6 +887,8 @@ export default function TujuanPembelajaranView() {
                       )}
                     </div>
                   </td>
+
+                  {/* Deskripsi TP */}
                   <td className="px-4 py-1.5">
                     <textarea 
                       value={tp.deskripsi || ''} 
@@ -709,23 +897,49 @@ export default function TujuanPembelajaranView() {
                       rows={1} 
                     />
                   </td>
-                  <td className="px-4 py-1.5 text-center pt-2">
-                    <button 
-                      onClick={() => handleDelete(tp.id)} 
-                      className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors mx-auto opacity-0 group-hover:opacity-100 focus-within:opacity-100 group/tooltip relative focus:outline-none block"
-                    >
-                      <Trash2 size={15} />
-                      <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-bottom-1 before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-slate-800">
-                        Hapus TP
-                      </span>
-                    </button>
-                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {/* Modal Konfirmasi Hapus Massal */}
+      {isBulkDeleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-rose-600 mb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0 border border-rose-100">
+                <Trash2 className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Hapus {selectedTpIds.length} TP Terpilih?</h3>
+                <p className="text-xs text-slate-500">Tindakan ini aman dan dapat dipulihkan.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 mb-5 leading-relaxed">
+              Sebanyak <strong>{selectedTpIds.length}</strong> Tujuan Pembelajaran pada mata pelajaran <strong>{activeMapel?.nama}</strong> akan dipindahkan ke <strong>Kotak Sampah</strong>.
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold cursor-pointer transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBulkDelete}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm cursor-pointer transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Ya, Hapus Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeMapel && (
         <ModalPilihTpSeni
