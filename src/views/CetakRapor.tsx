@@ -462,60 +462,170 @@ export default function CetakRapor() {
     };
 
     // Halaman 3: Identitas Diri Peserta Didik (Biodata Murid)
-    const renderBiodataMurid = () => (
-      <div 
-        className="p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed space-y-4"
-        style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
-      >
-        <div className="text-center mb-6">
-          <h3 className="font-bold text-base uppercase">KETERANGAN TENTANG DIRI PESERTA DIDIK</h3>
-          <p className="text-xs text-slate-500 uppercase tracking-widest">(BIODATA PESERTA DIDIK)</p>
-        </div>
+    const renderBiodataMurid = () => {
+      const formatAlamatOrtu = (std: typeof currentStudent) => {
+        const parts: string[] = [];
+        if (std.jalanOrtu) parts.push(std.jalanOrtu);
+        if (std.desaKelurahanOrtu) parts.push(`Desa/Kel. ${std.desaKelurahanOrtu}`);
+        if (std.kecamatanOrtu) parts.push(`Kec. ${std.kecamatanOrtu}`);
+        if (std.kabupatenKotaOrtu) {
+          const kab = std.kabupatenKotaOrtu.trim();
+          if (/^kab/i.test(kab) || /^kota/i.test(kab)) {
+            parts.push(kab);
+          } else {
+            parts.push(`Kab./Kota ${kab}`);
+          }
+        }
+        if (std.provinsiOrtu) parts.push(`Prov. ${std.provinsiOrtu}`);
+        if (parts.length > 0) return parts.join(', ');
+        return std.alamat || '-';
+      };
 
-        <table className="w-full text-left">
-          <tbody className="divide-y divide-slate-100">
-            <tr><td className="py-2 w-48 font-bold text-slate-700">1. Nama Lengkap</td><td className="w-4">:</td><td className="py-2 font-bold uppercase text-slate-900">{currentStudent.nama}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">2. Nomor Induk Siswa (NIS)</td><td>:</td><td className="py-2 font-mono">{currentStudent.nis || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">3. NISN</td><td>:</td><td className="py-2 font-mono font-bold text-indigo-950">{currentStudent.nisn || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">4. Tempat, Tanggal Lahir</td><td>:</td><td className="py-2">{currentStudent.tempatLahir || '-'}, {currentStudent.tanggalLahir || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">5. Jenis Kelamin</td><td>:</td><td className="py-2">{currentStudent.jk === 'L' || currentStudent.jk === 'Laki-Laki' ? 'Laki-laki' : 'Perempuan'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">6. Agama</td><td>:</td><td className="py-2">{currentStudent.agama || 'Islam'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">7. Alamat Peserta Didik</td><td>:</td><td className="py-2">{currentStudent.alamat || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">8. Nama Orang Tua</td><td>:</td><td className="py-2"></td></tr>
-            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">a. Ayah</td><td>:</td><td className="py-1.5 font-bold">{currentStudent.namaAyah || '-'}</td></tr>
-            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">b. Ibu</td><td>:</td><td className="py-1.5 font-bold">{currentStudent.namaIbu || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">9. Pekerjaan Orang Tua</td><td>:</td><td className="py-2"></td></tr>
-            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">a. Ayah</td><td>:</td><td className="py-1.5">{currentStudent.pekerjaanAyah || '-'}</td></tr>
-            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">b. Ibu</td><td>:</td><td className="py-1.5">{currentStudent.pekerjaanIbu || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">10. Alamat Orang Tua</td><td>:</td><td className="py-2">{currentStudent.jalanOrtu || currentStudent.alamat || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">11. Nama Wali (jika ada)</td><td>:</td><td className="py-2">{currentStudent.namaWali || '-'}</td></tr>
-            <tr><td className="py-2 font-bold text-slate-700">12. Pekerjaan Wali</td><td>:</td><td className="py-2">{currentStudent.pekerjaanWali || '-'}</td></tr>
-          </tbody>
-        </table>
+      const tglLahirFormatted = currentStudent.tanggalLahir
+        ? (formatTanggalIndonesia(currentStudent.tanggalLahir) || currentStudent.tanggalLahir)
+        : '-';
+      const ttl = currentStudent.tempatLahir
+        ? (tglLahirFormatted !== '-' ? `${currentStudent.tempatLahir}, ${tglLahirFormatted}` : currentStudent.tempatLahir)
+        : tglLahirFormatted;
 
-        <div className="mt-10 flex justify-between items-end pt-4">
-          <div className="w-28 h-36 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center text-center p-2 text-slate-400">
-            {currentStudent.fotoBase64 ? (
-              <img src={currentStudent.fotoBase64} alt="Foto" className="w-full h-full object-cover rounded" />
-            ) : (
-              <span className="text-[11px] font-bold">Pas Foto<br/>3 x 4 cm</span>
-            )}
+      const nisNisnStr = currentStudent.nis && currentStudent.nisn
+        ? `${currentStudent.nis} / ${currentStudent.nisn}`
+        : currentStudent.nisn || currentStudent.nis || '-';
+
+      interface BiodataRowItem {
+        no?: string;
+        subNo?: string;
+        label: string;
+        value?: string;
+        isHeader?: boolean;
+        isBoldVal?: boolean;
+      }
+
+      const kabJenis = (sekolah.kabupatenKotaJenis || '').toLowerCase();
+      const kabLabel = kabJenis === 'kota' ? 'Kota' : kabJenis === 'kabupaten' ? 'Kabupaten' : 'Kabupaten/Kota';
+
+      const desaJenis = (sekolah.desaKelurahanJenis || '').toLowerCase();
+      const desaLabel = desaJenis === 'kelurahan' ? 'Kelurahan' : desaJenis === 'desa' ? 'Desa' : 'Desa/Kelurahan';
+
+      const bioRows: BiodataRowItem[] = [
+        { no: '1.', label: 'Nama Peserta Didik', value: (currentStudent.nama || '-').toUpperCase(), isBoldVal: true },
+        { no: '2.', label: 'Nomor Induk/NISN', value: nisNisnStr },
+        { no: '3.', label: 'Tempat, Tanggal Lahir', value: ttl },
+        { no: '4.', label: 'Jenis Kelamin', value: currentStudent.jk === 'L' || currentStudent.jk === 'Laki-Laki' ? 'Laki-laki' : (currentStudent.jk ? 'Perempuan' : '-') },
+        { no: '5.', label: 'Agama', value: currentStudent.agama || 'Islam' },
+        { no: '6.', label: 'Pendidikan Sebelumnya', value: currentStudent.pendidikanSebelumnya || '-' },
+        { no: '7.', label: 'Alamat Peserta Didik', value: currentStudent.alamat || '-' },
+        { no: '8.', label: 'Nama Orang Tua', isHeader: true },
+        { subNo: 'a.', label: 'Ayah', value: currentStudent.namaAyah || '-' },
+        { subNo: 'b.', label: 'Ibu', value: currentStudent.namaIbu || '-' },
+        { no: '9.', label: 'Pekerjaan Orang Tua', isHeader: true },
+        { subNo: 'a.', label: 'Ayah', value: currentStudent.pekerjaanAyah || '-' },
+        { subNo: 'b.', label: 'Ibu', value: currentStudent.pekerjaanIbu || '-' },
+        { no: '10.', label: 'Alamat Orang Tua', isHeader: true },
+        { subNo: 'a.', label: 'Jalan', value: currentStudent.jalanOrtu || currentStudent.alamat || '-' },
+        { subNo: 'b.', label: desaLabel, value: currentStudent.desaKelurahanOrtu || sekolah.desaKelurahanNama || '-' },
+        { subNo: 'c.', label: 'Kecamatan', value: currentStudent.kecamatanOrtu || sekolah.kecamatan || '-' },
+        { subNo: 'd.', label: kabLabel, value: currentStudent.kabupatenKotaOrtu || sekolah.kabupatenKotaNama || '-' },
+        { subNo: 'e.', label: 'Provinsi', value: currentStudent.provinsiOrtu || sekolah.provinsi || '-' },
+        { no: '11.', label: 'Wali Peserta Didik', isHeader: true },
+        { subNo: 'a.', label: 'Nama', value: currentStudent.namaWali || '-' },
+        { subNo: 'b.', label: 'Pekerjaan', value: currentStudent.pekerjaanWali || '-' },
+        { subNo: 'c.', label: 'Alamat', value: currentStudent.alamatWali || '-' },
+      ];
+
+      const lokasiStrBiodata = formatLokasiTitimangsa(sekolah);
+      const tanggalBiodataFormatted = formatTanggalIndonesia(sekolah.tanggalBiodata || sekolah.tanggalRapor);
+      const titimangsaBiodataStr = tanggalBiodataFormatted ? `${lokasiStrBiodata}, ${tanggalBiodataFormatted}` : `${lokasiStrBiodata}, ............................. 202...`;
+
+      return (
+        <div 
+          className="p-8 sm:p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-normal flex flex-col justify-between"
+          style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
+        >
+          <div>
+            {/* Judul Atas 1 Baris Rata Tengah */}
+            <div className="text-center mb-7 pt-1">
+              <h1 className="font-bold text-base sm:text-[17px] tracking-wider text-black uppercase">IDENTITAS PESERTA DIDIK</h1>
+            </div>
+
+            {/* Form Isian Biodata */}
+            <div className="w-full space-y-1 sm:space-y-1.5 px-1 text-[11pt]">
+              {bioRows.map((row, idx) => {
+                if (row.isHeader) {
+                  return (
+                    <div key={idx} className="flex items-center text-black font-normal">
+                      <div className="w-7 shrink-0">{row.no}</div>
+                      <div>{row.label}</div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={idx} className="flex items-center text-black">
+                    <div className="w-7 shrink-0 font-normal">{row.no || ''}</div>
+                    <div className="w-56 sm:w-64 shrink-0 font-normal flex items-center">
+                      {row.subNo ? (
+                        <>
+                          <span className="w-6 shrink-0">{row.subNo}</span>
+                          <span>{row.label}</span>
+                        </>
+                      ) : (
+                        <span>{row.label}</span>
+                      )}
+                    </div>
+                    <div className="w-4 text-center shrink-0 font-normal">:</div>
+                    <div className="flex-1 min-w-0 pb-0.5 border-b border-slate-300">
+                      <span className={`block truncate ${row.isBoldVal ? 'font-bold text-black' : 'font-normal'}`}>
+                        {row.value || '\u00A0'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="text-right space-y-1 text-xs">
-            <p>{formatLokasiTitimangsa(sekolah)}, {formatTanggalIndonesia(sekolah.tanggalBiodata || sekolah.tanggalRapor) || '15 Juli 2024'}</p>
-            <p className="font-bold">Kepala {sekolah.nama}</p>
-            <div className="h-16 flex items-center justify-end">
-              {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                <img src={sekolah.ttdKepsek} alt="TTD" className="h-14 object-contain" />
+          {/* Footer Pas Foto & Tanda Tangan Kepala Sekolah */}
+          <div className="mt-6 pt-2 flex justify-end items-end gap-12 sm:gap-16 px-2 text-[11pt]">
+            <div className="w-[26mm] h-[35mm] shrink-0">
+              {currentStudent.fotoBase64 ? (
+                <img src={currentStudent.fotoBase64} alt="Pas Foto" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full border border-slate-400 rounded-sm flex flex-col items-center justify-center text-center p-1 text-slate-400 bg-slate-50/50">
+                  <div className="text-[10px] font-medium leading-tight text-slate-400">
+                    Pas Foto<br/>3 x 4 cm
+                  </div>
+                </div>
               )}
             </div>
-            <p className="font-bold underline uppercase text-sm">{sekolah.kepsek}</p>
-            <p className="font-mono text-[11px]">NIP. {sekolah.nipKepsek || '-'}</p>
+
+            <div className="text-left text-[11pt] min-w-[210px] h-[35mm] flex flex-col justify-between">
+              <div>
+                <p className="text-black leading-tight">{titimangsaBiodataStr}</p>
+                <p className="text-black leading-tight mt-1">Kepala Sekolah,</p>
+              </div>
+              <div className="flex-1 flex items-center justify-start relative my-0.5">
+                {sekolah.useDigitalSignature && sekolah.ttdKepsek ? (
+                  <img 
+                    src={sekolah.ttdKepsek} 
+                    alt="TTD" 
+                    className="h-12 object-contain" 
+                    style={{
+                      transform: `scale(${(sekolah.ttdKepsekScale || 100) / 100}) rotate(${sekolah.ttdKepsekRotation || 0}deg) translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px)`
+                    }}
+                  />
+                ) : (
+                  <div className="h-10" />
+                )}
+              </div>
+              <div>
+                <p className="font-bold text-[11pt] text-black leading-tight">{sekolah.kepsek || '................................'}</p>
+                <p className="text-[11pt] text-black leading-tight mt-1">NIP. {sekolah.nipKepsek || '-'}</p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    };
 
     if (type === 'jilid') {
       return renderJilidCover();

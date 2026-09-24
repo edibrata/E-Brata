@@ -635,112 +635,192 @@ export const buildBiodataPDF = (
   isContinuation = false,
   pdfFont: PdfFontOption = 'arial'
 ) => {
-  const { fontName, baseBodySize, headerSize, subHeaderSize } = getFontConfig(pdfFont);
+  const { fontName } = getFontConfig(pdfFont);
   if (isContinuation) {
     doc.addPage();
   }
 
   const { width: pageWidth, height: pageHeight } = getPaperDimensions(paperSize);
 
+  // Header Judul 1 Baris Rata Tengah
+  const titleY = paperSize === 'f4' ? 24 : 20;
   doc.setFont(fontName, 'bold');
-  doc.setFontSize(headerSize);
-  doc.setTextColor(15, 23, 42);
-  doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, 22, { align: 'center' });
-  doc.setFontSize(subHeaderSize + 0.5);
-  doc.setFont(fontName, 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text('(BIODATA PESERTA DIDIK)', pageWidth / 2, 28, { align: 'center' });
+  doc.setFontSize(13);
+  doc.setTextColor(0, 0, 0);
+  doc.text('IDENTITAS PESERTA DIDIK', pageWidth / 2, titleY, { align: 'center' });
 
-  const bioData = [
-    ['1.', 'Nama Lengkap Peserta Didik', ':', (student.nama || '-').toUpperCase()],
-    ['2.', 'Nomor Induk Siswa (NIS)', ':', student.nis || '-'],
-    ['3.', 'Nomor Induk Siswa Nasional (NISN)', ':', student.nisn || '-'],
-    ['4.', 'Tempat, Tanggal Lahir', ':', `${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`],
-    ['5.', 'Jenis Kelamin', ':', student.jk === 'L' || student.jk === 'Laki-Laki' ? 'Laki-laki' : 'Perempuan'],
-    ['6.', 'Agama', ':', student.agama || 'Islam'],
-    ['7.', 'Alamat Peserta Didik', ':', student.alamat || '-'],
-    ['8.', 'Nama Orang Tua', ':', ''],
-    ['', '  a. Ayah', ':', student.namaAyah || '-'],
-    ['', '  b. Ibu', ':', student.namaIbu || '-'],
-    ['9.', 'Pekerjaan Orang Tua', ':', ''],
-    ['', '  a. Ayah', ':', student.pekerjaanAyah || '-'],
-    ['', '  b. Ibu', ':', student.pekerjaanIbu || '-'],
-    ['10.', 'Alamat Rumah Orang Tua', ':', student.jalanOrtu || student.alamat || '-'],
-    ['11.', 'Nama Wali Peserta Didik (jika ada)', ':', student.namaWali || '-'],
-    ['12.', 'Pekerjaan Wali Peserta Didik', ':', student.pekerjaanWali || '-'],
-    ['13.', 'Alamat Rumah Wali', ':', student.alamatWali || '-']
+  const tglLahirFormatted = student.tanggalLahir
+    ? (formatTanggalIndonesia(student.tanggalLahir) || student.tanggalLahir)
+    : '-';
+  const ttl = student.tempatLahir
+    ? (tglLahirFormatted !== '-' ? `${student.tempatLahir}, ${tglLahirFormatted}` : student.tempatLahir)
+    : tglLahirFormatted;
+
+  const nisNisnStr = student.nis && student.nisn
+    ? `${student.nis} / ${student.nisn}`
+    : student.nisn || student.nis || '-';
+
+  interface BiodataRowItem {
+    no?: string;
+    subNo?: string;
+    label: string;
+    value?: string;
+    isHeader?: boolean;
+    isBoldVal?: boolean;
+  }
+
+  const kabJenis = (sekolah.kabupatenKotaJenis || '').toLowerCase();
+  const kabLabel = kabJenis === 'kota' ? 'Kota' : kabJenis === 'kabupaten' ? 'Kabupaten' : 'Kabupaten/Kota';
+
+  const desaJenis = (sekolah.desaKelurahanJenis || '').toLowerCase();
+  const desaLabel = desaJenis === 'kelurahan' ? 'Kelurahan' : desaJenis === 'desa' ? 'Desa' : 'Desa/Kelurahan';
+
+  const rows: BiodataRowItem[] = [
+    { no: '1.', label: 'Nama Peserta Didik', value: (student.nama || '-').toUpperCase(), isBoldVal: true },
+    { no: '2.', label: 'Nomor Induk/NISN', value: nisNisnStr },
+    { no: '3.', label: 'Tempat, Tanggal Lahir', value: ttl },
+    { no: '4.', label: 'Jenis Kelamin', value: student.jk === 'L' || student.jk === 'Laki-Laki' ? 'Laki-laki' : (student.jk ? 'Perempuan' : '-') },
+    { no: '5.', label: 'Agama', value: student.agama || 'Islam' },
+    { no: '6.', label: 'Pendidikan Sebelumnya', value: student.pendidikanSebelumnya || '-' },
+    { no: '7.', label: 'Alamat Peserta Didik', value: student.alamat || '-' },
+    { no: '8.', label: 'Nama Orang Tua', isHeader: true },
+    { subNo: 'a.', label: 'Ayah', value: student.namaAyah || '-' },
+    { subNo: 'b.', label: 'Ibu', value: student.namaIbu || '-' },
+    { no: '9.', label: 'Pekerjaan Orang Tua', isHeader: true },
+    { subNo: 'a.', label: 'Ayah', value: student.pekerjaanAyah || '-' },
+    { subNo: 'b.', label: 'Ibu', value: student.pekerjaanIbu || '-' },
+    { no: '10.', label: 'Alamat Orang Tua', isHeader: true },
+    { subNo: 'a.', label: 'Jalan', value: student.jalanOrtu || student.alamat || '-' },
+    { subNo: 'b.', label: desaLabel, value: student.desaKelurahanOrtu || sekolah.desaKelurahanNama || '-' },
+    { subNo: 'c.', label: 'Kecamatan', value: student.kecamatanOrtu || sekolah.kecamatan || '-' },
+    { subNo: 'd.', label: kabLabel, value: student.kabupatenKotaOrtu || sekolah.kabupatenKotaNama || '-' },
+    { subNo: 'e.', label: 'Provinsi', value: student.provinsiOrtu || sekolah.provinsi || '-' },
+    { no: '11.', label: 'Wali Peserta Didik', isHeader: true },
+    { subNo: 'a.', label: 'Nama', value: student.namaWali || '-' },
+    { subNo: 'b.', label: 'Pekerjaan', value: student.pekerjaanWali || '-' },
+    { subNo: 'c.', label: 'Alamat', value: student.alamatWali || '-' },
   ];
 
-  autoTable(doc, {
-    startY: 36,
-    margin: { left: 20, right: 20 },
-    body: bioData,
-    theme: 'plain',
-    styles: {
-      fontSize: baseBodySize,
-      cellPadding: 2.8,
-      textColor: [30, 41, 59],
-      font: fontName
-    },
-    columnStyles: {
-      0: { cellWidth: 8, fontStyle: 'bold' },
-      1: { cellWidth: 68, fontStyle: 'bold' },
-      2: { cellWidth: 5 },
-      3: { fontStyle: 'normal' }
+  const marginX = 22;
+  const mainLabelX = marginX + 7;
+  const subNoX = marginX + 7;
+  const subLabelX = marginX + 13;
+  const colonX = 78;
+  const valX = 82;
+  const rightX = pageWidth - marginX;
+  const rowSpacing = paperSize === 'f4' ? 7.6 : 6.9;
+  const startY = titleY + (paperSize === 'f4' ? 14 : 12);
+  const baseFontSize = 11; // Arial 11pt
+
+  rows.forEach((row, idx) => {
+    const y = startY + (idx * rowSpacing);
+
+    doc.setFont(fontName, 'normal');
+    doc.setFontSize(baseFontSize);
+    doc.setTextColor(0, 0, 0);
+
+    if (row.isHeader) {
+      // Baris Header Kelompok (No dan Label, Tanpa Titik Dua & Garis Bawah)
+      if (row.no) {
+        doc.text(row.no, marginX, y);
+      }
+      doc.text(row.label, mainLabelX, y);
+    } else {
+      // Baris Utama atau Sub-baris
+      if (row.no) {
+        doc.text(row.no, marginX, y);
+        doc.text(row.label, mainLabelX, y);
+      } else if (row.subNo) {
+        doc.text(row.subNo, subNoX, y);
+        doc.text(row.label, subLabelX, y);
+      }
+
+      // Tanda Titik Dua
+      doc.text(':', colonX, y);
+
+      // Nilai Isian (Shrink to fit jika panjang)
+      const valStr = row.value || '-';
+      const maxValWidth = rightX - valX - 1;
+      const fitFontSize = calculateShrinkFontSize(doc, valStr, maxValWidth, baseFontSize, fontName, row.isBoldVal ? 'bold' : 'normal', 7.5);
+      
+      doc.setFont(fontName, row.isBoldVal ? 'bold' : 'normal');
+      doc.setFontSize(fitFontSize);
+      doc.text(valStr, valX, y);
+
+      // Garis Bawah Pembatas (Underline)
+      doc.setDrawColor(218, 222, 228);
+      doc.setLineWidth(0.2);
+      doc.line(colonX, y + 1.8, rightX, y + 1.8);
     }
   });
 
-  const lastY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 12 : 210;
+  const lastRowY = startY + (rows.length * rowSpacing);
 
-  // Pas Foto Box
-  const photoX = 30;
-  const photoY = Math.min(lastY + 2, pageHeight - 75);
-  const photoW = 28;
-  const photoH = 36;
+  // Tanda Tangan Kepala Sekolah di kanan bawah
+  const ttdX = pageWidth - 80;
+  const ttdY = lastRowY + (paperSize === 'f4' ? 8 : 6);
+
+  // Pas Foto Box (ukuran 26mm x 35mm, digeser ke kiri agar ruang stempel proporsional)
+  const photoW = 26;
+  const photoH = 35;
+  const photoX = ttdX - photoW - 27; // Digeser ke kiri agar tidak terlalu menimpa foto saat distempel
+  const photoY = ttdY;
 
   if (student.fotoBase64 && student.fotoBase64.startsWith('data:image')) {
     try {
       doc.addImage(student.fotoBase64, 'JPEG', photoX, photoY, photoW, photoH);
+      // Ketika ada foto, kotak placeholder langsung diganti foto tanpa border tambahan
     } catch {
       doc.setDrawColor(148, 163, 184);
+      doc.setLineWidth(0.3);
       doc.rect(photoX, photoY, photoW, photoH);
-      doc.setFontSize(9);
-      doc.text('Pas Foto\n3 x 4 cm', photoX + 14, photoY + 16, { align: 'center' });
+      doc.setFont(fontName, 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Pas Foto\n3 x 4 cm', photoX + (photoW / 2), photoY + (photoH / 2) - 1, { align: 'center' });
     }
   } else {
     doc.setDrawColor(148, 163, 184);
-    doc.setLineDashPattern([2, 2], 0);
+    doc.setLineWidth(0.3);
     doc.rect(photoX, photoY, photoW, photoH);
-    doc.setLineDashPattern([], 0);
-    doc.setFontSize(9);
+    doc.setFont(fontName, 'normal');
+    doc.setFontSize(8.5);
     doc.setTextColor(148, 163, 184);
-    doc.text('Pas Foto\n3 x 4 cm', photoX + 14, photoY + 16, { align: 'center' });
+    doc.text('Pas Foto\n3 x 4 cm', photoX + (photoW / 2), photoY + (photoH / 2) - 1, { align: 'center' });
   }
-
-  // Tanda Tangan Kepala Sekolah
-  const ttdX = pageWidth - 80;
-  const ttdY = photoY;
 
   const lokasiStrBiodata = formatLokasiTitimangsa(sekolah);
   const tanggalBiodataFormatted = formatTanggalIndonesia(sekolah.tanggalBiodata || sekolah.tanggalRapor);
   const titimangsaBiodataStr = tanggalBiodataFormatted ? `${lokasiStrBiodata}, ${tanggalBiodataFormatted}` : `${lokasiStrBiodata}, ............................. 202...`;
 
   doc.setFont(fontName, 'normal');
-  doc.setFontSize(baseBodySize);
-  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(baseFontSize); // 11pt
+  doc.setTextColor(0, 0, 0);
   doc.text(titimangsaBiodataStr, ttdX, ttdY);
-  doc.text(`Kepala ${sekolah.nama || 'Sekolah'}`, ttdX, ttdY + 5);
+  doc.text('Kepala Sekolah,', ttdX, ttdY + 5.2);
 
   if (sekolah.useDigitalSignature && sekolah.ttdKepsek && sekolah.ttdKepsek.startsWith('data:image')) {
-    try {
-      doc.addImage(sekolah.ttdKepsek, 'PNG', ttdX, ttdY + 8, 30, 18);
-    } catch {}
+    addProportionalSignature(
+      doc,
+      sekolah.ttdKepsek,
+      ttdX + 15,
+      ttdY + 20,
+      30,
+      16,
+      sekolah.ttdKepsekScale || 100,
+      sekolah.ttdKepsekRotation || 0,
+      sekolah.ttdKepsekOffsetX || 0,
+      sekolah.ttdKepsekOffsetY || 0
+    );
   }
 
   doc.setFont(fontName, 'bold');
-  doc.text((sekolah.kepsek || '........................').toUpperCase(), ttdX, ttdY + 30);
+  doc.setFontSize(baseFontSize); // 11pt
+  const kepsekName = sekolah.kepsek || '........................'; // Tidak dipaksa uppercase & tanpa garis bawah
+  doc.text(kepsekName, ttdX, ttdY + 30.5);
+  
   doc.setFont(fontName, 'normal');
-  doc.setFontSize(9.5);
+  doc.setFontSize(baseFontSize); // 11pt
   doc.text(`NIP. ${sekolah.nipKepsek || '-'}`, ttdX, ttdY + 35);
 };
 
