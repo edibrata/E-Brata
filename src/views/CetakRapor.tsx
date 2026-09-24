@@ -498,7 +498,7 @@ export default function CetakRapor() {
                           {finalScore !== null ? finalScore : '-'}
                         </td>
                       )}
-                      <td className="border border-slate-400 px-3 py-1.5 space-y-1.5 text-slate-700 text-[10.5px]">
+                      <td className="border border-slate-400 px-3 py-1.5 space-y-1.5 text-slate-700 text-[10.5px] text-justify">
                         {deskripsiTertinggi && (
                           <p>{deskripsiTertinggi}</p>
                         )}
@@ -655,7 +655,7 @@ export default function CetakRapor() {
                       <td className="border border-slate-400 p-2 font-bold">{m.nama}</td>
                       <td className="border border-slate-400 p-2 text-center font-mono font-bold">{finalScore !== null ? finalScore : '-'}</td>
                       <td className="border border-slate-400 p-2 text-center">{predikat}</td>
-                      <td className="border border-slate-400 p-2 text-[10.5px] text-slate-700">{deskripsiTertinggi || 'Mengikuti pembelajaran dengan baik.'}</td>
+                      <td className="border border-slate-400 p-2 text-[10.5px] text-slate-700 text-justify">{deskripsiTertinggi || 'Mengikuti pembelajaran dengan baik.'}</td>
                     </tr>
                   );
                 })}

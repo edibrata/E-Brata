@@ -536,12 +536,6 @@ export default function SesuaikanCapaian() {
           <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
             <div className="text-[11px] text-slate-500 font-medium hidden sm:inline">
               <span>{filteredSiswa.length} Murid</span>
-              {activeTab === 'intrakurikuler' && activeMapel && (
-                <>
-                  <span className="mx-1.5 text-slate-300">·</span>
-                  <span>KKTP: {getAmbangBatasKktp(activeMapel)}</span>
-                </>
-              )}
             </div>
 
             <div className="relative w-full sm:w-56">
@@ -586,7 +580,6 @@ export default function SesuaikanCapaian() {
               const key = `${student.id}_${activeMapel.id}`;
               const varIdx = intrakurikulerVariationIndex[key];
               const isCustomEdited = savedCustom !== undefined && savedCustom !== defaultDesk;
-              const isTuntas = res.finalScore !== null && res.finalScore >= kktp;
 
               return (
                 <div 
@@ -608,7 +601,7 @@ export default function SesuaikanCapaian() {
                           <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
                             <span>NISN: {student.nisn || '-'}</span>
                             {student.agama && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-slate-100 text-slate-600">
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
                                 {student.agama}
                               </span>
                             )}
@@ -617,50 +610,56 @@ export default function SesuaikanCapaian() {
                       </div>
 
                       {/* Rincian Skor Tiap TP (Bukti Belajar Otentik PPA 2025) */}
-                      <div className="bg-slate-50/90 rounded-lg p-2 border border-slate-100 space-y-1.5 text-[11px]">
-                        <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold border-b border-slate-200/60 pb-1">
+                      <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-100 space-y-2 text-[11px]">
+                        <div className="flex items-center justify-between text-[10px] text-slate-600 font-semibold border-b border-slate-200/60 pb-1">
                           <span>Bukti Nilai per TP:</span>
-                          <span className="text-slate-400">KKTP: {kktp}</span>
+                          <span className="text-[9px] text-slate-400 font-normal">{mapelTps.length} TP Terpetakan</span>
                         </div>
 
                         {/* List Skor TP */}
-                        <div className="flex flex-wrap gap-1">
-                          {mapelTps.map((tp, tpIdx) => {
-                            const tpScore = res.tpStatus[tp.id]?.score;
-                            const isMax = res.maxTpItem?.id === tp.id && tpScore !== null;
-                            const isMinUnderKktp = res.minTpItem?.id === tp.id && tpScore !== null && tpScore < kktp;
-                            const isBelow = tpScore !== null && tpScore < kktp;
+                        {mapelTps.length === 0 ? (
+                          <div className="text-[10px] text-slate-400 italic py-1">
+                            Belum ada TP untuk kategori ini
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {mapelTps.map((tp, tpIdx) => {
+                              const tpScore = res.tpStatus[tp.id]?.score;
+                              const isMax = res.maxTpItem?.id === tp.id && tpScore !== null;
+                              const isMinUnderKktp = res.minTpItem?.id === tp.id && tpScore !== null && tpScore < kktp;
+                              const isBelow = tpScore !== null && tpScore < kktp;
 
-                            let badgeStyle = 'bg-white text-slate-600 border-slate-200';
-                            if (isMax) badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
-                            else if (isMinUnderKktp) badgeStyle = 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
-                            else if (isBelow) badgeStyle = 'bg-amber-50 text-amber-800 border-amber-300';
+                              let badgeStyle = 'bg-white text-slate-600 border-slate-200';
+                              if (isMax) badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
+                              else if (isMinUnderKktp) badgeStyle = 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
+                              else if (isBelow) badgeStyle = 'bg-amber-50 text-amber-800 border-amber-300';
 
-                            return (
-                              <span
-                                key={tp.id}
-                                className={`px-1.5 py-0.5 rounded border text-[10px] flex items-center gap-1 ${badgeStyle}`}
-                                title={`${tp.deskripsi} (Skor: ${tpScore !== null ? tpScore : '-'})`}
-                              >
-                                <span>TP{tpIdx + 1}:</span>
-                                <b>{tpScore !== null ? tpScore : '-'}</b>
-                                {isMax && <span className="text-[8px] text-emerald-600">★</span>}
-                                {isMinUnderKktp && <span className="text-[8px] text-rose-600">▲</span>}
-                              </span>
-                            );
-                          })}
-                        </div>
+                              return (
+                                <span
+                                  key={tp.id}
+                                  className={`px-1.5 py-0.5 rounded border text-[10px] flex items-center gap-1 ${badgeStyle}`}
+                                  title={`${tp.deskripsi} (Skor: ${tpScore !== null ? tpScore : '-'})`}
+                                >
+                                  <span>TP{tpIdx + 1}:</span>
+                                  <b>{tpScore !== null ? tpScore : '-'}</b>
+                                  {isMax && <span className="text-[8px] text-emerald-600">★</span>}
+                                  {isMinUnderKktp && <span className="text-[8px] text-rose-600">▲</span>}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         {/* Ringkasan Dasar Narasi */}
                         <div className="text-[10px] text-slate-500 pt-0.5 space-y-0.5">
                           {res.maxTpItem && (
                             <div className="truncate text-emerald-700 font-medium">
-                              ★ TP Tertinggi ({res.maxTpItem.score} pts) → Dasar Apresiasi
+                              ★ Capaian Tertinggi ({res.maxTpItem.score} pts)
                             </div>
                           )}
                           {res.minTpItem && res.minTpItem.score < kktp && res.minTpItem.id !== res.maxTpItem?.id && (
                             <div className="truncate text-rose-700 font-medium">
-                              ▲ TP Terendah ({res.minTpItem.score} pts) → Dasar Pendampingan
+                              ▲ Perlu Penguatan ({res.minTpItem.score} pts)
                             </div>
                           )}
                         </div>

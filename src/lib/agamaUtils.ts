@@ -68,12 +68,13 @@ export const getTpAgama = (tp: { agama?: string; kode?: string; deskripsi?: stri
   const desc = (tp.deskripsi || '').toLowerCase();
   const code = (tp.kode || '').toLowerCase();
 
-  if (desc.includes('[islam]') || code.includes('.pai.') || code.includes('.isl.')) return 'Islam';
-  if (desc.includes('[kristen]') || code.includes('.pak.') || code.includes('.krs.')) return 'Kristen';
-  if (desc.includes('[katolik]') || code.includes('.pkat.') || code.includes('.kat.')) return 'Katolik';
-  if (desc.includes('[hindu]') || code.includes('.pah.') || code.includes('.hin.')) return 'Hindu';
-  if (desc.includes('[buddha]') || code.includes('.pab.') || code.includes('.bud.')) return 'Buddha';
-  if (desc.includes('[khonghucu]') || code.includes('.pakong.') || code.includes('.kong.')) return 'Khonghucu';
+  // Deteksi tag kurung siku, kurung biasa, atau keyword agama
+  if (desc.includes('[islam]') || desc.includes('(islam)') || code.includes('islam') || code.includes('.pai.') || code.includes('.isl.') || code === 'pai' || code.includes('pabp-islam')) return 'Islam';
+  if (desc.includes('[kristen]') || desc.includes('(kristen)') || code.includes('kristen') || code.includes('.pak.') || code.includes('.krs.') || code === 'pak' || code.includes('pabp-kristen')) return 'Kristen';
+  if (desc.includes('[katolik]') || desc.includes('(katolik)') || code.includes('katolik') || code.includes('.pkat.') || code.includes('.kat.') || code === 'pkat' || code.includes('pabp-katolik')) return 'Katolik';
+  if (desc.includes('[hindu]') || desc.includes('(hindu)') || code.includes('hindu') || code.includes('.pah.') || code.includes('.hin.') || code === 'pah' || code.includes('pabp-hindu')) return 'Hindu';
+  if (desc.includes('[buddha]') || desc.includes('(buddha)') || desc.includes('budha') || code.includes('buddha') || code.includes('budha') || code.includes('.pab.') || code.includes('.bud.') || code === 'pab' || code.includes('pabp-buddha')) return 'Buddha';
+  if (desc.includes('[khonghucu]') || desc.includes('(khonghucu)') || desc.includes('konghucu') || code.includes('khonghucu') || code.includes('konghucu') || code.includes('.pakong.') || code.includes('.kong.') || code === 'pakong' || code.includes('pabp-khonghucu')) return 'Khonghucu';
 
   return null;
 };
@@ -103,14 +104,28 @@ export const filterTpsForStudent = (
   studentAgama?: string,
   isPabp: boolean = false
 ): TujuanPembelajaran[] => {
-  if (!isPabp) return tps;
+  if (!isPabp || !tps || tps.length === 0) return tps;
 
-  const sAgama = normalizeAgama(studentAgama);
-  if (!sAgama) return tps; // Jika belum ada data agama, fallback ke semua TP
+  const sAgama = normalizeAgama(studentAgama) || 'Islam';
 
+  // Periksa apakah di dalam kumpulan TP terdapat pembedaan agama
+  const hasAgamaSpecific = tps.some(tp => getTpAgama(tp) !== null);
+
+  if (hasAgamaSpecific) {
+    const strictlyMatched = tps.filter(tp => {
+      const tpAgama = getTpAgama(tp);
+      // Cocok jika secara eksplisit sesuai agama siswa
+      return tpAgama === sAgama;
+    });
+
+    if (strictlyMatched.length > 0) {
+      return strictlyMatched;
+    }
+  }
+
+  // Jika tidak ada yang strictly match atau TP bersifat umum, filter yang tidak konflik
   const matched = tps.filter(tp => {
     const tpAgama = getTpAgama(tp);
-    // Cocok jika seagama, atau jika TP tidak bertag agama apapun
     return !tpAgama || tpAgama === sAgama;
   });
 

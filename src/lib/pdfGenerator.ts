@@ -549,13 +549,13 @@ export const buildRaporPDF = (
       ? {
           0: { cellWidth: 10, halign: 'center' },
           1: { cellWidth: 50, fontStyle: 'bold' },
-          2: { cellWidth: availableTableWidth - 60 }
+          2: { cellWidth: availableTableWidth - 60, halign: 'justify' }
         }
       : {
           0: { cellWidth: 10, halign: 'center' },
           1: { cellWidth: 46, fontStyle: 'bold' },
           2: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
-          3: { cellWidth: availableTableWidth - 76 }
+          3: { cellWidth: availableTableWidth - 76, halign: 'justify' }
         }
   });
 
@@ -796,7 +796,7 @@ export const buildBukuIndukPDF = (
       1: { cellWidth: 46, fontStyle: 'bold' },
       2: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
       3: { cellWidth: 30, halign: 'center' },
-      4: { cellWidth: availableTableWidth - 106 }
+      4: { cellWidth: availableTableWidth - 106, halign: 'justify' }
     }
   });
 
