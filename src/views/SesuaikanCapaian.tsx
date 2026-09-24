@@ -144,7 +144,8 @@ export default function SesuaikanCapaian() {
       mapelTps,
       res.maxTpItem || null,
       res.minTpItem || null,
-      kktp
+      kktp,
+      n?.tpScores || {}
     );
   };
 
@@ -195,7 +196,7 @@ export default function SesuaikanCapaian() {
     }
   };
 
-  // Variasikan semua murid secara massal untuk mapel aktif (1 kelas langsung punya redaksi unik)
+  // Variasikan semua murid secara massal untuk mapel aktif (1 kelas langsung punya redaksi unik dan bisa diputar berkali-kali hingga 5 variasi)
   const handleVariasikanSemuaIntra = () => {
     if (!activeMapel) return;
     const updated = { ...customDeskripsiMapel };
@@ -204,11 +205,14 @@ export default function SesuaikanCapaian() {
     filteredSiswa.forEach((student, idx) => {
       const variations = get5VariasiIntraForStudent(student.id, activeMapel.id);
       if (variations.length > 0) {
-        const chosenIdx = idx % variations.length;
         const key = `${student.id}_${activeMapel.id}`;
-        newIdxMap[key] = chosenIdx;
+        const currentIdx = intrakurikulerVariationIndex[key] !== undefined 
+          ? intrakurikulerVariationIndex[key] 
+          : (idx % variations.length);
+        const nextIdx = (currentIdx + 1) % variations.length;
+        newIdxMap[key] = nextIdx;
         if (!updated[student.id]) updated[student.id] = {};
-        updated[student.id][activeMapel.id] = variations[chosenIdx];
+        updated[student.id][activeMapel.id] = variations[nextIdx];
       }
     });
 
@@ -271,14 +275,17 @@ export default function SesuaikanCapaian() {
     filteredSiswa.forEach((student, idx) => {
       const currentPred = updated[student.id]?.[activeEkskul.id]?.predikat || 'Baik (B)';
       const variations = get5VariasiEkskul(activeEkskul.nama, currentPred);
-      const chosenIdx = idx % variations.length;
       const key = `${student.id}_${activeEkskul.id}`;
-      newIdxMap[key] = chosenIdx;
+      const currentIdx = ekskulVariationIndex[key] !== undefined 
+        ? ekskulVariationIndex[key] 
+        : (idx % variations.length);
+      const nextIdx = (currentIdx + 1) % variations.length;
+      newIdxMap[key] = nextIdx;
 
       if (!updated[student.id]) updated[student.id] = {};
       updated[student.id][activeEkskul.id] = {
         predikat: currentPred,
-        deskripsi: variations[chosenIdx]
+        deskripsi: variations[nextIdx]
       };
     });
 
@@ -318,12 +325,15 @@ export default function SesuaikanCapaian() {
 
     filteredSiswa.forEach((student, idx) => {
       const variations = get5VariasiKokurikuler(activeProjek.tema, activeProjek.deskripsi);
-      const chosenIdx = idx % variations.length;
       const key = `${student.id}_${activeProjek.id}`;
-      newIdxMap[key] = chosenIdx;
+      const currentIdx = kokurikulerVariationIndex[key] !== undefined 
+        ? kokurikulerVariationIndex[key] 
+        : (idx % variations.length);
+      const nextIdx = (currentIdx + 1) % variations.length;
+      newIdxMap[key] = nextIdx;
 
       if (!updated[student.id]) updated[student.id] = {};
-      updated[student.id][activeProjek.id] = variations[chosenIdx];
+      updated[student.id][activeProjek.id] = variations[nextIdx];
     });
 
     updateState('customDeskripsiKokurikuler', updated);

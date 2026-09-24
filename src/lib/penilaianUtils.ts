@@ -23,21 +23,28 @@ export interface KalkulasiNilaiResult {
 
 /**
  * Merapikan redaksi teks TP agar menyatu secara alami ke dalam struktur kalimat deskripsi.
+ * Membersihkan awalan kaku, kode, dan akhiran redundan (seperti 'dengan baik').
  */
 export function formatTpUntukNarasi(rawDeskripsi: string): string {
   let text = cleanTpDeskripsi(rawDeskripsi).trim();
-  if (!text) return 'tujuan pembelajaran yang ditetapkan';
+  if (!text) return 'materi pembelajaran yang ditetapkan';
 
-  // Hapus kode awalan seperti "TP 1:", "TP 1.1", "1.1.", "1. "
-  text = text.replace(/^(TP\s*\d+(\.\d+)?[:.-]?\s*|\d+(\.\d+)+[:.-]?\s*)/i, '').trim();
+  // Hapus kode awalan seperti "TP 1:", "TP 1.1", "1.1.", "1. ", "A.1", dll.
+  text = text.replace(/^(TP\s*\d+(\.\d+)?[:.-]?\s*|\d+(\.\d+)+[:.-]?\s*|[A-Z]\.\d+[:.-]?\s*)/i, '').trim();
 
-  // Hapus frasa pembuka baku yang kaku jika ada di awal TP
-  text = text.replace(/^(peserta\s+didik\s+(mampu|dapat|diharapkan\s+mampu)\s+|siswa\s+(mampu|dapat)\s+)/i, '').trim();
+  // Hapus frasa pembuka baku yang kaku di awal TP
+  text = text.replace(/^(peserta\s+didik\s+(mampu|dapat|diharapkan\s+mampu|harus\s+mampu)\s+|siswa\s+(mampu|dapat)\s+|murid\s+(mampu|dapat)\s+)/i, '').trim();
+
+  // Hapus kata kerja modalitas tunggal di awal jika ada
+  text = text.replace(/^(mampu|dapat)\s+/i, '').trim();
+
+  // Hapus frasa keterangan berulang di akhir TP agar tidak tabrakan dengan kalimat penjelas template
+  text = text.replace(/\s+(dengan\s+(baik|benar|tepat|sempurna|runtut|mandiri)|secara\s+(baik|benar|tepat|mandiri|runtut|konsisten))$/i, '').trim();
 
   // Hapus tanda baca di akhir seperti titik atau koma
   text = text.replace(/[.;,]+$/, '').trim();
 
-  // Ubah huruf pertama menjadi huruf kecil jika bukan singkatan/akronim
+  // Ubah huruf pertama menjadi huruf kecil jika bukan singkatan/akronim (misal: PAI, Pancasila)
   if (text.length > 1 && !/^[A-Z]{2,}/.test(text)) {
     text = text.charAt(0).toLowerCase() + text.slice(1);
   }
@@ -60,7 +67,126 @@ function getDeterministicSeed(str: string): number {
 /**
  * Generator Deskripsi Capaian Kompetensi Rapor Cerdas
  * Sesuai Panduan Pembelajaran dan Asesmen (PPA) Edisi Revisi 2025 (Hlm. 62–65)
- * Formula: Capaian Saat Ini (Bukti TP Konkret) + Arah Belajar / Tindak Lanjut Kohesif
+ * Meninjau kompetensi dari seluruh TP berdasarkan klasifikasi level nilai otentik murid:
+ * 1. Kalimat 1: Capaian Saat Ini (Bukti Penguasaan TP Tertinggi/Tuntas yang membawa kata kunci kompetensi)
+ * 2. Kalimat 2: Arah Belajar / Saran / Penguatan Spesifik (Pengayaan/Pendalaman/Bantuan Konkret TP Bimbingan)
+ */
+export function generate5VariasiPpa2025(
+  mapel: Mapel,
+  validTps: TujuanPembelajaran[],
+  maxTp: { id: string; score: number } | null,
+  minTp: { id: string; score: number } | null,
+  kktp: number,
+  allTpScores: Record<string, number | null> = {}
+): string[] {
+  if (!maxTp || validTps.length === 0) {
+    return [
+      'Menunjukkan penguasaan capaian kompetensi dengan baik dalam proses pembelajaran. Disarankan untuk terus mempertahankan semangat belajar dan melatih kemandirian.',
+      'Mampu mengikuti seluruh alur pembelajaran dengan tertib, terarah, dan konsisten. Dianjurkan untuk terus mengeksplorasi materi pelajaran secara lebih mendalam.',
+      'Menunjukkan keaktifan dan perkembangan yang positif dalam kegiatan belajar. Perlu terus didorong untuk mengembangkan pemahaman pada materi tingkat lanjut.',
+      'Dapat menyelesaikan tugas-tugas pembelajaran dengan hasil yang memuaskan. Disarankan untuk meningkatkan keluwesan dalam pemecahan masalah kontekstual.',
+      'Mengikuti proses pembelajaran secara aktif dengan komitmen belajar yang baik. Diharapkan terus mengulang materi untuk memperkuat ketuntasan kompetensi.'
+    ];
+  }
+
+  // Klasifikasi seluruh TP berdasarkan level capaian nilai
+  const scoredTps = validTps
+    .map(tp => {
+      const score = allTpScores[tp.id] ?? (tp.id === maxTp.id ? maxTp.score : tp.id === minTp?.id ? minTp.score : null);
+      return {
+        id: tp.id,
+        deskripsi: tp.deskripsi,
+        text: formatTpUntukNarasi(tp.deskripsi),
+        score
+      };
+    })
+    .filter(t => t.score !== null);
+
+  const highTps = scoredTps.filter(t => t.score! >= 85).sort((a, b) => b.score! - a.score!);
+  const goodTps = scoredTps.filter(t => t.score! >= kktp && t.score! < 85).sort((a, b) => b.score! - a.score!);
+
+  const tpMaxItem = validTps.find(t => t.id === maxTp.id);
+  const tpMinItem = minTp ? validTps.find(t => t.id === minTp.id) : null;
+
+  const tpMaxText = tpMaxItem ? formatTpUntukNarasi(tpMaxItem.deskripsi) : 'materi pembelajaran';
+  const tpMinText = tpMinItem ? formatTpUntukNarasi(tpMinItem.deskripsi) : 'materi pembelajaran';
+
+  // Frasa gabungan dua TP tertinggi untuk menangkap kata kunci multi-kompetensi
+  let dualMaxText = tpMaxText;
+  if (highTps.length >= 2 && highTps[0].id !== highTps[1].id) {
+    dualMaxText = `${highTps[0].text} serta ${highTps[1].text}`;
+  } else if (highTps.length === 1 && goodTps.length >= 1 && highTps[0].id !== goodTps[0].id) {
+    dualMaxText = `${highTps[0].text} dan ${goodTps[0].text}`;
+  } else if (goodTps.length >= 2 && goodTps[0].id !== goodTps[1].id) {
+    dualMaxText = `${goodTps[0].text} serta ${goodTps[1].text}`;
+  }
+
+  const hasUnderKktp = minTp && minTp.score < kktp && minTp.id !== maxTp.id;
+
+  // =========================================================================
+  // KATEGORI 1: SKOR TERTINGGI SANGAT BAIK (>= 85)
+  // =========================================================================
+  if (maxTp.score >= 85) {
+    if (hasUnderKktp) {
+      // Sangat Baik pada TP utama, namun ada TP di bawah KKTP yang memerlukan bimbingan konkret
+      return [
+        `Mampu ${tpMaxText} dengan sangat terampil dan runtut. Meskipun demikian, Ananda masih memerlukan pendampingan terarah dan latihan terbimbing dalam ${tpMinText} guna memperkuat ketuntasan belajar.`,
+        `Menunjukkan penguasaan yang sangat baik dalam ${tpMaxText} secara mandiri. Kendati demikian, melalui bimbingan bertahap dan contoh konkret dari guru, diharapkan Ananda semakin mampu ${tpMinText}.`,
+        `Cakap dan teliti dalam menguasai materi ${tpMaxText}. Di sisi lain, Ananda memerlukan latihan terfokus dan bimbingan berkala pada capaian ${tpMinText} agar pemahamannya semakin merata.`,
+        `Sangat terampil dalam ${dualMaxText}. Namun demikian, latihan mandiri yang disertai pendampingan khusus dalam ${tpMinText} tetap disarankan untuk mengoptimalkan capaiannya.`,
+        `Mencapai pemahaman unggul dalam ${tpMaxText}. Walaupun demikian, penguatan konsep dasar dan pendampingan personal dari guru dalam ${tpMinText} tetap diperlukan.`
+      ];
+    } else {
+      // Seluruh TP Tuntas Sangat Baik (Arah belajar / Saran: Pengayaan, Tantangan Baru & Berbagi Wawasan)
+      return [
+        `Mampu ${dualMaxText} secara runtut dan memperoleh hasil yang tepat. Guna memperluas wawasannya, Ananda dapat diberi tantangan baru untuk membandingkan berbagai strategi penyelesaian dan menilai kekuatan alasannya.`,
+        `Sangat terampil dalam ${tpMaxText} serta mampu menjelaskan langkah kerjanya dengan jelas. Untuk mengoptimalkan potensi tersebut, Ananda dapat didorong mengeksplorasi penerapan konsep pada konteks yang lebih luas dan menantang.`,
+        `Mampu menyelesaikan materi ${tpMaxText} secara tepat dan mandiri. Sebagai langkah pengayaan, Ananda dapat difasilitasi untuk berbagi strategi penyelesaian serta memandu pengalaman belajar bersama rekan sebaya.`,
+        `Menunjukkan penguasaan unggul dan ketelitian tinggi dalam ${dualMaxText}. Sejalan dengan pencapaian tersebut, pemberian materi pengayaan tingkat lanjut sangat disarankan untuk memperdalam kecakapannya.`,
+        `Cakap dan mendalam dalam ${tpMaxText} serta konsisten menerapkan strategi yang efektif. Sehubungan dengan hal itu, Ananda dianjurkan untuk terus merefleksikan proses belajar serta mengaitkannya dengan pemecahan masalah nyata.`
+      ];
+    }
+  }
+
+  // =========================================================================
+  // KATEGORI 2: SKOR TERTINGGI BAIK / TUNTAS (>= KKTP dan < 85)
+  // =========================================================================
+  if (maxTp.score >= kktp) {
+    if (hasUnderKktp) {
+      // Baik pada TP utama, namun ada TP di bawah KKTP yang memerlukan bimbingan konkret
+      return [
+        `Mampu ${tpMaxText} dengan langkah yang sesuai dan hasil yang tepat. Meskipun demikian, pendampingan bertahap dan latihan terarah dalam ${tpMinText} tetap diperlukan agar mencapai ketuntasan yang merata.`,
+        `Menunjukkan penguasaan yang baik dalam ${tpMaxText}. Kendati demikian, melalui latihan terbimbing secara berkala, Ananda diharapkan semakin terampil dalam ${tpMinText}.`,
+        `Berhasil memahami capaian ${tpMaxText} dengan baik sesuai tujuan pembelajaran. Di sisi lain, Ananda memerlukan bimbingan khusus dan pengulangan konsep dasar dalam ${tpMinText}.`,
+        `Dapat menyelesaikan pembelajaran ${dualMaxText} secara terstruktur. Namun demikian, bimbingan terfokus dan latihan membaca terarah dalam ${tpMinText} tetap disarankan.`,
+        `Menunjukkan perkembangan yang baik dalam ${tpMaxText}. Walaupun demikian, penguatan secara berkala dan pendampingan guru dalam menuntaskan capaian ${tpMinText} tetap menjadi perhatian penting.`
+      ];
+    } else {
+      // Seluruh TP Tuntas Baik (Arah belajar / Saran: Pendalaman Alasan Konsep, Konsistensi & Keluwesan)
+      return [
+        `Mampu ${dualMaxText} dengan langkah yang sesuai dan hasil yang tepat. Sebagai langkah pemantapan, penguatan dalam menjelaskan alasan dan dasar pemikiran yang digunakan disarankan agar pemahamannya semakin mendalam.`,
+        `Menunjukkan penguasaan yang baik dalam ${tpMaxText}. Guna memperkuat pemahaman tersebut, latihan dengan konteks yang lebih beragam dianjurkan untuk meningkatkan keluwesan dalam memilih strategi penyelesaian.`,
+        `Dapat memahami materi ${tpMaxText} secara terstruktur dan terarah. Sejalan dengan hal itu, Ananda dianjurkan untuk terus melatih konsistensi dan kemandirian dalam proses pengerjaannya.`,
+        `Berhasil memahami capaian ${dualMaxText} dengan baik sesuai tujuan pembelajaran. Untuk mengoptimalkan capaian ini, pendalaman berkala disarankan agar pemahaman konsep semakin kokoh dan terintegrasi.`,
+        `Tuntas dalam mempelajari ${tpMaxText} dengan keaktifan belajar yang positif. Sehubungan dengan hal itu, Ananda disarankan untuk terus memperbanyak latihan mandiri agar semakin terampil dan percaya diri.`
+      ];
+    }
+  }
+
+  // =========================================================================
+  // KATEGORI 3: PERLU BIMBINGAN / BELUM TUNTAS (< KKTP)
+  // =========================================================================
+  return [
+    `Mulai mengenali konsep dasar ${tpMaxText} dengan bantuan guru. Oleh karena itu, pendampingan belajar yang teratur dan latihan bertahap sangat disarankan agar Ananda semakin mampu menyelesaikannya secara mandiri.`,
+    `Menunjukkan usaha positif dalam mempelajari ${tpMaxText}. Maka dari itu, penguatan konsep dasar dan bimbingan personal dari guru diperlukan agar mencapai ketuntasan kompetensi yang diharapkan.`,
+    `Mulai memahami materi ${tpMaxText} sederhana melalui arahan terbimbing. Sejalan dengan kebutuhan belajar tersebut, dukungan contoh konkret dan latihan berulang disarankan untuk meningkatkan pemahamannya.`,
+    `Menunjukkan kemauan belajar dalam ${dualMaxText}. Guna memperkokoh pemahaman dasarnya, pemberian pendampingan intensif serta latihan terarah sangat dianjurkan.`,
+    `Mulai berpartisipasi dalam pembelajaran ${tpMaxText}. Melalui pendampingan ini, dengan bantuan terstruktur dan bimbingan bertahap dari guru, kemampuannya diharapkan akan terus bertumbuh dengan baik.`
+  ];
+}
+
+/**
+ * Generator Deskripsi Capaian Kompetensi Rapor Cerdas (Fungsi Tunggal Terpadu)
  */
 export function generateDeskripsiPpa2025(
   mapel: Mapel,
@@ -68,89 +194,21 @@ export function generateDeskripsiPpa2025(
   maxTp: { id: string; score: number } | null,
   minTp: { id: string; score: number } | null,
   kktp: number,
-  studentSeed: string = ''
+  studentSeed: string = '',
+  allTpScores: Record<string, number | null> = {}
 ): { deskripsiTertinggi: string; deskripsiTerendah: string } {
   if (!maxTp || validTps.length === 0) {
     return { deskripsiTertinggi: '', deskripsiTerendah: '' };
   }
 
+  const variations = generate5VariasiPpa2025(mapel, validTps, maxTp, minTp, kktp, allTpScores);
   const seed = getDeterministicSeed(studentSeed + (mapel.id || 'mapel'));
-  const tpMax = validTps.find(t => t.id === maxTp.id);
-  const tpMin = minTp ? validTps.find(t => t.id === minTp.id) : null;
+  const chosenIndex = seed % variations.length;
 
-  const tpMaxText = tpMax ? formatTpUntukNarasi(tpMax.deskripsi) : 'materi pembelajaran';
-  const tpMinText = tpMin ? formatTpUntukNarasi(tpMin.deskripsi) : 'materi pembelajaran';
-
-  const hasMinUnderKktp = minTp && minTp.score < kktp && minTp.id !== maxTp.id;
-  const idx = seed % 5;
-
-  let deskripsiTertinggi = '';
-  let deskripsiTerendah = '';
-
-  if (hasMinUnderKktp) {
-    // Skenario A: Ada TP Tertinggi dan ada TP yang perlu bimbingan khusus (< KKTP)
-    // Disusun dengan konjungsi transisi kohesif dan luwes
-    if (maxTp.score >= 85) {
-      const narasiList = [
-        `Menunjukkan penguasaan yang sangat baik dalam ${tpMaxText}, namun masih memerlukan pendampingan berkelanjutan dalam ${tpMinText}.`,
-        `Sangat terampil dan mandiri dalam ${tpMaxText}, serta perlu latihan terarah untuk mengoptimalkan pemahaman pada ${tpMinText}.`,
-        `Mencapai pemahaman yang sangat mendalam dalam ${tpMaxText}, dengan ruang bimbingan bertahap pada materi ${tpMinText}.`,
-        `Unggul dan aktif dalam ${tpMaxText}, namun disarankan untuk terus didampingi dalam memperkuat capaian ${tpMinText}.`,
-        `Menunjukkan capaian sangat memuaskan dalam ${tpMaxText}, serta perlu penguatan konsep dasar pada ${tpMinText}.`
-      ];
-      deskripsiTertinggi = narasiList[idx];
-    } else if (maxTp.score >= kktp) {
-      const narasiList = [
-        `Mampu menguasai materi ${tpMaxText} dengan baik, namun masih memerlukan bimbingan terarah dalam ${tpMinText}.`,
-        `Menunjukkan pemahaman yang baik dalam ${tpMaxText}, serta perlu pendampingan berkala untuk meningkatkan penguasaan pada ${tpMinText}.`,
-        `Dapat menyelesaikan pembelajaran ${tpMaxText} secara tepat, dengan ruang latihan tambahan pada ${tpMinText}.`,
-        `Mencapai ketuntasan yang baik dalam ${tpMaxText}, serta disarankan untuk terus memperkuat pemahaman pada ${tpMinText}.`,
-        `Berhasil memahami capaian ${tpMaxText} dengan baik, namun memerlukan perhatian khusus dalam menyelesaikan ${tpMinText}.`
-      ];
-      deskripsiTertinggi = narasiList[idx];
-    } else {
-      const narasiList = [
-        `Mulai menunjukkan pemahaman awal dalam ${tpMaxText}, namun masih memerlukan pendampingan intensif dalam ${tpMinText}.`,
-        `Menunjukkan usaha belajar yang positif dalam ${tpMaxText}, serta membutuhkan bimbingan bertahap pada ${tpMinText}.`,
-        `Mulai mengenali konsep dasar ${tpMaxText} dengan bantuan guru, serta perlu latihan terarah pada ${tpMinText}.`,
-        `Berkembang dalam memahami ${tpMaxText}, namun memerlukan dukungan terpadu pada capaian ${tpMinText}.`,
-        `Menunjukkan kemauan belajar dalam ${tpMaxText}, serta disarankan mendapat penguatan berkelanjutan pada ${tpMinText}.`
-      ];
-      deskripsiTertinggi = narasiList[idx];
-    }
-  } else {
-    // Skenario B: Seluruh TP Tuntas / Dikuasai dengan Baik
-    if (maxTp.score >= 85) {
-      const narasiList = [
-        `Sangat terampil dalam ${tpMaxText} serta mampu menjelaskan langkah penyelesaiannya secara runtut dan mandiri.`,
-        `Menunjukkan penguasaan yang sangat baik dalam ${tpMaxText}, memperoleh hasil yang tepat, dan mampu mengemukakan alasannya secara jelas.`,
-        `Mampu menyelesaikan dan menguasai materi ${tpMaxText} secara tepat serta siap melanjutkan ke materi pengayaan yang lebih kompleks.`,
-        `Cakap dan mendalam dalam ${tpMaxText} serta menunjukkan inisiatif belajar dan ketelitian yang tinggi.`,
-        `Menunjukkan pemahaman unggul dalam ${tpMaxText} serta konsisten dalam menerapkan strategi penyelesaian yang efektif.`
-      ];
-      deskripsiTertinggi = narasiList[idx];
-    } else if (maxTp.score >= kktp) {
-      const narasiList = [
-        `Mampu ${tpMaxText} dengan langkah yang sesuai dan hasil yang tepat pada sebagian besar kegiatan belajar.`,
-        `Menunjukkan penguasaan yang baik dalam ${tpMaxText} serta konsisten dalam menyelesaikan tugas-tugas pembelajaran.`,
-        `Dapat memahami dan menyelesaikan materi ${tpMaxText} secara terstruktur sesuai tujuan pembelajaran yang ditetapkan.`,
-        `Mencapai penguasaan yang baik dalam ${tpMaxText} serta disarankan untuk terus melatih keluwesan dalam pemecahan masalah.`,
-        `Berhasil menyelesaikan capaian ${tpMaxText} secara baik dan terarah dengan kemandirian yang semakin meningkat.`
-      ];
-      deskripsiTertinggi = narasiList[idx];
-    } else {
-      const narasiList = [
-        `Mulai menunjukkan pemahaman awal dalam ${tpMaxText} dan disarankan untuk terus memperbanyak latihan terarah.`,
-        `Menunjukkan perkembangan dalam ${tpMaxText}, dengan bimbingan berkelanjutan diharapkan pemahamannya semakin kokoh.`,
-        `Dapat menyelesaikan ${tpMaxText} sederhana dengan bantuan dan arahan guru secara bertahap.`,
-        `Mulai mengenali konsep dasar ${tpMaxText} dan bersedia mengikuti proses bimbingan untuk mencapai ketuntasan.`,
-        `Menunjukkan usaha positif dalam mempelajari ${tpMaxText} dengan dukungan dan latihan terarah.`
-      ];
-      deskripsiTertinggi = narasiList[idx];
-    }
-  }
-
-  return { deskripsiTertinggi, deskripsiTerendah };
+  return {
+    deskripsiTertinggi: variations[chosenIndex],
+    deskripsiTerendah: ''
+  };
 }
 
 /**
@@ -161,78 +219,10 @@ export function get5VariasiIntrakurikuler(
   validTps: TujuanPembelajaran[],
   maxTp: { id: string; score: number } | null,
   minTp: { id: string; score: number } | null,
-  kktp: number
+  kktp: number,
+  allTpScores: Record<string, number | null> = {}
 ): string[] {
-  if (!maxTp || validTps.length === 0) {
-    return [
-      'Menunjukkan penguasaan capaian kompetensi dengan baik dalam proses pembelajaran.',
-      'Mampu mengikuti seluruh alur pembelajaran dengan baik, tertib, dan terarah.',
-      'Menunjukkan keaktifan dan perkembangan yang positif dalam kegiatan belajar.',
-      'Dapat menyelesaikan tugas-tugas pembelajaran dengan hasil yang memuaskan.',
-      'Mengikuti proses pembelajaran secara aktif dengan komitmen belajar yang baik.'
-    ];
-  }
-
-  const tpMax = validTps.find(t => t.id === maxTp.id);
-  const tpMin = minTp ? validTps.find(t => t.id === minTp.id) : null;
-  const tpMaxText = tpMax ? formatTpUntukNarasi(tpMax.deskripsi) : 'materi pembelajaran';
-  const tpMinText = tpMin ? formatTpUntukNarasi(tpMin.deskripsi) : 'materi pembelajaran';
-  const hasMinUnderKktp = minTp && minTp.score < kktp && minTp.id !== maxTp.id;
-
-  if (hasMinUnderKktp) {
-    if (maxTp.score >= 85) {
-      return [
-        `Menunjukkan penguasaan yang sangat baik dalam ${tpMaxText}, namun masih memerlukan pendampingan berkelanjutan dalam ${tpMinText}.`,
-        `Sangat terampil dan mandiri dalam ${tpMaxText}, serta perlu latihan terarah untuk mengoptimalkan pemahaman pada ${tpMinText}.`,
-        `Mencapai pemahaman yang sangat mendalam dalam ${tpMaxText}, dengan ruang bimbingan bertahap pada materi ${tpMinText}.`,
-        `Unggul dan aktif dalam ${tpMaxText}, namun disarankan untuk terus didampingi dalam memperkuat capaian ${tpMinText}.`,
-        `Menunjukkan capaian sangat memuaskan dalam ${tpMaxText}, serta perlu penguatan konsep dasar pada ${tpMinText}.`
-      ];
-    } else if (maxTp.score >= kktp) {
-      return [
-        `Mampu menguasai materi ${tpMaxText} dengan baik, namun masih memerlukan bimbingan terarah dalam ${tpMinText}.`,
-        `Menunjukkan pemahaman yang baik dalam ${tpMaxText}, serta perlu pendampingan berkala untuk meningkatkan penguasaan pada ${tpMinText}.`,
-        `Dapat menyelesaikan pembelajaran ${tpMaxText} secara tepat, dengan ruang latihan tambahan pada ${tpMinText}.`,
-        `Mencapai ketuntasan yang baik dalam ${tpMaxText}, serta disarankan untuk terus memperkuat pemahaman pada ${tpMinText}.`,
-        `Berhasil memahami capaian ${tpMaxText} dengan baik, namun memerlukan perhatian khusus dalam menyelesaikan ${tpMinText}.`
-      ];
-    } else {
-      return [
-        `Mulai menunjukkan pemahaman awal dalam ${tpMaxText}, namun masih memerlukan pendampingan intensif dalam ${tpMinText}.`,
-        `Menunjukkan usaha belajar yang positif dalam ${tpMaxText}, serta membutuhkan bimbingan bertahap pada ${tpMinText}.`,
-        `Mulai mengenali konsep dasar ${tpMaxText} dengan bantuan guru, serta perlu latihan terarah pada ${tpMinText}.`,
-        `Berkembang dalam memahami ${tpMaxText}, namun memerlukan dukungan terpadu pada capaian ${tpMinText}.`,
-        `Menunjukkan kemauan belajar dalam ${tpMaxText}, serta disarankan mendapat penguatan berkelanjutan pada ${tpMinText}.`
-      ];
-    }
-  }
-
-  // Jika semua tuntas
-  if (maxTp.score >= 85) {
-    return [
-      `Sangat terampil dalam ${tpMaxText} serta mampu menjelaskan langkah penyelesaiannya secara runtut dan mandiri.`,
-      `Menunjukkan penguasaan yang sangat baik dalam ${tpMaxText}, memperoleh hasil yang tepat, dan mampu mengemukakan alasannya secara jelas.`,
-      `Mampu menyelesaikan dan menguasai materi ${tpMaxText} secara tepat serta siap melanjutkan ke materi pengayaan yang lebih kompleks.`,
-      `Cakap dan mendalam dalam ${tpMaxText} serta menunjukkan inisiatif belajar dan ketelitian yang tinggi.`,
-      `Menunjukkan pemahaman unggul dalam ${tpMaxText} serta konsisten dalam menerapkan strategi penyelesaian yang efektif.`
-    ];
-  } else if (maxTp.score >= kktp) {
-    return [
-      `Mampu ${tpMaxText} dengan langkah yang sesuai dan hasil yang tepat pada sebagian besar kegiatan belajar.`,
-      `Menunjukkan penguasaan yang baik dalam ${tpMaxText} serta konsisten dalam menyelesaikan tugas-tugas pembelajaran.`,
-      `Dapat memahami dan menyelesaikan materi ${tpMaxText} secara terstruktur sesuai tujuan pembelajaran yang ditetapkan.`,
-      `Mencapai penguasaan yang baik dalam ${tpMaxText} serta disarankan untuk terus melatih keluwesan dalam pemecahan masalah.`,
-      `Berhasil menyelesaikan capaian ${tpMaxText} secara baik dan terarah dengan kemandirian yang semakin meningkat.`
-    ];
-  } else {
-    return [
-      `Mulai menunjukkan pemahaman awal dalam ${tpMaxText} dan disarankan untuk terus memperbanyak latihan terarah.`,
-      `Menunjukkan perkembangan dalam ${tpMaxText}, dengan bimbingan berkelanjutan diharapkan pemahamannya semakin kokoh.`,
-      `Dapat menyelesaikan ${tpMaxText} sederhana dengan bantuan dan arahan guru secara bertahap.`,
-      `Mulai mengenali konsep dasar ${tpMaxText} dan bersedia mengikuti proses bimbingan untuk mencapai ketuntasan.`,
-      `Menunjukkan usaha positif dalam mempelajari ${tpMaxText} dengan dukungan dan latihan terarah.`
-    ];
-  }
+  return generate5VariasiPpa2025(mapel, validTps, maxTp, minTp, kktp, allTpScores);
 }
 
 /**
@@ -440,7 +430,8 @@ export function hitungNilaiMapel(
     maxTp,
     minTp,
     kktp,
-    studentIdOrSeed || (nilaiSiswa ? JSON.stringify(nilaiSiswa) : '')
+    studentIdOrSeed || (nilaiSiswa ? JSON.stringify(nilaiSiswa) : ''),
+    tpScores
   );
 
   return {

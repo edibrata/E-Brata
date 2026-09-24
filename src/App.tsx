@@ -24,7 +24,7 @@ import DeveloperProfileModal from '@/components/DeveloperProfileModal';
 function Dashboard() {
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
-  const [showDevProfileModal, setShowDevProfileModal] = useState(false);
+  const [showDevProfileModal, setShowDevProfileModal] = useState(true);
 
   return (
     <div className="flex min-h-[100dvh] bg-[#F8FAFC] text-slate-800 font-sans overflow-hidden">

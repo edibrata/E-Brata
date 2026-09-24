@@ -3,11 +3,14 @@ import {
   FileText, Calendar, School, Users, 
   MapPin, Percent, Info, Save, RotateCcw,
   Download, Upload, FileJson, CheckCircle2,
-  AlertCircle, Lock, Settings, Image
+  AlertCircle, Lock, Settings, Image,
+  RotateCw, ZoomIn, RefreshCw, Trash2,
+  ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Move, Sliders
 } from 'lucide-react';
 import React, { useState, useRef } from 'react';
 import { INITIAL_STATE } from '@/constants';
 import * as XLSX from 'xlsx';
+import { formatLokasiTitimangsa } from '@/lib/pdfGenerator';
 
 export default function DataSekolah() {
   const { state, updateSekolah } = useAppStore();
@@ -83,7 +86,17 @@ export default function DataSekolah() {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        updateSekolah({ [name]: reader.result as string });
+        const result = reader.result as string;
+        if (name === 'logo' || name === 'logoKiri') {
+          updateSekolah({
+            logo: result,
+            logoKiri: result,
+            logoScale: sekolah.logoScale || 100,
+            logoRotation: sekolah.logoRotation || 0
+          });
+        } else {
+          updateSekolah({ [name]: result });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -685,6 +698,12 @@ export default function DataSekolah() {
                       <option value="kecamatan">Kecamatan</option>
                       <option value="desa_kelurahan">Desa/Kelurahan</option>
                     </select>
+                    <p className="text-[11px] text-slate-500 pt-0.5 flex items-center gap-1">
+                      <span>Tercetak:</span>
+                      <span className="font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                        {formatLokasiTitimangsa(sekolah)}
+                      </span>
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <label htmlFor="tanggalBiodata" className={getLabelClass('tanggalBiodata')}>Tanggal Biodata</label>
@@ -746,94 +765,839 @@ export default function DataSekolah() {
             </div>
           )}
 
-          {/* TAB CONTENT: PENGATURAN APLIKASI */}
+          {/* TAB CONTENT: PENGATURAN APLIKASI (LOGO & TTD) */}
           {activeTab === 'aplikasi' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              {/* Logo Settings */}
-              <div>
-                <h4 className="flex items-center gap-2 font-bold text-xs tracking-widest text-slate-800 uppercase mb-4">Logo Rapor</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-5 border border-slate-200 rounded-md bg-slate-50 flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-full border border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
-                      {sekolah.logoKiri ? (
-                        <img src={sekolah.logoKiri} alt="Logo Kiri" className="w-full h-full object-contain p-2" />
+              {/* 1. Logo Satuan Pendidikan (Tunggal / Default) */}
+              <div className="p-6 border border-slate-200 rounded-xl bg-slate-50/70 space-y-5 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="flex items-center gap-2 font-bold text-xs tracking-widest text-slate-800 uppercase">
+                      Logo Satuan Pendidikan (Utama)
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Digunakan pada Halaman Sampul (Cover Rapor) dan Dokumen Resmi Sekolah.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-5">
+                  {/* Top Bar: Preview & Upload Controls */}
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                    {/* Live Preview Box with Crosshair */}
+                    <div className="w-36 h-36 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/80 flex items-center justify-center overflow-hidden shrink-0 shadow-inner relative group select-none">
+                      {/* Grid background markers */}
+                      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(#64748b_1px,transparent_1px)] [background-size:8px_8px]" />
+                      <div className="absolute w-full h-[1px] bg-slate-300/40 pointer-events-none" />
+                      <div className="absolute h-full w-[1px] bg-slate-300/40 pointer-events-none" />
+
+                      {(sekolah.logo || sekolah.logoKiri) ? (
+                        <img 
+                          src={sekolah.logo || sekolah.logoKiri} 
+                          alt="Logo Satuan Pendidikan" 
+                          style={{
+                            transform: `translate(${sekolah.logoOffsetX || 0}px, ${sekolah.logoOffsetY || 0}px) rotate(${sekolah.logoRotation || 0}deg) scale(${(sekolah.logoScale || 100) / 100})`,
+                            transformOrigin: 'center center'
+                          }}
+                          className="max-h-28 max-w-28 object-contain transition-transform" 
+                        />
                       ) : (
-                        <span className="text-[10px] text-slate-400 font-bold text-center px-1">Tut Wuri</span>
+                        <div className="text-center p-3 z-10">
+                          <Image className="w-8 h-8 mx-auto text-slate-300 mb-1" />
+                          <span className="text-[10px] text-slate-400 font-bold block leading-tight">Default: Tut Wuri</span>
+                        </div>
                       )}
-                      <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-[10px] font-bold uppercase tracking-wider">
-                        Ubah
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'logoKiri')} />
-                      </label>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 mb-1">Logo Kiri (Default: Tut Wuri)</p>
-                      <p className="text-xs text-slate-500 leading-relaxed mb-2">Tampil di sudut kiri atas rapor.</p>
-                      {sekolah.logoKiri && (
-                        <button type="button" onClick={() => updateSekolah({ logoKiri: '' })} className="text-[10px] uppercase font-bold text-red-600 hover:text-red-700">Hapus Logo</button>
-                      )}
+
+                    {/* Actions & Status */}
+                    <div className="flex-1 space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold cursor-pointer transition shadow-2xs">
+                          <Upload size={14} />
+                          {(sekolah.logo || sekolah.logoKiri) ? 'Ganti Logo' : 'Unggah Logo (PNG/JPG)'}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'logo')} />
+                        </label>
+                        {(sekolah.logo || sekolah.logoKiri) && (
+                          <button 
+                            type="button" 
+                            onClick={() => updateSekolah({ logo: '', logoKiri: '', logoRotation: 0, logoScale: 100, logoOffsetX: 0, logoOffsetY: 0 })} 
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg border border-red-200 transition"
+                          >
+                            <Trash2 size={14} /> Hapus Logo
+                          </button>
+                        )}
+                        {((sekolah.logoRotation && sekolah.logoRotation !== 0) || (sekolah.logoScale && sekolah.logoScale !== 100) || (sekolah.logoOffsetX && sekolah.logoOffsetX !== 0) || (sekolah.logoOffsetY && sekolah.logoOffsetY !== 0)) && (
+                          <button
+                            type="button"
+                            onClick={() => updateSekolah({ logoRotation: 0, logoScale: 100, logoOffsetX: 0, logoOffsetY: 0 })}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg border border-slate-200 transition"
+                          >
+                            <RefreshCw size={13} /> Reset Semua
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Atur sudut kemiringan rotasi, pergeseran posisi (X/Y), dan ukuran skala logo agar pas dan presisi pada format cetak.
+                      </p>
                     </div>
                   </div>
-                  <div className="p-5 border border-slate-200 rounded-md bg-slate-50 flex items-center gap-4">
-                    <div className="w-20 h-20 rounded-full border border-slate-300 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
-                      {sekolah.logoKanan ? (
-                        <img src={sekolah.logoKanan} alt="Logo Kanan" className="w-full h-full object-contain p-2" />
-                      ) : (
-                        <span className="text-[10px] text-slate-400 font-bold text-center px-1">Logo Pemda</span>
-                      )}
-                      <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-[10px] font-bold uppercase tracking-wider">
-                        Ubah
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'logoKanan')} />
-                      </label>
+
+                  {/* Advanced Controls Section (Rotasi, Posisi, Skala) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-4 border-t border-slate-200">
+                    {/* 1. KONTROL ROTASI FLEKSIBEL */}
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <RotateCw size={14} className="text-indigo-600" /> Rotasi Fleksibel
+                        </span>
+                        <span className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[11px] font-mono font-bold text-indigo-700 shadow-2xs">
+                          {sekolah.logoRotation || 0}°
+                        </span>
+                      </div>
+
+                      {/* Slider Rotasi Bebas (-180° s.d. +180°) */}
+                      <div className="space-y-1">
+                        <input 
+                          type="range" 
+                          min="-180" 
+                          max="180" 
+                          step="1" 
+                          value={sekolah.logoRotation || 0} 
+                          onChange={(e) => updateSekolah({ logoRotation: parseInt(e.target.value, 10) })}
+                          className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer" 
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                          <span>-180°</span>
+                          <span className="cursor-pointer hover:text-indigo-600 font-bold" onClick={() => updateSekolah({ logoRotation: 0 })}>0° (Tegak)</span>
+                          <span>+180°</span>
+                        </div>
+                      </div>
+
+                      {/* Fine-Tuning Rotasi Buttons */}
+                      <div className="grid grid-cols-5 gap-1 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoRotation: ((sekolah.logoRotation || 0) - 5) })}
+                          className="px-1 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold transition text-center shadow-2xs"
+                          title="Putar -5°"
+                        >
+                          -5°
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoRotation: ((sekolah.logoRotation || 0) - 1) })}
+                          className="px-1 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold transition text-center shadow-2xs"
+                          title="Putar -1° (Halus)"
+                        >
+                          -1°
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoRotation: 0 })}
+                          className="px-1 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-bold transition text-center shadow-2xs"
+                          title="Reset Tegak"
+                        >
+                          0°
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoRotation: ((sekolah.logoRotation || 0) + 1) })}
+                          className="px-1 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold transition text-center shadow-2xs"
+                          title="Putar +1° (Halus)"
+                        >
+                          +1°
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoRotation: ((sekolah.logoRotation || 0) + 5) })}
+                          className="px-1 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold transition text-center shadow-2xs"
+                          title="Putar +5°"
+                        >
+                          +5°
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => updateSekolah({ logoRotation: (((sekolah.logoRotation || 0) + 90) % 360) })}
+                        className="w-full flex items-center justify-center gap-1 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[11px] font-semibold transition shadow-2xs"
+                      >
+                        <RotateCw size={12} /> Putar Cepat 90°
+                      </button>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 mb-1">Logo Kanan (Pemda)</p>
-                      <p className="text-xs text-slate-500 leading-relaxed mb-2">Tampil di sudut kanan atas rapor.</p>
-                      {sekolah.logoKanan && (
-                        <button type="button" onClick={() => updateSekolah({ logoKanan: '' })} className="text-[10px] uppercase font-bold text-red-600 hover:text-red-700">Hapus Logo</button>
-                      )}
+
+                    {/* 2. KONTROL PERGESERAN POSISI (X & Y) */}
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Move size={14} className="text-indigo-600" /> Pergeseran Posisi
+                        </span>
+                        <span className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10.5px] font-mono font-bold text-indigo-700 shadow-2xs">
+                          X:{sekolah.logoOffsetX || 0} Y:{sekolah.logoOffsetY || 0}
+                        </span>
+                      </div>
+
+                      {/* Slider X (Horizontal) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] text-slate-600 font-semibold">
+                          <span>Geser X (Kiri/Kanan):</span>
+                          <span className="font-mono">{sekolah.logoOffsetX || 0}px</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="-50" 
+                          max="50" 
+                          step="1" 
+                          value={sekolah.logoOffsetX || 0} 
+                          onChange={(e) => updateSekolah({ logoOffsetX: parseInt(e.target.value, 10) })}
+                          className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer" 
+                        />
+                      </div>
+
+                      {/* Slider Y (Vertikal) */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] text-slate-600 font-semibold">
+                          <span>Geser Y (Atas/Bawah):</span>
+                          <span className="font-mono">{sekolah.logoOffsetY || 0}px</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="-50" 
+                          max="50" 
+                          step="1" 
+                          value={sekolah.logoOffsetY || 0} 
+                          onChange={(e) => updateSekolah({ logoOffsetY: parseInt(e.target.value, 10) })}
+                          className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer" 
+                        />
+                      </div>
+
+                      {/* D-Pad Buttons for Step Adjustment */}
+                      <div className="flex items-center justify-center gap-1 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoOffsetX: (sekolah.logoOffsetX || 0) - 2 })}
+                          className="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded shadow-2xs transition"
+                          title="Geser Kiri 2px"
+                        >
+                          <ArrowLeft size={13} />
+                        </button>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => updateSekolah({ logoOffsetY: (sekolah.logoOffsetY || 0) - 2 })}
+                            className="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded shadow-2xs transition"
+                            title="Geser Atas 2px"
+                          >
+                            <ArrowUp size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateSekolah({ logoOffsetY: (sekolah.logoOffsetY || 0) + 2 })}
+                            className="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded shadow-2xs transition"
+                            title="Geser Bawah 2px"
+                          >
+                            <ArrowDown size={13} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoOffsetX: (sekolah.logoOffsetX || 0) + 2 })}
+                          className="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded shadow-2xs transition"
+                          title="Geser Kanan 2px"
+                        >
+                          <ArrowRight size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateSekolah({ logoOffsetX: 0, logoOffsetY: 0 })}
+                          className="px-2 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-bold shadow-2xs transition ml-1"
+                          title="Pusatkan Posisi"
+                        >
+                          Tengah
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 3. KONTROL SKALA UKURAN */}
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <ZoomIn size={14} className="text-indigo-600" /> Skala Ukuran
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="30"
+                            max="300"
+                            value={sekolah.logoScale || 100}
+                            onChange={(e) => updateSekolah({ logoScale: Math.max(30, Math.min(300, parseInt(e.target.value, 10) || 100)) })}
+                            className="w-14 px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[11px] font-mono font-bold text-indigo-700 text-center shadow-2xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                          />
+                          <span className="text-[11px] font-bold text-slate-500">%</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 pt-1">
+                        <input 
+                          type="range" 
+                          min="30" 
+                          max="300" 
+                          step="1" 
+                          value={sekolah.logoScale || 100} 
+                          onChange={(e) => updateSekolah({ logoScale: parseInt(e.target.value, 10) })}
+                          className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer" 
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                          <span>30%</span>
+                          <span className="cursor-pointer hover:text-indigo-600 font-bold" onClick={() => updateSekolah({ logoScale: 100 })}>100% (Normal)</span>
+                          <span>300%</span>
+                        </div>
+                      </div>
+
+                      {/* Preset Skala */}
+                      <div className="grid grid-cols-5 gap-1 pt-1">
+                        {[100, 150, 180, 220, 250].map((pct) => (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => updateSekolah({ logoScale: pct })}
+                            className={`py-1 rounded text-[10px] font-mono font-bold border transition shadow-2xs ${
+                              (sekolah.logoScale || 100) === pct 
+                                ? 'bg-indigo-600 text-white border-indigo-600' 
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {pct}%
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => updateSekolah({ logoScale: 100 })}
+                        className="w-full py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 rounded text-[11px] font-semibold transition shadow-2xs"
+                      >
+                        Reset ke 100%
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Digital Signature */}
-              <div className="pt-6 border-t border-slate-200">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-xs tracking-widest text-slate-800 uppercase">Tanda Tangan Digital</h4>
+              {/* 2. Digital Signature */}
+              <div className="p-6 border border-slate-200 rounded-xl bg-slate-50/70 space-y-5 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-xs tracking-widest text-slate-800 uppercase">
+                      Tanda Tangan Digital
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Gunakan scan tanda tangan digital pada Lembar Rapor & Buku Induk.
+                    </p>
+                  </div>
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={sekolah.useDigitalSignature || false} onChange={(e) => updateSekolah({ useDigitalSignature: e.target.checked })} />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={sekolah.useDigitalSignature || false} 
+                      onChange={(e) => updateSekolah({ useDigitalSignature: e.target.checked })} 
+                    />
                     <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                   </label>
                 </div>
                 
                 {sekolah.useDigitalSignature && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="p-5 border border-slate-200 rounded-md bg-slate-50 text-center">
-                      <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4">Wali Kelas</p>
-                      <label className="block w-full h-24 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white mb-3 hover:bg-slate-50 transition-colors cursor-pointer relative overflow-hidden group">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 animate-in fade-in slide-in-from-top-2">
+                    {/* TTD WALI / GURU KELAS */}
+                    <div className="p-5 border border-slate-200 rounded-xl bg-white space-y-4 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                          Wali / Guru Kelas
+                        </p>
+                        <span className="text-[11px] text-slate-500 truncate max-w-[140px] font-semibold">
+                          {sekolah.waliKelas || 'Guru Kelas'}
+                        </span>
+                      </div>
+
+                      {/* Live Preview Box with Crosshair */}
+                      <div className="h-32 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/70 flex items-center justify-center overflow-hidden relative shadow-inner select-none">
+                        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(#64748b_1px,transparent_1px)] [background-size:8px_8px]" />
+                        <div className="absolute w-full h-[1px] bg-slate-300/40 pointer-events-none" />
+                        <div className="absolute h-full w-[1px] bg-slate-300/40 pointer-events-none" />
+
                         {sekolah.ttdWaliKelas ? (
-                          <img src={sekolah.ttdWaliKelas} alt="TTD Wali Kelas" className="h-full w-full object-contain p-2" />
+                          <img 
+                            src={sekolah.ttdWaliKelas} 
+                            alt="TTD Wali Kelas" 
+                            style={{
+                              transform: `translate(${sekolah.ttdWaliKelasOffsetX || 0}px, ${sekolah.ttdWaliKelasOffsetY || 0}px) rotate(${sekolah.ttdWaliKelasRotation || 0}deg) scale(${(sekolah.ttdWaliKelasScale || 100) / 100})`,
+                              transformOrigin: 'center center'
+                            }}
+                            className="max-h-24 max-w-28 object-contain transition-transform" 
+                          />
                         ) : (
-                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Pilih Gambar (PNG)</span>
+                          <span className="text-slate-400 text-[10.5px] font-bold uppercase tracking-wider text-center px-2 z-10">
+                            Belum Ada Tanda Tangan (PNG)
+                          </span>
                         )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'ttdWaliKelas')} />
-                      </label>
+                      </div>
+
+                      {/* Buttons Upload & Hapus */}
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold cursor-pointer transition shadow-2xs">
+                          <Upload size={13} /> {sekolah.ttdWaliKelas ? 'Ganti TTD' : 'Pilih File (PNG)'}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'ttdWaliKelas')} />
+                        </label>
+                        {sekolah.ttdWaliKelas && (
+                          <button 
+                            type="button" 
+                            onClick={() => updateSekolah({ ttdWaliKelas: '', ttdWaliKelasRotation: 0, ttdWaliKelasScale: 100, ttdWaliKelasOffsetX: 0, ttdWaliKelasOffsetY: 0 })} 
+                            className="px-2.5 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg border border-red-200 transition"
+                            title="Hapus Tanda Tangan"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Transform Controls for TTD Wali Kelas */}
                       {sekolah.ttdWaliKelas && (
-                        <button type="button" onClick={() => updateSekolah({ ttdWaliKelas: '' })} className="text-[10px] uppercase font-bold text-red-600 hover:text-red-700">Hapus Tanda Tangan</button>
+                        <div className="space-y-3 pt-3 border-t border-slate-100 text-xs">
+                          {/* 1. Rotasi Fleksibel */}
+                          <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px]">
+                                <RotateCw size={12} className="text-indigo-600" /> Rotasi
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10.5px] font-mono font-bold text-indigo-700">
+                                {sekolah.ttdWaliKelasRotation || 0}°
+                              </span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="-180" 
+                              max="180" 
+                              step="1" 
+                              value={sekolah.ttdWaliKelasRotation || 0} 
+                              onChange={(e) => updateSekolah({ ttdWaliKelasRotation: parseInt(e.target.value, 10) })}
+                              className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                            />
+                            <div className="flex items-center justify-between gap-1 pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasRotation: (sekolah.ttdWaliKelasRotation || 0) - 1 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold"
+                              >
+                                -1°
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasRotation: 0 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-bold"
+                              >
+                                0°
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasRotation: (sekolah.ttdWaliKelasRotation || 0) + 1 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold"
+                              >
+                                +1°
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasRotation: (((sekolah.ttdWaliKelasRotation || 0) + 90) % 360) })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-semibold"
+                              >
+                                90° ↻
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2. Pergeseran Posisi (X & Y) */}
+                          <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px]">
+                                <Move size={12} className="text-indigo-600" /> Posisi X / Y
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold text-indigo-700">
+                                X:{sekolah.ttdWaliKelasOffsetX || 0} Y:{sekolah.ttdWaliKelasOffsetY || 0}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-[9.5px] text-slate-500 font-semibold block">Geser X (Kiri/Kanan):</span>
+                                <input 
+                                  type="range" 
+                                  min="-50" 
+                                  max="50" 
+                                  step="1" 
+                                  value={sekolah.ttdWaliKelasOffsetX || 0} 
+                                  onChange={(e) => updateSekolah({ ttdWaliKelasOffsetX: parseInt(e.target.value, 10) })}
+                                  className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                                />
+                              </div>
+                              <div>
+                                <span className="text-[9.5px] text-slate-500 font-semibold block">Geser Y (Atas/Bawah):</span>
+                                <input 
+                                  type="range" 
+                                  min="-50" 
+                                  max="50" 
+                                  step="1" 
+                                  value={sekolah.ttdWaliKelasOffsetY || 0} 
+                                  onChange={(e) => updateSekolah({ ttdWaliKelasOffsetY: parseInt(e.target.value, 10) })}
+                                  className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-1 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasOffsetX: (sekolah.ttdWaliKelasOffsetX || 0) - 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Kiri 2px"
+                              >
+                                <ArrowLeft size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasOffsetY: (sekolah.ttdWaliKelasOffsetY || 0) - 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Atas 2px"
+                              >
+                                <ArrowUp size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasOffsetX: 0, ttdWaliKelasOffsetY: 0 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-bold"
+                              >
+                                0
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasOffsetY: (sekolah.ttdWaliKelasOffsetY || 0) + 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Bawah 2px"
+                              >
+                                <ArrowDown size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdWaliKelasOffsetX: (sekolah.ttdWaliKelasOffsetX || 0) + 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Kanan 2px"
+                              >
+                                <ArrowRight size={11} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 3. Skala Ukuran */}
+                          <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                <ZoomIn size={12} className="text-indigo-600" /> Skala Ukuran
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="30"
+                                  max="300"
+                                  value={sekolah.ttdWaliKelasScale || 100}
+                                  onChange={(e) => updateSekolah({ ttdWaliKelasScale: Math.max(30, Math.min(300, parseInt(e.target.value, 10) || 100)) })}
+                                  className="w-12 px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold text-indigo-700 text-center shadow-2xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                />
+                                <span className="text-[10px] font-bold text-slate-500">%</span>
+                              </div>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="30" 
+                              max="300" 
+                              step="1" 
+                              value={sekolah.ttdWaliKelasScale || 100} 
+                              onChange={(e) => updateSekolah({ ttdWaliKelasScale: parseInt(e.target.value, 10) })}
+                              className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                            />
+                            <div className="flex items-center justify-between gap-1 pt-0.5">
+                              {[100, 150, 180, 220, 250].map((pct) => (
+                                <button
+                                  key={pct}
+                                  type="button"
+                                  onClick={() => updateSekolah({ ttdWaliKelasScale: pct })}
+                                  className={`px-1 py-0.5 rounded text-[9.5px] font-mono font-bold border transition ${
+                                    (sekolah.ttdWaliKelasScale || 100) === pct
+                                      ? 'bg-indigo-600 text-white border-indigo-600'
+                                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  {pct}%
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Reset Button */}
+                          {((sekolah.ttdWaliKelasRotation && sekolah.ttdWaliKelasRotation !== 0) || (sekolah.ttdWaliKelasScale && sekolah.ttdWaliKelasScale !== 100) || (sekolah.ttdWaliKelasOffsetX && sekolah.ttdWaliKelasOffsetX !== 0) || (sekolah.ttdWaliKelasOffsetY && sekolah.ttdWaliKelasOffsetY !== 0)) && (
+                            <button
+                              type="button"
+                              onClick={() => updateSekolah({ ttdWaliKelasRotation: 0, ttdWaliKelasScale: 100, ttdWaliKelasOffsetX: 0, ttdWaliKelasOffsetY: 0 })}
+                              className="text-[10px] font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition pt-1"
+                            >
+                              <RefreshCw size={10} /> Reset Semua Penyesuaian TTD
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <div className="p-5 border border-slate-200 rounded-md bg-slate-50 text-center">
-                      <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4">Kepala Sekolah</p>
-                      <label className="block w-full h-24 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center bg-white mb-3 hover:bg-slate-50 transition-colors cursor-pointer relative overflow-hidden group">
+
+                    {/* TTD KEPALA SEKOLAH */}
+                    <div className="p-5 border border-slate-200 rounded-xl bg-white space-y-4 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                          Kepala Sekolah
+                        </p>
+                        <span className="text-[11px] text-slate-500 truncate max-w-[140px] font-semibold">
+                          {sekolah.kepsek || 'Kepala Sekolah'}
+                        </span>
+                      </div>
+
+                      {/* Live Preview Box with Crosshair */}
+                      <div className="h-32 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50/70 flex items-center justify-center overflow-hidden relative shadow-inner select-none">
+                        <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(#64748b_1px,transparent_1px)] [background-size:8px_8px]" />
+                        <div className="absolute w-full h-[1px] bg-slate-300/40 pointer-events-none" />
+                        <div className="absolute h-full w-[1px] bg-slate-300/40 pointer-events-none" />
+
                         {sekolah.ttdKepsek ? (
-                          <img src={sekolah.ttdKepsek} alt="TTD Kepsek" className="h-full w-full object-contain p-2" />
+                          <img 
+                            src={sekolah.ttdKepsek} 
+                            alt="TTD Kepala Sekolah" 
+                            style={{
+                              transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
+                              transformOrigin: 'center center'
+                            }}
+                            className="max-h-24 max-w-28 object-contain transition-transform" 
+                          />
                         ) : (
-                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Pilih Gambar (PNG)</span>
+                          <span className="text-slate-400 text-[10.5px] font-bold uppercase tracking-wider text-center px-2 z-10">
+                            Belum Ada Tanda Tangan (PNG)
+                          </span>
                         )}
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'ttdKepsek')} />
-                      </label>
+                      </div>
+
+                      {/* Buttons Upload & Hapus */}
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold cursor-pointer transition shadow-2xs">
+                          <Upload size={13} /> {sekolah.ttdKepsek ? 'Ganti TTD' : 'Pilih File (PNG)'}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, 'ttdKepsek')} />
+                        </label>
+                        {sekolah.ttdKepsek && (
+                          <button 
+                            type="button" 
+                            onClick={() => updateSekolah({ ttdKepsek: '', ttdKepsekRotation: 0, ttdKepsekScale: 100, ttdKepsekOffsetX: 0, ttdKepsekOffsetY: 0 })} 
+                            className="px-2.5 py-1.5 text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg border border-red-200 transition"
+                            title="Hapus Tanda Tangan"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Transform Controls for TTD Kepala Sekolah */}
                       {sekolah.ttdKepsek && (
-                        <button type="button" onClick={() => updateSekolah({ ttdKepsek: '' })} className="text-[10px] uppercase font-bold text-red-600 hover:text-red-700">Hapus Tanda Tangan</button>
+                        <div className="space-y-3 pt-3 border-t border-slate-100 text-xs">
+                          {/* 1. Rotasi Fleksibel */}
+                          <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px]">
+                                <RotateCw size={12} className="text-indigo-600" /> Rotasi
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10.5px] font-mono font-bold text-indigo-700">
+                                {sekolah.ttdKepsekRotation || 0}°
+                              </span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="-180" 
+                              max="180" 
+                              step="1" 
+                              value={sekolah.ttdKepsekRotation || 0} 
+                              onChange={(e) => updateSekolah({ ttdKepsekRotation: parseInt(e.target.value, 10) })}
+                              className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                            />
+                            <div className="flex items-center justify-between gap-1 pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekRotation: (sekolah.ttdKepsekRotation || 0) - 1 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold"
+                              >
+                                -1°
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekRotation: 0 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-bold"
+                              >
+                                0°
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekRotation: (sekolah.ttdKepsekRotation || 0) + 1 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-mono font-bold"
+                              >
+                                +1°
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekRotation: (((sekolah.ttdKepsekRotation || 0) + 90) % 360) })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[10px] font-semibold"
+                              >
+                                90° ↻
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2. Pergeseran Posisi (X & Y) */}
+                          <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-700 flex items-center gap-1 text-[11px]">
+                                <Move size={12} className="text-indigo-600" /> Posisi X / Y
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold text-indigo-700">
+                                X:{sekolah.ttdKepsekOffsetX || 0} Y:{sekolah.ttdKepsekOffsetY || 0}
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-[9.5px] text-slate-500 font-semibold block">Geser X (Kiri/Kanan):</span>
+                                <input 
+                                  type="range" 
+                                  min="-50" 
+                                  max="50" 
+                                  step="1" 
+                                  value={sekolah.ttdKepsekOffsetX || 0} 
+                                  onChange={(e) => updateSekolah({ ttdKepsekOffsetX: parseInt(e.target.value, 10) })}
+                                  className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                                />
+                              </div>
+                              <div>
+                                <span className="text-[9.5px] text-slate-500 font-semibold block">Geser Y (Atas/Bawah):</span>
+                                <input 
+                                  type="range" 
+                                  min="-50" 
+                                  max="50" 
+                                  step="1" 
+                                  value={sekolah.ttdKepsekOffsetY || 0} 
+                                  onChange={(e) => updateSekolah({ ttdKepsekOffsetY: parseInt(e.target.value, 10) })}
+                                  className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-1 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekOffsetX: (sekolah.ttdKepsekOffsetX || 0) - 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Kiri 2px"
+                              >
+                                <ArrowLeft size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekOffsetY: (sekolah.ttdKepsekOffsetY || 0) - 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Atas 2px"
+                              >
+                                <ArrowUp size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekOffsetX: 0, ttdKepsekOffsetY: 0 })}
+                                className="px-1.5 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-bold"
+                              >
+                                0
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekOffsetY: (sekolah.ttdKepsekOffsetY || 0) + 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Bawah 2px"
+                              >
+                                <ArrowDown size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateSekolah({ ttdKepsekOffsetX: (sekolah.ttdKepsekOffsetX || 0) + 2 })}
+                                className="p-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px]"
+                                title="Geser Kanan 2px"
+                              >
+                                <ArrowRight size={11} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 3. Skala Ukuran */}
+                          <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                                <ZoomIn size={12} className="text-indigo-600" /> Skala Ukuran
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="30"
+                                  max="300"
+                                  value={sekolah.ttdKepsekScale || 100}
+                                  onChange={(e) => updateSekolah({ ttdKepsekScale: Math.max(30, Math.min(300, parseInt(e.target.value, 10) || 100)) })}
+                                  className="w-12 px-1 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold text-indigo-700 text-center shadow-2xs focus:ring-1 focus:ring-indigo-500 outline-none"
+                                />
+                                <span className="text-[10px] font-bold text-slate-500">%</span>
+                              </div>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="30" 
+                              max="300" 
+                              step="1" 
+                              value={sekolah.ttdKepsekScale || 100} 
+                              onChange={(e) => updateSekolah({ ttdKepsekScale: parseInt(e.target.value, 10) })}
+                              className="w-full accent-indigo-600 h-1 bg-slate-200 rounded cursor-pointer" 
+                            />
+                            <div className="flex items-center justify-between gap-1 pt-0.5">
+                              {[100, 150, 180, 220, 250].map((pct) => (
+                                <button
+                                  key={pct}
+                                  type="button"
+                                  onClick={() => updateSekolah({ ttdKepsekScale: pct })}
+                                  className={`px-1 py-0.5 rounded text-[9.5px] font-mono font-bold border transition ${
+                                    (sekolah.ttdKepsekScale || 100) === pct
+                                      ? 'bg-indigo-600 text-white border-indigo-600'
+                                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
+                                  }`}
+                                >
+                                  {pct}%
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Reset Button */}
+                          {((sekolah.ttdKepsekRotation && sekolah.ttdKepsekRotation !== 0) || (sekolah.ttdKepsekScale && sekolah.ttdKepsekScale !== 100) || (sekolah.ttdKepsekOffsetX && sekolah.ttdKepsekOffsetX !== 0) || (sekolah.ttdKepsekOffsetY && sekolah.ttdKepsekOffsetY !== 0)) && (
+                            <button
+                              type="button"
+                              onClick={() => updateSekolah({ ttdKepsekRotation: 0, ttdKepsekScale: 100, ttdKepsekOffsetX: 0, ttdKepsekOffsetY: 0 })}
+                              className="text-[10px] font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition pt-1"
+                            >
+                              <RefreshCw size={10} /> Reset Semua Penyesuaian TTD
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

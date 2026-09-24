@@ -31,11 +31,24 @@ export interface Sekolah {
   tanggalRapor?: string;
   bobotSumatifLingkup?: number;
   bobotSumatifSemester?: number;
+  logo?: string;
   logoKiri?: string;
   logoKanan?: string;
+  logoScale?: number;
+  logoRotation?: number;
+  logoOffsetX?: number;
+  logoOffsetY?: number;
   useDigitalSignature?: boolean;
   ttdWaliKelas?: string;
+  ttdWaliKelasScale?: number;
+  ttdWaliKelasRotation?: number;
+  ttdWaliKelasOffsetX?: number;
+  ttdWaliKelasOffsetY?: number;
   ttdKepsek?: string;
+  ttdKepsekScale?: number;
+  ttdKepsekRotation?: number;
+  ttdKepsekOffsetX?: number;
+  ttdKepsekOffsetY?: number;
   timestamp?: number;
 }
 

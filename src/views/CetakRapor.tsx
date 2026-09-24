@@ -9,6 +9,7 @@ import {
   Search, 
   FileText, 
   Book, 
+  Building2,
   Contact, 
   Archive, 
   ArrowRightLeft, 
@@ -21,6 +22,8 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { 
+  buildJilidCoverOnlyPDF,
+  buildIdentitasSekolahOnlyPDF,
   buildJilidPDF, 
   buildBiodataPDF, 
   buildRaporPDF, 
@@ -33,16 +36,21 @@ import {
   BundleDocType,
   PdfFontOption,
   formatKelasRombel,
-  formatNamaSekolahFooter
+  formatNamaSekolahFooter,
+  formatLokasiTitimangsa,
+  formatKabupatenKota,
+  formatTanggalIndonesia,
+  formatSemesterTerbilang,
+  formatAlamatBaris2
 } from '@/lib/pdfGenerator';
 import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
 import { hitungNilaiMapel } from '@/lib/penilaianUtils';
 
-type DocumentType = 'jilid' | 'biodata' | 'rapor' | 'buku-induk' | 'pindah' | 'semua';
+type DocumentType = 'jilid' | 'identitas-sekolah' | 'identitas-murid' | 'biodata' | 'rapor' | 'buku-induk' | 'pindah' | 'semua';
 
 export default function CetakRapor() {
   const { state } = useAppStore();
-  const { sekolah, siswa, nilai, tujuanPembelajaran, mapel, ekstrakurikuler, nilaiEkskul, customDeskripsiMapel } = state;
+  const { sekolah, siswa, nilai, tujuanPembelajaran, mapel, ekstrakurikuler, nilaiEkskul, customDeskripsiMapel, projek, customDeskripsiKokurikuler } = state;
   const displayedMapel = mapel.filter(m => m.tampilRapor !== false);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,7 +65,8 @@ export default function CetakRapor() {
   // Pilihan Dokumen untuk Bundel
   const [selectedBundleDocs, setSelectedBundleDocs] = useState<BundleDocType[]>([
     'jilid',
-    'biodata',
+    'identitas-sekolah',
+    'identitas-murid',
     'rapor',
     'buku-induk',
     'pindah'
@@ -102,8 +111,10 @@ export default function CetakRapor() {
 
   const getDocTypeLabel = (type: DocumentType): string => {
     switch (type) {
-      case 'jilid': return 'Jilid & Identitas';
-      case 'biodata': return 'Biodata Murid';
+      case 'jilid': return 'Jilid (Cover)';
+      case 'identitas-sekolah': return 'Identitas Sekolah';
+      case 'identitas-murid':
+      case 'biodata': return 'Identitas Murid';
       case 'rapor': return 'Rapor';
       case 'buku-induk': return 'Lampiran Buku Induk';
       case 'pindah': return 'Keterangan Pindah';
@@ -157,8 +168,12 @@ export default function CetakRapor() {
     const doc = new jsPDF('p', 'mm', format as any);
     switch (type) {
       case 'jilid':
-        buildJilidPDF(doc, sekolah, student, paperSize, false, pdfFont);
+        buildJilidCoverOnlyPDF(doc, sekolah, student, paperSize, false, pdfFont);
         break;
+      case 'identitas-sekolah':
+        buildIdentitasSekolahOnlyPDF(doc, sekolah, student, paperSize, false, pdfFont);
+        break;
+      case 'identitas-murid':
       case 'biodata':
         buildBiodataPDF(doc, sekolah, student, paperSize, false, pdfFont);
         break;
@@ -176,7 +191,9 @@ export default function CetakRapor() {
           paperSize,
           false,
           customDeskripsiMapel,
-          pdfFont
+          pdfFont,
+          projek,
+          customDeskripsiKokurikuler
         );
         break;
       case 'buku-induk':
@@ -310,204 +327,318 @@ export default function CetakRapor() {
       </div>
     );
 
-    if (type === 'jilid') {
-      return (
-        <div className="space-y-8" style={{ fontFamily: fontFamilyStyle }}>
-          {/* Cover Luar */}
-          <div 
-            className="border-4 border-double border-slate-700 p-10 flex flex-col justify-between items-center text-center bg-white shadow-md rounded-sm"
-            style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
-          >
-            <div className="space-y-3">
-              <div className="w-24 h-24 mx-auto mb-3 flex items-center justify-center">
-                {sekolah.logoKiri ? (
-                  <img src={sekolah.logoKiri} alt="Logo" className="max-h-full max-w-full object-contain" />
-                ) : (
-                  <div className="w-20 h-20 rounded-full border-2 border-slate-600 flex items-center justify-center font-bold text-xs">
-                    LOGO SEKOLAH
-                  </div>
-                )}
-              </div>
-              <h1 className="text-xl font-bold tracking-wider uppercase text-slate-900">
-                LAPORAN HASIL BELAJAR
-              </h1>
-              <h2 className="text-base font-bold tracking-widest uppercase text-slate-700">
-                PESERTA DIDIK
-              </h2>
-              <h3 className="text-lg font-bold tracking-wide uppercase text-blue-900">
-                {sekolah.nama || 'SEKOLAH DASAR'}
-              </h3>
-            </div>
+    // Halaman 1: Cover Luar (Jilid Sampul)
+    const renderJilidCover = () => {
+      const nisnText = currentStudent.nisn?.trim() || '';
+      const nisText = currentStudent.nis?.trim() || '';
+      let combinedNis = '-';
+      if (nisnText && nisText) {
+        combinedNis = `${nisnText} / ${nisText}`;
+      } else if (nisnText) {
+        combinedNis = nisnText;
+      } else if (nisText) {
+        combinedNis = nisText;
+      }
 
-            <div className="w-full max-w-md py-8 px-6 border-2 border-slate-700 rounded-lg space-y-3 my-6 bg-slate-50/50">
-              <p className="text-xs uppercase text-slate-500 font-bold tracking-widest">NAMA PESERTA DIDIK</p>
-              <p className="text-lg font-extrabold uppercase text-slate-900 border-b-2 border-slate-300 pb-2">
-                {currentStudent.nama}
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                <div>
-                  <span className="text-slate-500 font-semibold">NIS:</span>
-                  <p className="font-bold text-slate-800">{currentStudent.nis || '-'}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-semibold">NISN:</span>
-                  <p className="font-bold text-slate-800 font-mono">{currentStudent.nisn || '-'}</p>
-                </div>
-              </div>
-            </div>
+      const namaUpper = (currentStudent.nama || '').trim().toUpperCase() || '-';
+      const namaLen = namaUpper.length;
+      const namaFontSizeClass = namaLen > 36 ? 'text-[11px]' : namaLen > 28 ? 'text-xs' : namaLen > 20 ? 'text-sm' : 'text-base sm:text-[17px]';
+      const nisLen = combinedNis.length;
+      const nisFontSizeClass = nisLen > 26 ? 'text-xs' : 'text-sm sm:text-[16px]';
 
-            <div className="space-y-1 text-xs uppercase font-bold text-slate-700">
-              <p>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</p>
-              <p>REPUBLIK INDONESIA</p>
-              <p className="text-slate-500 text-[11px] pt-0.5 font-normal">
-                {sekolah.kabupatenKotaNama || 'KABUPATEN/KOTA'} - {sekolah.provinsi || 'PROVINSI'}
-              </p>
-            </div>
-          </div>
-
-          {/* Identitas Sekolah */}
-          <div 
-            className="p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed"
-            style={{ minHeight: minPageHeight }}
-          >
-            <h3 className="text-center font-bold text-base uppercase mb-8 border-b-2 border-slate-800 pb-2">
-              IDENTITAS SATUAN PENDIDIKAN
-            </h3>
-            <table className="w-full text-left">
-              <tbody className="divide-y divide-slate-100">
-                <tr><td className="py-2.5 w-52 font-bold text-slate-700">Nama Sekolah</td><td className="w-4">:</td><td className="py-2.5 font-semibold text-slate-900">{sekolah.nama}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">NPSN</td><td>:</td><td className="py-2.5 font-mono">{sekolah.npsn || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">NSS / NIS</td><td>:</td><td className="py-2.5 font-mono">{sekolah.nss || sekolah.nis || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Alamat Sekolah</td><td>:</td><td className="py-2.5">{sekolah.alamat || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Kelurahan / Desa</td><td>:</td><td className="py-2.5">{sekolah.desaKelurahanNama || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Kecamatan</td><td>:</td><td className="py-2.5">{sekolah.kecamatan || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Kabupaten / Kota</td><td>:</td><td className="py-2.5">{sekolah.kabupatenKotaNama || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Provinsi</td><td>:</td><td className="py-2.5">{sekolah.provinsi || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Kode Pos</td><td>:</td><td className="py-2.5 font-mono">{sekolah.kodePos || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Telepon</td><td>:</td><td className="py-2.5">{sekolah.telepon || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Email</td><td>:</td><td className="py-2.5 font-mono">{sekolah.email || '-'}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">Kepala Sekolah</td><td>:</td><td className="py-2.5 font-bold">{sekolah.kepsek}</td></tr>
-                <tr><td className="py-2.5 font-bold text-slate-700">NIP Kepala Sekolah</td><td>:</td><td className="py-2.5 font-mono">{sekolah.nipKepsek || '-'}</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      );
-    }
-
-    if (type === 'biodata') {
       return (
         <div 
-          className="p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed space-y-4"
+          className="p-10 flex flex-col justify-between items-center text-center bg-white shadow-md rounded-sm border border-slate-200"
           style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
         >
-          <div className="text-center mb-6">
-            <h3 className="font-bold text-base uppercase">KETERANGAN TENTANG DIRI PESERTA DIDIK</h3>
-            <p className="text-xs text-slate-500 uppercase tracking-widest">(BIODATA PESERTA DIDIK)</p>
-          </div>
-
-          <table className="w-full text-left">
-            <tbody className="divide-y divide-slate-100">
-              <tr><td className="py-2 w-48 font-bold text-slate-700">1. Nama Lengkap</td><td className="w-4">:</td><td className="py-2 font-bold uppercase text-slate-900">{currentStudent.nama}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">2. Nomor Induk Siswa (NIS)</td><td>:</td><td className="py-2 font-mono">{currentStudent.nis || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">3. NISN</td><td>:</td><td className="py-2 font-mono font-bold text-indigo-950">{currentStudent.nisn || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">4. Tempat, Tanggal Lahir</td><td>:</td><td className="py-2">{currentStudent.tempatLahir || '-'}, {currentStudent.tanggalLahir || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">5. Jenis Kelamin</td><td>:</td><td className="py-2">{currentStudent.jk === 'L' || currentStudent.jk === 'Laki-Laki' ? 'Laki-laki' : 'Perempuan'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">6. Agama</td><td>:</td><td className="py-2">{currentStudent.agama || 'Islam'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">7. Alamat Peserta Didik</td><td>:</td><td className="py-2">{currentStudent.alamat || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">8. Nama Orang Tua</td><td>:</td><td className="py-2"></td></tr>
-              <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">a. Ayah</td><td>:</td><td className="py-1.5 font-bold">{currentStudent.namaAyah || '-'}</td></tr>
-              <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">b. Ibu</td><td>:</td><td className="py-1.5 font-bold">{currentStudent.namaIbu || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">9. Pekerjaan Orang Tua</td><td>:</td><td className="py-2"></td></tr>
-              <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">a. Ayah</td><td>:</td><td className="py-1.5">{currentStudent.pekerjaanAyah || '-'}</td></tr>
-              <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">b. Ibu</td><td>:</td><td className="py-1.5">{currentStudent.pekerjaanIbu || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">10. Alamat Orang Tua</td><td>:</td><td className="py-2">{currentStudent.jalanOrtu || currentStudent.alamat || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">11. Nama Wali (jika ada)</td><td>:</td><td className="py-2">{currentStudent.namaWali || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">12. Pekerjaan Wali</td><td>:</td><td className="py-2">{currentStudent.pekerjaanWali || '-'}</td></tr>
-            </tbody>
-          </table>
-
-          <div className="mt-10 flex justify-between items-end pt-4">
-            <div className="w-28 h-36 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center text-center p-2 text-slate-400">
-              {currentStudent.fotoBase64 ? (
-                <img src={currentStudent.fotoBase64} alt="Foto" className="w-full h-full object-cover rounded" />
+          {/* Logo Tut Wuri Handayani / Sekolah */}
+          <div className="space-y-4 pt-6 flex flex-col items-center">
+            <div className="w-24 h-24 mb-1 flex items-center justify-center overflow-hidden">
+              {(sekolah.logo || sekolah.logoKiri || sekolah.logoKanan) ? (
+                <img 
+                  src={sekolah.logo || sekolah.logoKiri || sekolah.logoKanan} 
+                  alt="Logo" 
+                  style={{
+                    transform: `translate(${sekolah.logoOffsetX || 0}px, ${sekolah.logoOffsetY || 0}px) rotate(${sekolah.logoRotation || 0}deg) scale(${(sekolah.logoScale || 100) / 100})`,
+                    transformOrigin: 'center center'
+                  }}
+                  className="max-h-full max-w-full object-contain transition-transform" 
+                />
               ) : (
-                <span className="text-[11px] font-bold">Pas Foto<br/>3 x 4 cm</span>
+                <img 
+                  src="https://upload.wikimedia.org/wikipedia/commons/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg" 
+                  alt="Logo Tut Wuri Handayani" 
+                  className="w-20 h-20 object-contain"
+                />
               )}
             </div>
 
-            <div className="text-right space-y-1 text-xs">
-              <p>{sekolah.lokasiTitimangsa || sekolah.kabupatenKotaNama || 'Kota'}, {sekolah.tanggalBiodata || sekolah.tanggalRapor || '15 Juli 2024'}</p>
-              <p className="font-bold">Kepala {sekolah.nama}</p>
-              <div className="h-16 flex items-center justify-end">
-                {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                  <img src={sekolah.ttdKepsek} alt="TTD" className="h-14 object-contain" />
-                )}
-              </div>
-              <p className="font-bold underline uppercase text-sm">{sekolah.kepsek}</p>
-              <p className="font-mono text-[11px]">NIP. {sekolah.nipKepsek || '-'}</p>
+            <div className="space-y-1 text-black font-extrabold uppercase">
+              <h1 className="text-xl tracking-wider">RAPOR</h1>
+              <h2 className="text-base tracking-widest">PESERTA DIDIK</h2>
+              <h3 className="text-base tracking-widest">SEKOLAH DASAR</h3>
             </div>
+          </div>
+
+          {/* Kotak Identitas Nama Peserta Didik & NISN/NIS (Lebar Ramping, Font 15pt & Box 13mm) */}
+          <div className="w-full max-w-[320px] sm:max-w-[340px] space-y-4 my-6 mx-auto">
+            <div className="space-y-1 text-center">
+              <p className="text-xs text-black font-normal">Nama Peserta Didik:</p>
+              <div className={`w-full border border-black min-h-[46px] py-2 px-2.5 bg-white flex items-center justify-center text-center font-bold text-black uppercase tracking-wide leading-tight truncate ${namaFontSizeClass}`}>
+                <span className="truncate w-full">{namaUpper}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1 text-center">
+              <p className="text-xs text-black font-normal">NISN/NIS:</p>
+              <div className={`w-full border border-black min-h-[46px] py-2 px-2.5 bg-white flex items-center justify-center text-center font-bold text-black font-mono leading-tight truncate ${nisFontSizeClass}`}>
+                <span className="truncate w-full">{combinedNis}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Resmi Kementerian (13pt, Jarak Margin Bawah Proporsional) */}
+          <div className="space-y-1 text-xs sm:text-[13px] md:text-[13px] uppercase font-extrabold text-black pb-6 sm:pb-8 leading-relaxed">
+            <p>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</p>
+            <p>REPUBLIK INDONESIA</p>
           </div>
         </div>
       );
+    };
+
+    // Halaman 2: Identitas Satuan Pendidikan (Sekolah)
+    const renderIdentitasSekolah = () => {
+      const nssVal = sekolah.nss ? (sekolah.nis ? `${sekolah.nss}/${sekolah.nis}` : `${sekolah.nss}/`) : (sekolah.nis ? `/${sekolah.nis}` : '');
+      const kabJenis = (sekolah.kabupatenKotaJenis || '').toLowerCase();
+      const kabLabel = kabJenis === 'kota' ? 'Kota' : kabJenis === 'kabupaten' ? 'Kabupaten' : 'Kabupaten/Kota';
+      const kabClean = (sekolah.kabupatenKotaNama || '').replace(/^kabupaten\s+/i, '').replace(/^kab\.\s+/i, '').replace(/^kota\s+/i, '').trim() || 'Pandeglang';
+      
+      const desaJenis = (sekolah.desaKelurahanJenis || '').toLowerCase();
+      const desaLabel = desaJenis === 'kelurahan' ? 'Kelurahan' : desaJenis === 'desa' ? 'Desa' : 'Desa/Kelurahan';
+
+      const rows: { label: string; value: string; isBoldVal?: boolean }[] = [
+        { label: 'Nama Sekolah', value: (sekolah.nama || '').toUpperCase(), isBoldVal: true },
+        { label: 'NPSN', value: sekolah.npsn || '' },
+        { label: 'NSS/NIS', value: nssVal },
+        { label: 'Alamat Sekolah', value: sekolah.alamat || '' },
+        { label: 'Kode Pos', value: sekolah.kodePos || '' },
+        { label: desaLabel, value: sekolah.desaKelurahanNama || '' },
+        { label: 'Kecamatan', value: sekolah.kecamatan || '' },
+        { label: kabLabel, value: kabClean },
+        { label: 'Provinsi', value: sekolah.provinsi || '' },
+        { label: 'Website', value: sekolah.website || '' },
+        { label: 'E-Mail', value: sekolah.email || '' },
+      ];
+
+      return (
+        <div 
+          className="p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed flex flex-col justify-start"
+          style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
+        >
+          {/* Header 3 Baris Rata Tengah */}
+          <div className="text-center font-bold text-black uppercase space-y-1 mb-10 pt-4">
+            <h1 className="text-lg tracking-wider">RAPOR</h1>
+            <h2 className="text-base tracking-widest">PESERTA DIDIK</h2>
+            <h3 className="text-base tracking-widest">SEKOLAH DASAR (SD)</h3>
+          </div>
+
+          <div className="w-full max-w-2xl mx-auto space-y-3 px-4">
+            {rows.map((row, idx) => (
+              <div key={idx} className="flex items-center text-black text-sm sm:text-[14px]">
+                <div className="w-44 shrink-0 font-normal">
+                  {row.label}
+                </div>
+                <div className="w-4 text-center shrink-0">:</div>
+                <div className="flex-1 min-w-0 pb-1 border-b border-slate-300">
+                  <span className={`block truncate ${row.isBoldVal ? 'font-bold uppercase' : 'font-normal'}`}>
+                    {row.value || '\u00A0'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
+    // Halaman 3: Identitas Diri Peserta Didik (Biodata Murid)
+    const renderBiodataMurid = () => (
+      <div 
+        className="p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed space-y-4"
+        style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
+      >
+        <div className="text-center mb-6">
+          <h3 className="font-bold text-base uppercase">KETERANGAN TENTANG DIRI PESERTA DIDIK</h3>
+          <p className="text-xs text-slate-500 uppercase tracking-widest">(BIODATA PESERTA DIDIK)</p>
+        </div>
+
+        <table className="w-full text-left">
+          <tbody className="divide-y divide-slate-100">
+            <tr><td className="py-2 w-48 font-bold text-slate-700">1. Nama Lengkap</td><td className="w-4">:</td><td className="py-2 font-bold uppercase text-slate-900">{currentStudent.nama}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">2. Nomor Induk Siswa (NIS)</td><td>:</td><td className="py-2 font-mono">{currentStudent.nis || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">3. NISN</td><td>:</td><td className="py-2 font-mono font-bold text-indigo-950">{currentStudent.nisn || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">4. Tempat, Tanggal Lahir</td><td>:</td><td className="py-2">{currentStudent.tempatLahir || '-'}, {currentStudent.tanggalLahir || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">5. Jenis Kelamin</td><td>:</td><td className="py-2">{currentStudent.jk === 'L' || currentStudent.jk === 'Laki-Laki' ? 'Laki-laki' : 'Perempuan'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">6. Agama</td><td>:</td><td className="py-2">{currentStudent.agama || 'Islam'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">7. Alamat Peserta Didik</td><td>:</td><td className="py-2">{currentStudent.alamat || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">8. Nama Orang Tua</td><td>:</td><td className="py-2"></td></tr>
+            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">a. Ayah</td><td>:</td><td className="py-1.5 font-bold">{currentStudent.namaAyah || '-'}</td></tr>
+            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">b. Ibu</td><td>:</td><td className="py-1.5 font-bold">{currentStudent.namaIbu || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">9. Pekerjaan Orang Tua</td><td>:</td><td className="py-2"></td></tr>
+            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">a. Ayah</td><td>:</td><td className="py-1.5">{currentStudent.pekerjaanAyah || '-'}</td></tr>
+            <tr><td className="py-1.5 pl-6 text-slate-600 font-semibold">b. Ibu</td><td>:</td><td className="py-1.5">{currentStudent.pekerjaanIbu || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">10. Alamat Orang Tua</td><td>:</td><td className="py-2">{currentStudent.jalanOrtu || currentStudent.alamat || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">11. Nama Wali (jika ada)</td><td>:</td><td className="py-2">{currentStudent.namaWali || '-'}</td></tr>
+            <tr><td className="py-2 font-bold text-slate-700">12. Pekerjaan Wali</td><td>:</td><td className="py-2">{currentStudent.pekerjaanWali || '-'}</td></tr>
+          </tbody>
+        </table>
+
+        <div className="mt-10 flex justify-between items-end pt-4">
+          <div className="w-28 h-36 border-2 border-dashed border-slate-300 rounded flex flex-col items-center justify-center text-center p-2 text-slate-400">
+            {currentStudent.fotoBase64 ? (
+              <img src={currentStudent.fotoBase64} alt="Foto" className="w-full h-full object-cover rounded" />
+            ) : (
+              <span className="text-[11px] font-bold">Pas Foto<br/>3 x 4 cm</span>
+            )}
+          </div>
+
+          <div className="text-right space-y-1 text-xs">
+            <p>{formatLokasiTitimangsa(sekolah)}, {formatTanggalIndonesia(sekolah.tanggalBiodata || sekolah.tanggalRapor) || '15 Juli 2024'}</p>
+            <p className="font-bold">Kepala {sekolah.nama}</p>
+            <div className="h-16 flex items-center justify-end">
+              {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
+                <img src={sekolah.ttdKepsek} alt="TTD" className="h-14 object-contain" />
+              )}
+            </div>
+            <p className="font-bold underline uppercase text-sm">{sekolah.kepsek}</p>
+            <p className="font-mono text-[11px]">NIP. {sekolah.nipKepsek || '-'}</p>
+          </div>
+        </div>
+      </div>
+    );
+
+    if (type === 'jilid') {
+      return renderJilidCover();
+    }
+
+    if (type === 'identitas-sekolah') {
+      return renderIdentitasSekolah();
+    }
+
+    if (type === 'identitas-murid' || type === 'biodata') {
+      return renderBiodataMurid();
     }
 
     if (type === 'rapor') {
+      const alamatBaris1 = sekolah.alamat || '-';
+      const alamatBaris2 = formatAlamatBaris2(sekolah);
+
+      let kokurikulerText = '';
+      if (projek && projek.length > 0) {
+        kokurikulerText = projek.map(p => {
+          const customK = customDeskripsiKokurikuler?.[currentStudent.id]?.[p.id];
+          const desc = customK || p.deskripsi || 'Berpartisipasi aktif dalam kegiatan projek kokurikuler dengan menunjukkan penguatan karakter profil pelajar yang positif.';
+          return `${p.tema ? `Projek: ${p.tema}. ` : ''}${desc}`;
+        }).join('\n\n');
+      } else {
+        kokurikulerText = 'Berpartisipasi aktif dalam kegiatan projek kokurikuler penguatan profil pelajar dengan menunjukkan kepedulian, kreativitas, dan kerja sama yang baik.';
+      }
+
+      const lokasiStr = formatLokasiTitimangsa(sekolah);
+      const tanggalStr = formatTanggalIndonesia(sekolah.tanggalRapor);
+      const titimangsaStr = tanggalStr ? `${lokasiStr}, ${tanggalStr}` : `${lokasiStr}, ............................. 202...`;
+
       return (
         <div 
-          className="p-8 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed space-y-5"
+          className="p-8 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed space-y-3.5"
           style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
         >
-          <div className="text-center mb-3">
-            <h2 className="text-base font-bold uppercase tracking-wider">LAPORAN HASIL BELAJAR (RAPOR)</h2>
-            <p className="text-xs font-semibold text-slate-600 uppercase">KURIKULUM MERDEKA</p>
+          <div className="text-center mb-2">
+            <h2 className="text-base font-bold uppercase tracking-wider text-slate-900">LAPORAN HASIL BELAJAR (RAPOR)</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[11px] border-b border-slate-200 pb-3">
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Nama Murid</span><span className="w-4">:</span><span className="font-bold uppercase text-slate-900">{currentStudent.nama}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Kelas / Rombel</span><span className="w-4">:</span><span className="font-semibold">{formatKelasRombel(sekolah)}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">NISN / NIS</span><span className="w-4">:</span><span className="font-mono font-semibold">{currentStudent.nisn || '-'} / {currentStudent.nis || '-'}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Fase</span><span className="w-4">:</span><span className="font-semibold">{sekolah.fase}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Nama Sekolah</span><span className="w-4">:</span><span className="font-semibold">{sekolah.nama}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Semester</span><span className="w-4">:</span><span className="font-semibold">{sekolah.semester || '1 (Ganjil)'}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Alamat Sekolah</span><span className="w-4">:</span><span className="font-semibold">{sekolah.alamat || '-'}</span></div>
-            <div className="flex"><span className="w-32 font-bold text-slate-600">Tahun Ajaran</span><span className="w-4">:</span><span className="font-semibold">{sekolah.tahunAjaran}</span></div>
+          {/* Grid Identitas Rapor (Header 6 Kolom Sejajar - Titik Dua Lurus Sempurna, Blok Kanan Menjorok Kanan Penuh, Spasi Rapat, Shrink to Fit) */}
+          <div className="grid grid-cols-[135px_16px_1fr_95px_16px_110px] gap-y-0.5 text-[11px] pb-1 items-baseline">
+            <span className="font-bold text-slate-900 whitespace-nowrap">Nama Peserta Didik</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className={`font-bold uppercase text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis pr-2 ${
+              (currentStudent.nama || '').length > 32 ? 'text-[9.5px]' : (currentStudent.nama || '').length > 24 ? 'text-[10px]' : 'text-[11px]'
+            }`}>
+              {currentStudent.nama}
+            </span>
+            <span className="font-bold text-slate-900 whitespace-nowrap">Kelas</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className="font-semibold text-slate-900 whitespace-nowrap">{formatKelasRombel(sekolah)}</span>
+
+            <span className="font-bold text-slate-900 whitespace-nowrap">NISN/NIS</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className="font-mono font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis pr-2">{currentStudent.nisn || '-'} / {currentStudent.nis || '-'}</span>
+            <span className="font-bold text-slate-900 whitespace-nowrap">Fase</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className="font-semibold text-slate-900 whitespace-nowrap">{sekolah.fase || 'A'}</span>
+
+            <span className="font-bold text-slate-900 whitespace-nowrap">Nama Sekolah</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className={`font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis pr-2 ${
+              (sekolah.nama || '').length > 30 ? 'text-[9.5px]' : (sekolah.nama || '').length > 22 ? 'text-[10px]' : 'text-[11px]'
+            }`}>
+              {sekolah.nama || '-'}
+            </span>
+            <span className="font-bold text-slate-900 whitespace-nowrap">Semester</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className="font-semibold text-slate-900 whitespace-nowrap">{formatSemesterTerbilang(sekolah.semester)}</span>
+
+            <span className="font-bold text-slate-900 whitespace-nowrap">Alamat Sekolah</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className={`font-semibold text-slate-900 whitespace-nowrap overflow-hidden text-ellipsis pr-2 ${
+              alamatBaris1.length > 35 ? 'text-[9.5px]' : alamatBaris1.length > 25 ? 'text-[10px]' : 'text-[11px]'
+            }`}>
+              {alamatBaris1}
+            </span>
+            <span className="font-bold text-slate-900 whitespace-nowrap">Tahun Ajaran</span>
+            <span className="text-center font-bold text-slate-900">:</span>
+            <span className="font-semibold text-slate-900 whitespace-nowrap">{sekolah.tahunAjaran || '2025/2026'}</span>
+
+            {alamatBaris2 && (
+              <>
+                <span></span>
+                <span></span>
+                <span className={`col-span-4 font-semibold text-slate-800 whitespace-nowrap overflow-hidden text-ellipsis leading-tight pt-0.5 ${
+                  alamatBaris2.length > 70 ? 'text-[9px]' : alamatBaris2.length > 55 ? 'text-[9.5px]' : 'text-[10.5px]'
+                }`}>
+                  {alamatBaris2}
+                </span>
+              </>
+            )}
           </div>
 
-          {/* Tabel Nilai & Capaian */}
+          {/* 1. Tabel Mata Pelajaran */}
           <div>
-            <h4 className="font-bold text-xs uppercase mb-1.5 text-slate-800">A. Nilai dan Capaian Kompetensi</h4>
-            <table className="w-full border-collapse border border-slate-400 text-left text-[11px]">
+            <table className="w-full border-collapse border border-slate-900 text-left text-[11px]">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 text-center font-bold">
-                  <th className="border border-slate-400 px-2 py-1.5 w-8">No</th>
-                  <th className="border border-slate-400 px-3 py-1.5 w-44 text-left">Muatan Pelajaran</th>
-                  {!isTanpaAngka && <th className="border border-slate-400 px-2 py-1.5 w-16">Nilai Akhir</th>}
-                  <th className="border border-slate-400 px-3 py-1.5 text-left">Capaian Kompetensi</th>
+                <tr className="bg-slate-100 text-slate-900 text-center font-bold border-b border-slate-900">
+                  <th className="border border-slate-900 px-2 py-1.5 w-8">No</th>
+                  <th className="border border-slate-900 px-3 py-1.5 w-44 text-left">Mata Pelajaran</th>
+                  {!isTanpaAngka && <th className="border border-slate-900 px-2 py-1.5 w-16 leading-tight">Nilai<br/>Akhir</th>}
+                  <th className="border border-slate-900 px-3 py-1.5 text-center">Capaian Kompetensi</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedMapel.map((m, idx) => {
                   const { finalScore, deskripsiTertinggi, deskripsiTerendah } = getNilaiDanDeskripsi(currentStudent.id, m.id);
+                  const customText = customDeskripsiMapel?.[currentStudent.id]?.[m.id];
+                  const fullDeskripsi = customText && customText.trim() ? customText.trim() : ([deskripsiTertinggi, deskripsiTerendah].filter(Boolean).join(' ') || 'Menunjukkan penguasaan capaian kompetensi dengan baik dalam proses pembelajaran.');
                   return (
-                    <tr key={m.id} className="align-top">
-                      <td className="border border-slate-400 px-2 py-1.5 text-center font-mono">{idx + 1}</td>
-                      <td className="border border-slate-400 px-3 py-1.5 font-bold">{m.nama}</td>
+                    <tr key={m.id} className="border-b border-slate-900">
+                      <td className="border border-slate-900 px-2 py-1.5 text-center font-mono align-middle">{idx + 1}</td>
+                      <td className="border border-slate-900 px-3 py-1.5 font-bold align-middle">{m.nama}</td>
                       {!isTanpaAngka && (
-                        <td className="border border-slate-400 px-2 py-1.5 text-center font-mono font-bold text-slate-900">
+                        <td className="border border-slate-900 px-2 py-1.5 text-center font-mono font-bold text-slate-900 align-middle">
                           {finalScore !== null ? finalScore : '-'}
                         </td>
                       )}
-                      <td className="border border-slate-400 px-3 py-1.5 space-y-1.5 text-slate-700 text-[10.5px] text-justify">
-                        {deskripsiTertinggi && (
-                          <p>{deskripsiTertinggi}</p>
-                        )}
-                        {deskripsiTerendah && (
-                          <p>{deskripsiTerendah}</p>
-                        )}
-                        {!deskripsiTertinggi && !deskripsiTerendah && (
-                          <span className="text-slate-400 italic">Menunjukkan penguasaan capaian kompetensi dengan baik dalam proses pembelajaran.</span>
-                        )}
+                      <td className="border border-slate-900 px-3 py-1.5 text-slate-900 text-[10.5px] text-justify leading-relaxed align-middle">
+                        {fullDeskripsi}
                       </td>
                     </tr>
                   );
@@ -516,96 +647,173 @@ export default function CetakRapor() {
             </table>
           </div>
 
-          {/* Ekstrakurikuler */}
+          {/* 2. Kokurikuler */}
           <div>
-            <h4 className="font-bold text-xs uppercase mb-1.5 text-slate-800">B. Ekstrakurikuler</h4>
-            <table className="w-full border-collapse border border-slate-400 text-left text-[11px]">
+            <table className="w-full border-collapse border border-slate-900 text-left text-[11px]">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 text-center font-bold">
-                  <th className="border border-slate-400 px-2 py-1 w-8">No</th>
-                  <th className="border border-slate-400 px-3 py-1 w-48 text-left">Kegiatan Ekstrakurikuler</th>
-                  <th className="border border-slate-400 px-2 py-1 w-20">Predikat</th>
-                  <th className="border border-slate-400 px-3 py-1 text-left">Keterangan</th>
+                <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
+                  <th className="border border-slate-900 px-3 py-1.5 text-center">Kokurikuler</th>
                 </tr>
               </thead>
               <tbody>
-                {ekstrakurikuler && ekstrakurikuler.length > 0 ? (
-                  ekstrakurikuler.filter(e => e.tampilRapor !== false).map((e, idx) => {
-                    const ne = nilaiEkskul?.[currentStudent.id]?.[e.id];
-                    return (
-                      <tr key={e.id}>
-                        <td className="border border-slate-400 px-2 py-1 text-center font-mono">{idx + 1}</td>
-                        <td className="border border-slate-400 px-3 py-1 font-semibold">{e.nama}</td>
-                        <td className="border border-slate-400 px-2 py-1 text-center font-bold">{ne?.predikat || 'Baik (B)'}</td>
-                        <td className="border border-slate-400 px-3 py-1 text-[10.5px]">{ne?.deskripsi || `Aktif dan berpartisipasi baik dalam kegiatan ${e.nama}.`}</td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="border border-slate-400 px-3 py-1 text-center text-slate-400 italic">- Tidak ada data ekstrakurikuler -</td>
-                  </tr>
-                )}
+                <tr>
+                  <td className="border border-slate-900 px-3 py-2 text-slate-900 text-[10.5px] text-justify leading-relaxed">
+                    {kokurikulerText}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
 
-          {/* Kehadiran & Catatan */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <h4 className="font-bold text-xs uppercase mb-1 text-slate-800">C. Ketidakhadiran</h4>
-              <table className="w-full border-collapse border border-slate-400 text-[11px]">
-                <tbody>
-                  <tr><td className="border border-slate-400 px-3 py-1 w-40 font-semibold">Sakit</td><td className="border border-slate-400 px-3 py-1 text-center font-mono">0 hari</td></tr>
-                  <tr><td className="border border-slate-400 px-3 py-1 font-semibold">Izin</td><td className="border border-slate-400 px-3 py-1 text-center font-mono">0 hari</td></tr>
-                  <tr><td className="border border-slate-400 px-3 py-1 font-semibold">Tanpa Keterangan</td><td className="border border-slate-400 px-3 py-1 text-center font-mono">0 hari</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div>
-              <h4 className="font-bold text-xs uppercase mb-1 text-slate-800">D. Catatan Wali Kelas</h4>
-              <div className="border border-slate-400 p-2.5 h-[76px] text-[11px] leading-relaxed text-slate-700 italic">
-                Pertahankan semangat belajar dan terus kembangkan bakat serta prestasimu!
-              </div>
-            </div>
+          {/* 3. Ekstrakurikuler */}
+          <div>
+            {(() => {
+              const activeEkskuls = ekstrakurikuler ? ekstrakurikuler.filter(e => e.tampilRapor !== false) : [];
+              const isSingle = activeEkskuls.length <= 1;
+              return (
+                <table className="w-full border-collapse border border-slate-900 text-left text-[11px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
+                      {!isSingle && <th className="border border-slate-900 px-2 py-1 w-8 text-center">No</th>}
+                      <th className="border border-slate-900 px-3 py-1 w-48">Ekstrakurikuler</th>
+                      <th className="border border-slate-900 px-3 py-1">Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeEkskuls.length > 0 ? (
+                      activeEkskuls.map((e, idx) => {
+                        const ne = nilaiEkskul?.[currentStudent.id]?.[e.id];
+                        return (
+                          <tr key={e.id} className="border-b border-slate-900">
+                            {!isSingle && (
+                              <td className="border border-slate-900 px-2 py-1 text-center font-mono align-middle">{idx + 1}</td>
+                            )}
+                            <td className="border border-slate-900 px-3 py-1 font-bold align-middle">{e.nama}</td>
+                            <td className="border border-slate-900 px-3 py-1 text-[10.5px] text-justify align-middle">{ne?.deskripsi || `Aktif dan berpartisipasi baik dalam kegiatan ${e.nama}.`}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={isSingle ? 2 : 3} className="border border-slate-900 px-3 py-1 text-center text-slate-400 italic">- Tidak ada data ekstrakurikuler -</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
 
-          {/* Titimangsa & Tanda Tangan */}
-          <div className="pt-3">
-            <div className="text-right text-xs mb-3">
-              {sekolah.lokasiTitimangsa || sekolah.kabupatenKotaNama || 'Tempat'}, {sekolah.tanggalRapor || '20 Desember 2024'}
+          {/* 4. Kehadiran & Catatan Wali Kelas (2 Kotak Terpisah Berdampingan dengan Celah) */}
+          <div className="grid grid-cols-[210px_1fr] gap-3 text-[11px]">
+            {/* Kotak Kiri: Ketidakhadiran */}
+            <div className="border border-slate-900 flex flex-col bg-white">
+              <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
+                Ketidakhadiran
+              </div>
+              <div className="flex-1 flex flex-col divide-y divide-slate-300">
+                <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
+                  <span className="font-bold text-slate-900">Sakit</span>
+                  <span className="font-mono text-slate-900">: 0 hari</span>
+                </div>
+                <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
+                  <span className="font-bold text-slate-900">Izin</span>
+                  <span className="font-mono text-slate-900">: 0 hari</span>
+                </div>
+                <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
+                  <span className="font-bold text-slate-900">Tanpa Keterangan</span>
+                  <span className="font-mono text-slate-900">: 0 hari</span>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-3 text-center text-xs gap-3">
+
+            {/* Kotak Kanan: Catatan Wali Kelas (Reguler, Auto Fit / Shrink to Fit) */}
+            {(() => {
+              const catatanText = 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
+              const len = catatanText.length;
+              const fontSizeClass = len > 260 ? 'text-[8px] leading-snug' : len > 190 ? 'text-[8.5px] leading-tight' : len > 130 ? 'text-[9.5px] leading-normal' : 'text-[10.5px] leading-relaxed';
+              return (
+                <div className="border border-slate-900 flex flex-col bg-white">
+                  <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
+                    Catatan Wali Kelas
+                  </div>
+                  <div className={`p-3 text-slate-900 font-normal text-justify flex-1 flex items-center overflow-hidden ${fontSizeClass}`}>
+                    {catatanText}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* 5. Tanggapan Orang Tua/ Wali Murid */}
+          <div>
+            <table className="w-full border-collapse border border-slate-900 text-[11px]">
+              <thead>
+                <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
+                  <th className="border border-slate-900 px-3 py-1.5 text-center">Tanggapan Orang Tua/ Wali Murid</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-slate-900 p-4 h-24 text-slate-400 italic">
+                    &nbsp;
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* 6. Titimangsa & Tanda Tangan Segitiga Baku (Transparan, Proporsional, In Front of Text) */}
+          <div className="pt-2 space-y-4">
+            <div className="grid grid-cols-2 text-center text-xs">
               <div>
-                <p className="font-semibold">Mengetahui,</p>
-                <p className="font-semibold">Orang Tua / Wali</p>
-                <div className="h-14" />
-                <p className="font-bold border-b border-dotted border-slate-600 inline-block px-6 pb-0.5">
-                  {currentStudent.namaAyah || currentStudent.namaIbu || '........................'}
+                <p className="font-semibold text-slate-900">Orang Tua/ Wali,</p>
+                <div className="h-16" />
+                <p className="font-bold border-b border-dotted border-slate-900 inline-block px-6 pb-0.5 text-slate-900">
+                  {currentStudent.namaAyah || currentStudent.namaIbu || '.......................................'}
                 </p>
               </div>
               <div>
-                <p className="font-semibold">Mengetahui,</p>
-                <p className="font-semibold">Kepala Sekolah</p>
-                <div className="h-14 flex items-center justify-center">
-                  {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                    <img src={sekolah.ttdKepsek} alt="TTD" className="h-12 object-contain" />
-                  )}
-                </div>
-                <p className="font-bold uppercase underline">{sekolah.kepsek}</p>
-                <p className="text-[10px] font-mono">NIP. {sekolah.nipKepsek || '-'}</p>
-              </div>
-              <div>
-                <p className="font-semibold">&nbsp;</p>
-                <p className="font-semibold">Guru / Wali Kelas</p>
-                <div className="h-14 flex items-center justify-center">
+                <p className="text-xs mb-1 font-normal text-slate-900">
+                  {titimangsaStr}
+                </p>
+                <p className="font-semibold text-slate-900">Guru Kelas,</p>
+                <div className="relative h-16 flex items-center justify-center">
                   {sekolah.useDigitalSignature && sekolah.ttdWaliKelas && (
-                    <img src={sekolah.ttdWaliKelas} alt="TTD" className="h-12 object-contain" />
+                    <img 
+                      src={sekolah.ttdWaliKelas} 
+                      alt="TTD Guru Kelas" 
+                      style={{
+                        transform: `translate(${sekolah.ttdWaliKelasOffsetX || 0}px, ${sekolah.ttdWaliKelasOffsetY || 0}px) rotate(${sekolah.ttdWaliKelasRotation || 0}deg) scale(${(sekolah.ttdWaliKelasScale || 100) / 100})`,
+                        transformOrigin: 'center center'
+                      }}
+                      className="absolute max-h-16 max-w-[130px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
+                    />
                   )}
                 </div>
-                <p className="font-bold uppercase underline">{sekolah.waliKelas}</p>
-                <p className="text-[10px] font-mono">NIP. {sekolah.nipWaliKelas || '-'}</p>
+                <p className="font-bold uppercase underline text-slate-900">{sekolah.waliKelas || '.......................................'}</p>
+                <p className="text-[10px] font-mono text-slate-700">NIP. {sekolah.nipWaliKelas || '-'}</p>
               </div>
+            </div>
+
+            <div className="text-center text-xs">
+              <p className="font-semibold text-slate-900">Mengetahui:</p>
+              <p className="font-semibold text-slate-900">Kepala Sekolah,</p>
+              <div className="relative h-16 flex items-center justify-center">
+                {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
+                  <img 
+                    src={sekolah.ttdKepsek} 
+                    alt="TTD Kepala Sekolah" 
+                    style={{
+                      transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
+                      transformOrigin: 'center center'
+                    }}
+                    className="absolute max-h-16 max-w-[140px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
+                  />
+                )}
+              </div>
+              <p className="font-bold uppercase underline text-slate-900">{sekolah.kepsek || '.......................................'}</p>
+              <p className="text-[10px] font-mono text-slate-700">NIP. {sekolah.nipKepsek || '-'}</p>
             </div>
           </div>
 
@@ -665,11 +873,19 @@ export default function CetakRapor() {
 
           <div className="pt-6 flex justify-end">
             <div className="text-center w-64 space-y-1 text-xs">
-              <p>{sekolah.lokasiTitimangsa || sekolah.kabupatenKotaNama || 'Tempat'}, {sekolah.tanggalRapor || '20 Desember 2024'}</p>
+              <p>{formatLokasiTitimangsa(sekolah)}, {formatTanggalIndonesia(sekolah.tanggalRapor) || '20 Desember 2024'}</p>
               <p className="font-bold">Kepala Sekolah</p>
-              <div className="h-14 flex items-center justify-center">
+              <div className="relative h-14 flex items-center justify-center">
                 {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                  <img src={sekolah.ttdKepsek} alt="TTD" className="h-12 object-contain" />
+                  <img 
+                    src={sekolah.ttdKepsek} 
+                    alt="TTD Kepala Sekolah" 
+                    style={{
+                      transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
+                      transformOrigin: 'center center'
+                    }}
+                    className="absolute max-h-16 max-w-[140px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
+                  />
                 )}
               </div>
               <p className="font-bold uppercase underline">{sekolah.kepsek}</p>
@@ -721,11 +937,19 @@ export default function CetakRapor() {
 
           <div className="pt-8 flex justify-end">
             <div className="text-center w-64 space-y-1 text-xs">
-              <p>{sekolah.lokasiTitimangsa || sekolah.kabupatenKotaNama || 'Tempat'}, ............................. 202...</p>
+              <p>{formatLokasiTitimangsa(sekolah)}, ............................. 202...</p>
               <p className="font-bold">Kepala {sekolah.nama}</p>
-              <div className="h-14 flex items-center justify-center">
+              <div className="relative h-14 flex items-center justify-center">
                 {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                  <img src={sekolah.ttdKepsek} alt="TTD" className="h-12 object-contain" />
+                  <img 
+                    src={sekolah.ttdKepsek} 
+                    alt="TTD Kepala Sekolah" 
+                    style={{
+                      transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
+                      transformOrigin: 'center center'
+                    }}
+                    className="absolute max-h-16 max-w-[140px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
+                  />
                 )}
               </div>
               <p className="font-bold uppercase underline">{sekolah.kepsek}</p>
@@ -741,24 +965,32 @@ export default function CetakRapor() {
         <div className="space-y-12">
           {selectedBundleDocs.includes('jilid') && (
             <div className="relative">
-              <span className="inline-block mb-2 bg-indigo-600 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
-                1. Jilid & Identitas Satuan Pendidikan
+              <span className="inline-block mb-2 bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
+                1. Jilid (Sampul Depan)
               </span>
-              {renderVisualPreview('jilid', currentStudent)}
+              {renderJilidCover()}
             </div>
           )}
-          {selectedBundleDocs.includes('biodata') && (
+          {selectedBundleDocs.includes('identitas-sekolah') && (
+            <div className="relative">
+              <span className="inline-block mb-2 bg-indigo-600 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
+                2. Identitas Satuan Pendidikan (Sekolah)
+              </span>
+              {renderIdentitasSekolah()}
+            </div>
+          )}
+          {(selectedBundleDocs.includes('identitas-murid') || selectedBundleDocs.includes('biodata')) && (
             <div className="relative">
               <span className="inline-block mb-2 bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
-                2. Keterangan Tentang Diri Peserta Didik (Biodata)
+                3. Keterangan Tentang Diri Peserta Didik (Biodata)
               </span>
-              {renderVisualPreview('biodata', currentStudent)}
+              {renderBiodataMurid()}
             </div>
           )}
           {selectedBundleDocs.includes('rapor') && (
             <div className="relative">
               <span className="inline-block mb-2 bg-indigo-700 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
-                3. Laporan Hasil Belajar (Rapor)
+                4. Laporan Hasil Belajar (Rapor)
               </span>
               {renderVisualPreview('rapor', currentStudent)}
             </div>
@@ -766,7 +998,7 @@ export default function CetakRapor() {
           {selectedBundleDocs.includes('buku-induk') && (
             <div className="relative">
               <span className="inline-block mb-2 bg-amber-600 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
-                4. Lampiran Buku Induk Siswa
+                5. Lampiran Buku Induk Siswa
               </span>
               {renderVisualPreview('buku-induk', currentStudent)}
             </div>
@@ -774,7 +1006,7 @@ export default function CetakRapor() {
           {selectedBundleDocs.includes('pindah') && (
             <div className="relative">
               <span className="inline-block mb-2 bg-rose-600 text-white font-bold text-[10px] px-2.5 py-1 rounded uppercase tracking-wider">
-                5. Surat Keterangan Pindah Sekolah
+                6. Surat Keterangan Pindah Sekolah
               </span>
               {renderVisualPreview('pindah', currentStudent)}
             </div>
@@ -922,7 +1154,7 @@ export default function CetakRapor() {
               <button
                 onClick={() => setShowBundleConfigModal({ isBulk: true })}
                 disabled={isGeneratingPdf}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-md disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-md disabled:opacity-50 text-xs"
               >
                 <Package className="w-3.5 h-3.5" />
                 <span>Unduh Bundel ({selectedIds.length})</span>
@@ -931,48 +1163,56 @@ export default function CetakRapor() {
 
             {/* BULK PER KOLOM */}
             <button
-              onClick={() => handleBulkColumnDownload('rapor')}
-              disabled={isGeneratingPdf}
-              className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Rapor
-            </button>
-            <button
               onClick={() => handleBulkColumnDownload('jilid')}
               disabled={isGeneratingPdf}
-              className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-50"
+              className="px-2.5 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-600 text-white font-bold flex items-center gap-1 transition cursor-pointer shadow-sm disabled:opacity-50 text-xs"
             >
-              <Book className="w-3.5 h-3.5" />
-              Jilid
+              <Book className="w-3 h-3" />
+              <span>Jilid</span>
             </button>
             <button
-              onClick={() => handleBulkColumnDownload('biodata')}
+              onClick={() => handleBulkColumnDownload('identitas-sekolah')}
               disabled={isGeneratingPdf}
-              className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-50"
+              className="px-2.5 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1 transition cursor-pointer shadow-sm disabled:opacity-50 text-xs"
             >
-              <Contact className="w-3.5 h-3.5" />
-              Biodata
+              <Building2 className="w-3 h-3" />
+              <span>Id. Sekolah</span>
+            </button>
+            <button
+              onClick={() => handleBulkColumnDownload('identitas-murid')}
+              disabled={isGeneratingPdf}
+              className="px-2.5 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-600 text-white font-bold flex items-center gap-1 transition cursor-pointer shadow-sm disabled:opacity-50 text-xs"
+            >
+              <Contact className="w-3 h-3" />
+              <span>Id. Murid</span>
+            </button>
+            <button
+              onClick={() => handleBulkColumnDownload('rapor')}
+              disabled={isGeneratingPdf}
+              className="px-2.5 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1 transition cursor-pointer shadow-sm disabled:opacity-50 text-xs"
+            >
+              <Download className="w-3 h-3" />
+              <span>Rapor</span>
             </button>
             <button
               onClick={() => handleBulkColumnDownload('buku-induk')}
               disabled={isGeneratingPdf}
-              className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-50"
+              className="px-2.5 py-1.5 rounded-lg bg-amber-700 hover:bg-amber-600 text-white font-bold flex items-center gap-1 transition cursor-pointer shadow-sm disabled:opacity-50 text-xs"
             >
-              <Archive className="w-3.5 h-3.5" />
-              Buku Induk
+              <Archive className="w-3 h-3" />
+              <span>Buku Induk</span>
             </button>
             <button
               onClick={() => handleBulkColumnDownload('pindah')}
               disabled={isGeneratingPdf}
-              className="px-3 py-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-50"
+              className="px-2.5 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-bold flex items-center gap-1 transition cursor-pointer shadow-sm disabled:opacity-50 text-xs"
             >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              Pindah
+              <ArrowRightLeft className="w-3 h-3" />
+              <span>Pindah</span>
             </button>
             <button
               onClick={() => setSelectedIds([])}
-              className="px-3 py-1.5 rounded-lg border border-slate-600 hover:bg-slate-800 text-slate-300 font-semibold transition cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg border border-slate-600 hover:bg-slate-800 text-slate-300 font-semibold transition cursor-pointer text-xs"
             >
               Batal
             </button>
@@ -987,7 +1227,7 @@ export default function CetakRapor() {
             <thead className="bg-[#F8FAFC] text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 shadow-xs">
               <tr>
                 {/* Kolom Centang Bulk Vertikal */}
-                <th className="px-3 py-3.5 w-10 text-center text-[10px] uppercase tracking-wider">
+                <th className="px-2.5 py-3 w-8 text-center text-[10px] uppercase tracking-wider">
                   <Tooltip content={isAllSelected ? "Batalkan pilihan semua" : "Pilih semua murid (Bulk Vertikal)"} position="bottom">
                     <input
                       type="checkbox"
@@ -1000,17 +1240,32 @@ export default function CetakRapor() {
                     />
                   </Tooltip>
                 </th>
-                <th className="px-3 py-3.5 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
-                <th className="px-4 py-3.5 min-w-[200px] text-left text-[10px] uppercase tracking-wider">Nama</th>
-                <th className="px-4 py-3.5 w-32 text-left text-[10px] uppercase tracking-wider">NISN</th>
+                <th className="px-2 py-3 w-9 text-center text-[10px] uppercase tracking-wider">No</th>
+                <th className="px-3 py-3 min-w-[160px] text-left text-[10px] uppercase tracking-wider">Nama Peserta Didik</th>
+                <th className="px-3 py-3 w-24 text-left text-[10px] uppercase tracking-wider">NISN</th>
                 
-                {/* Jilid & Identitas + Tombol Bulk Header */}
-                <th className="px-3 py-3.5 text-center text-[10px] uppercase tracking-wider">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span>Jilid & Identitas</span>
-                    <Tooltip content="Unduh massal PDF Jilid untuk seluruh murid di tabel" position="bottom">
+                {/* Jilid (Sampul) + Tombol Bulk Header */}
+                <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Jilid</span>
+                    <Tooltip content="Unduh massal PDF Jilid (Sampul Depan) untuk seluruh murid" position="bottom">
                       <button
                         onClick={() => handleBulkColumnDownload('jilid')}
+                        className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+                      >
+                        <DownloadCloud className="w-3.5 h-3.5" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </th>
+
+                {/* Identitas Satuan Pendidikan (Sekolah) + Tombol Bulk Header */}
+                <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Id. Sekolah</span>
+                    <Tooltip content="Unduh massal PDF Identitas Satuan Pendidikan untuk seluruh murid" position="bottom">
+                      <button
+                        onClick={() => handleBulkColumnDownload('identitas-sekolah')}
                         className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
                       >
                         <DownloadCloud className="w-3.5 h-3.5" />
@@ -1019,14 +1274,14 @@ export default function CetakRapor() {
                   </div>
                 </th>
 
-                {/* Biodata Murid + Tombol Bulk Header */}
-                <th className="px-3 py-3.5 text-center text-[10px] uppercase tracking-wider">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span>Biodata Murid</span>
-                    <Tooltip content="Unduh massal PDF Biodata untuk seluruh murid di tabel" position="bottom">
+                {/* Identitas Murid (Biodata) + Tombol Bulk Header */}
+                <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Id. Murid</span>
+                    <Tooltip content="Unduh massal PDF Identitas Murid (Biodata) untuk seluruh murid" position="bottom">
                       <button
-                        onClick={() => handleBulkColumnDownload('biodata')}
-                        className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
+                        onClick={() => handleBulkColumnDownload('identitas-murid')}
+                        className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition cursor-pointer"
                       >
                         <DownloadCloud className="w-3.5 h-3.5" />
                       </button>
@@ -1035,8 +1290,8 @@ export default function CetakRapor() {
                 </th>
 
                 {/* Rapor + Tombol Bulk Header */}
-                <th className="px-3 py-3.5 text-center text-[10px] uppercase tracking-wider">
-                  <div className="flex items-center justify-center gap-1.5">
+                <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-1">
                     <span>Rapor</span>
                     <Tooltip content="Unduh massal PDF Rapor untuk seluruh murid di tabel" position="bottom">
                       <button
@@ -1050,9 +1305,9 @@ export default function CetakRapor() {
                 </th>
 
                 {/* Lampiran Buku Induk + Tombol Bulk Header */}
-                <th className="px-3 py-3.5 text-center text-[10px] uppercase tracking-wider">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span>Lampiran Buku Induk</span>
+                <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Buku Induk</span>
                     <Tooltip content="Unduh massal PDF Buku Induk untuk seluruh murid di tabel" position="bottom">
                       <button
                         onClick={() => handleBulkColumnDownload('buku-induk')}
@@ -1065,9 +1320,9 @@ export default function CetakRapor() {
                 </th>
 
                 {/* Keterangan Pindah + Tombol Bulk Header */}
-                <th className="px-3 py-3.5 text-center text-[10px] uppercase tracking-wider">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <span>Keterangan Pindah</span>
+                <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Pindah</span>
                     <Tooltip content="Unduh massal PDF Surat Pindah untuk seluruh murid di tabel" position="bottom">
                       <button
                         onClick={() => handleBulkColumnDownload('pindah')}
@@ -1080,7 +1335,7 @@ export default function CetakRapor() {
                 </th>
 
                 {/* BULK HORIZONTAL HEADER: BUNDEL DOKUMEN */}
-                <th className="px-3 py-3.5 text-center text-[10px] uppercase tracking-wider bg-indigo-50/70 text-indigo-900 border-l border-indigo-100">
+                <th className="px-3 py-3 text-center text-[10px] uppercase tracking-wider bg-indigo-50/70 text-indigo-900 border-l border-indigo-100">
                   <div className="flex items-center justify-center gap-1.5">
                     <Package className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Bundel Dokumen</span>
@@ -1099,7 +1354,7 @@ export default function CetakRapor() {
             <tbody className="divide-y divide-slate-100">
               {filteredSiswa.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={11} className="px-6 py-12 text-center text-slate-400">
                     <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2 opacity-60" />
                     <p className="font-semibold text-slate-600 text-xs">Tidak ada data murid yang ditemukan.</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">Pastikan data murid telah ditambahkan pada menu Perencanaan.</p>
@@ -1114,7 +1369,7 @@ export default function CetakRapor() {
                     className={`hover:bg-slate-50/80 transition-colors group ${isSelected ? 'bg-indigo-50/40' : ''}`}
                   >
                     {/* Centang Bulk Vertikal */}
-                    <td className="px-3 py-2.5 text-center">
+                    <td className="px-2.5 py-2 text-center">
                       <input 
                         type="checkbox" 
                         checked={isSelected}
@@ -1124,14 +1379,14 @@ export default function CetakRapor() {
                     </td>
 
                     {/* No */}
-                    <td className="px-3 py-2.5 text-center font-mono text-[11px] text-slate-400">{i + 1}</td>
+                    <td className="px-2 py-2 text-center font-mono text-[11px] text-slate-400">{i + 1}</td>
 
                     {/* Nama */}
-                    <td className="px-4 py-2.5 font-bold text-slate-800">
-                      <div className="flex items-center gap-2">
-                        <span>{student.nama}</span>
+                    <td className="px-3 py-2 font-bold text-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate max-w-[160px] sm:max-w-none">{student.nama}</span>
                         {student.jk && (
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${student.jk === 'L' || student.jk === 'Laki-Laki' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
+                          <span className={`text-[9px] px-1 py-0.2 rounded font-bold shrink-0 ${student.jk === 'L' || student.jk === 'Laki-Laki' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'}`}>
                             {student.jk === 'L' || student.jk === 'Laki-Laki' ? 'L' : 'P'}
                           </span>
                         )}
@@ -1139,25 +1394,25 @@ export default function CetakRapor() {
                     </td>
 
                     {/* NISN */}
-                    <td className="px-4 py-2.5 font-mono text-slate-600 font-semibold">{student.nisn || '-'}</td>
+                    <td className="px-3 py-2 font-mono text-slate-600 font-semibold">{student.nisn || '-'}</td>
 
-                    {/* Jilid & Identitas */}
-                    <td className="px-3 py-2.5 text-center">
+                    {/* Jilid (Sampul Depan) */}
+                    <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Tooltip content={`Lihat Pratinjau Jilid & Identitas - ${student.nama}`} position="top">
+                        <Tooltip content={`Lihat Pratinjau Jilid (Sampul) - ${student.nama}`} position="top">
                           <button
                             type="button"
                             onClick={() => setPreviewDoc({ type: 'jilid', siswa: student })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip content={`Unduh PDF Jilid & Identitas - ${student.nama}`} position="top">
+                        <Tooltip content={`Unduh PDF Jilid (Sampul) - ${student.nama}`} position="top">
                           <button
                             type="button"
                             onClick={() => handleDownloadSinglePdf('jilid', student)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -1165,23 +1420,47 @@ export default function CetakRapor() {
                       </div>
                     </td>
 
-                    {/* Biodata Murid */}
-                    <td className="px-3 py-2.5 text-center">
+                    {/* Identitas Satuan Pendidikan (Sekolah) */}
+                    <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Tooltip content={`Lihat Pratinjau Biodata Murid - ${student.nama}`} position="top">
+                        <Tooltip content={`Lihat Pratinjau Identitas Satuan Pendidikan - ${student.nama}`} position="top">
                           <button
                             type="button"
-                            onClick={() => setPreviewDoc({ type: 'biodata', siswa: student })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            onClick={() => setPreviewDoc({ type: 'identitas-sekolah', siswa: student })}
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip content={`Unduh PDF Biodata Murid - ${student.nama}`} position="top">
+                        <Tooltip content={`Unduh PDF Identitas Satuan Pendidikan - ${student.nama}`} position="top">
                           <button
                             type="button"
-                            onClick={() => handleDownloadSinglePdf('biodata', student)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            onClick={() => handleDownloadSinglePdf('identitas-sekolah', student)}
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </td>
+
+                    {/* Identitas Murid (Biodata) */}
+                    <td className="px-2 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Tooltip content={`Lihat Pratinjau Identitas Murid (Biodata) - ${student.nama}`} position="top">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewDoc({ type: 'identitas-murid', siswa: student })}
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content={`Unduh PDF Identitas Murid (Biodata) - ${student.nama}`} position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSinglePdf('identitas-murid', student)}
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -1190,13 +1469,13 @@ export default function CetakRapor() {
                     </td>
 
                     {/* Rapor */}
-                    <td className="px-3 py-2.5 text-center">
+                    <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Tooltip content={`Lihat Pratinjau Rapor - ${student.nama}`} position="top">
                           <button
                             type="button"
                             onClick={() => setPreviewDoc({ type: 'rapor', siswa: student })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs font-bold"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs font-bold"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1205,7 +1484,7 @@ export default function CetakRapor() {
                           <button
                             type="button"
                             onClick={() => handleDownloadSinglePdf('rapor', student)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -1214,13 +1493,13 @@ export default function CetakRapor() {
                     </td>
 
                     {/* Lampiran Buku Induk */}
-                    <td className="px-3 py-2.5 text-center">
+                    <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Tooltip content={`Lihat Pratinjau Lampiran Buku Induk - ${student.nama}`} position="top">
                           <button
                             type="button"
                             onClick={() => setPreviewDoc({ type: 'buku-induk', siswa: student })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1229,7 +1508,7 @@ export default function CetakRapor() {
                           <button
                             type="button"
                             onClick={() => handleDownloadSinglePdf('buku-induk', student)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -1238,13 +1517,13 @@ export default function CetakRapor() {
                     </td>
 
                     {/* Keterangan Pindah */}
-                    <td className="px-3 py-2.5 text-center">
+                    <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Tooltip content={`Lihat Pratinjau Keterangan Pindah - ${student.nama}`} position="top">
                           <button
                             type="button"
                             onClick={() => setPreviewDoc({ type: 'pindah', siswa: student })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1253,7 +1532,7 @@ export default function CetakRapor() {
                           <button
                             type="button"
                             onClick={() => handleDownloadSinglePdf('pindah', student)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -1262,13 +1541,13 @@ export default function CetakRapor() {
                     </td>
 
                     {/* BULK HORIZONTAL ACTION: BUNDEL DOKUMEN PER MURID */}
-                    <td className="px-3 py-2.5 text-center bg-indigo-50/30 border-l border-indigo-100">
+                    <td className="px-3 py-2 text-center bg-indigo-50/30 border-l border-indigo-100">
                       <div className="flex items-center justify-center gap-1.5">
                         <Tooltip content={`Lihat Pratinjau Bundel Dokumen - ${student.nama}`} position="top">
                           <button
                             type="button"
                             onClick={() => setPreviewDoc({ type: 'semua', siswa: student })}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 border border-indigo-300 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs font-bold"
+                            className="w-6.5 h-6.5 flex items-center justify-center rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 border border-indigo-300 transition duration-150 cursor-pointer hover:scale-105 active:scale-95 shadow-xs font-bold"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1293,12 +1572,18 @@ export default function CetakRapor() {
         </div>
 
         {/* Footer Statistik */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-semibold text-slate-700">Total Murid: <b>{filteredSiswa.length}</b></span>
             <span className="text-slate-300">|</span>
-            <span className="font-semibold text-slate-600">Ukuran Kertas Aktif: <b>{paperSize.toUpperCase()}</b></span>
+            <span className="font-semibold text-slate-600">Ukuran Kertas: <b>{paperSize.toUpperCase()}</b></span>
+            <span className="text-slate-300">|</span>
+            <span className="font-semibold text-slate-600">Font: <b>{pdfFont === 'arial' ? 'Arial (11pt)' : 'Times New Roman (12pt)'}</b></span>
           </div>
+
+          <p className="text-[11px] text-slate-400">
+            Gunakan tombol <DownloadCloud className="w-3 h-3 inline text-slate-500" /> pada header kolom untuk unduh per format dokumen.
+          </p>
         </div>
       </div>
 
@@ -1336,18 +1621,19 @@ export default function CetakRapor() {
 
               <div className="space-y-2">
                 {[
-                  { id: 'jilid' as BundleDocType, label: 'Jilid & Identitas Satuan Pendidikan', desc: 'Cover luar & identitas sekolah' },
-                  { id: 'biodata' as BundleDocType, label: 'Biodata Peserta Didik', desc: 'Identitas diri, orang tua, & pas foto' },
-                  { id: 'rapor' as BundleDocType, label: 'Laporan Hasil Belajar (Rapor)', desc: 'Nilai, capaian kompetensi, ekskul & presensi' },
-                  { id: 'buku-induk' as BundleDocType, label: 'Lampiran Buku Induk', desc: 'Rekapitulasi nilai & catatan kemajuan belajar' },
-                  { id: 'pindah' as BundleDocType, label: 'Keterangan Pindah Sekolah', desc: 'Format surat mutasi/pindah sekolah' },
+                  { id: 'jilid' as BundleDocType, label: '1. Jilid (Sampul Depan)', desc: 'Cover luar halaman judul laporan rapor' },
+                  { id: 'identitas-sekolah' as BundleDocType, label: '2. Identitas Satuan Pendidikan', desc: 'Identitas resmi sekolah / profil satuan pendidikan' },
+                  { id: 'identitas-murid' as BundleDocType, label: '3. Identitas Peserta Didik (Biodata)', desc: 'Identitas diri, orang tua/wali, & pas foto' },
+                  { id: 'rapor' as BundleDocType, label: '4. Laporan Hasil Belajar (Rapor)', desc: 'Nilai, capaian kompetensi, ekskul & presensi' },
+                  { id: 'buku-induk' as BundleDocType, label: '5. Lampiran Buku Induk', desc: 'Rekapitulasi nilai & catatan kemajuan belajar' },
+                  { id: 'pindah' as BundleDocType, label: '6. Keterangan Pindah Sekolah', desc: 'Format surat mutasi/pindah sekolah' },
                 ].map(item => {
-                  const isChecked = selectedBundleDocs.includes(item.id);
+                  const isChecked = selectedBundleDocs.includes(item.id) || (item.id === 'identitas-murid' && selectedBundleDocs.includes('biodata' as any));
                   return (
                     <label 
                       key={item.id}
                       onClick={() => toggleBundleDoc(item.id)}
-                      className={`flex items-start gap-3 p-3 rounded-xl border transition cursor-pointer ${
+                      className={`flex items-start gap-3 p-2.5 rounded-xl border transition cursor-pointer ${
                         isChecked 
                           ? 'bg-indigo-50/60 border-indigo-200 text-slate-800' 
                           : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
