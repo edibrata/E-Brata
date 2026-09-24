@@ -12,6 +12,7 @@ import Leger from '@/views/Leger';
 import DataProjekView from '@/views/DataProjek';
 import NilaiProjek from '@/views/NilaiProjek';
 import CetakRapor from '@/views/CetakRapor';
+import SesuaikanCapaian from '@/views/SesuaikanCapaian';
 import KotakSampah from '@/views/KotakSampah';
 import Placeholder from '@/views/Placeholder';
 import Petunjuk from '@/views/Petunjuk';
@@ -56,17 +57,13 @@ function Dashboard() {
           {activeView === 'data-pendukung' && <Placeholder title="Data Pendukung" />}
 
           {activeView === 'input-nilai' && <InputNilai />}
-          {activeView === 'sesuaikan-capaian' && <Placeholder title="Lihat & Sesuaikan Capaian" />}
+          {activeView === 'sesuaikan-capaian' && <SesuaikanCapaian />}
           {activeView === 'nilai-ekskul' && <Placeholder title="Nilai Ekstrakurikuler" />}
           {activeView === 'data-projek' && <DataProjekView />}
           {activeView === 'nilai-projek' && <NilaiProjek />}
           {activeView === 'leger' && <Leger />}
 
-          {activeView === 'jilid-identitas' && <Placeholder title="Jilid & Identitas" />}
-          {activeView === 'biodata-murid' && <Placeholder title="Biodata Murid" />}
-          {activeView === 'cetak-rapor' && <CetakRapor />}
-          {activeView === 'lampiran-buku-induk' && <Placeholder title="Lampiran Buku Induk" />}
-          {activeView === 'keterangan-pindah' && <Placeholder title="Keterangan Pindah" />}
+          {(activeView === 'cetak-rapor' || activeView === 'output-cetak' || activeView === 'jilid-identitas' || activeView === 'biodata-murid' || activeView === 'lampiran-buku-induk' || activeView === 'keterangan-pindah') && <CetakRapor />}
 
           {activeView === 'dashboard-analitik' && <Placeholder title="Dashboard Analitik" />}
           {activeView === 'ai-assistant' && <Placeholder title="AI Assistant" />}

@@ -12,25 +12,25 @@ export default function DataEkstrakurikuler() {
         <div className="flex border-b border-slate-200 bg-slate-50/50">
           <button
             onClick={() => setActiveTab('manajemen')}
-            className={`whitespace-nowrap flex items-center justify-center gap-2 px-6 py-4 text-xs font-bold transition-all border-b-2 ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-4 text-xs font-bold transition-all border-b-2 ${
               activeTab === 'manajemen'
                 ? 'border-indigo-600 text-indigo-700 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}
           >
             <Medal className="w-4 h-4" />
-            MANAJEMEN EKSTRAKURIKULER
+            EKSTRAKURIKULER
           </button>
           <button
             onClick={() => setActiveTab('tp')}
-            className={`whitespace-nowrap flex items-center justify-center gap-2 px-6 py-4 text-xs font-bold transition-all border-b-2 ${
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-4 text-xs font-bold transition-all border-b-2 ${
               activeTab === 'tp'
                 ? 'border-indigo-600 text-indigo-700 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             }`}
           >
             <Target className="w-4 h-4" />
-            TUJUAN PEMBELAJARAN (TP) EKSKUL
+            TUJUAN PEMBELAJARAN (TP)
           </button>
         </div>
 

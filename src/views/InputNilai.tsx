@@ -8,6 +8,7 @@ import {
   Upload, 
   Info, 
   AlertCircle, 
+  AlertTriangle,
   CheckCircle2, 
   RotateCcw,
   Sliders,
@@ -377,7 +378,7 @@ export default function InputNilai() {
     displayedSiswa.forEach(s => {
       const sNilai = nilai[s.id]?.[selectedMapel];
       const validTpsForStudent = displayedTps.filter(tp => !isPabp || doesStudentMatchTp(s.agama, tp));
-      const res = hitungNilaiMapel(selectedMapelData, validTpsForStudent, sNilai);
+      const res = hitungNilaiMapel(selectedMapelData, validTpsForStudent, sNilai, s.id);
 
       if (res.naSlm !== null) {
         totalNaSlm += res.naSlm;
@@ -682,7 +683,7 @@ export default function InputNilai() {
                       const sAgama = getStudentAgama(s);
                       const sNilai = nilai[s.id]?.[selectedMapel];
                       const validTpsForStudent = displayedTps.filter(tp => !isPabp || doesStudentMatchTp(sAgama, tp));
-                      const res = hitungNilaiMapel(selectedMapelData, validTpsForStudent, sNilai);
+                      const res = hitungNilaiMapel(selectedMapelData, validTpsForStudent, sNilai, s.id);
 
                       return (
                         <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -768,31 +769,50 @@ export default function InputNilai() {
 
                           {/* Sumatif Akhir Semester (SAS) jika pakai */}
                           {pakaiSas && (
-                            <td className="border border-slate-200 p-0 text-center relative bg-amber-50/30 focus-within:z-10 focus-within:ring-2 focus-within:ring-indigo-500">
-                              <input 
-                                id={`score-input-${studentIndex}-sas`}
-                                type="number" 
-                                min="0" 
-                                max="100"
-                                value={getScore(s.id, 'sumatifAkhir')} 
-                                onChange={(e) => handleScoreChange(s.id, 'sumatifAkhir', undefined, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(e, studentIndex, 'sas')}
-                                placeholder="-"
-                                className="w-full h-full py-2.5 px-1 outline-none text-center bg-transparent focus:bg-white text-slate-800 font-bold text-xs" 
-                              />
+                            <td className={`border border-slate-200 p-0 text-center relative focus-within:z-10 focus-within:ring-2 focus-within:ring-indigo-500 ${
+                              res.isSasMissing && res.naSlm !== null ? 'bg-amber-50/70' : 'bg-amber-50/30'
+                            }`}>
+                              <div className="relative w-full h-full flex items-center justify-center">
+                                <input 
+                                  id={`score-input-${studentIndex}-sas`}
+                                  type="number" 
+                                  min="0" 
+                                  max="100" 
+                                  value={getScore(s.id, 'sumatifAkhir')} 
+                                  onChange={(e) => handleScoreChange(s.id, 'sumatifAkhir', undefined, e.target.value)}
+                                  onKeyDown={(e) => handleKeyDown(e, studentIndex, 'sas')}
+                                  placeholder="-"
+                                  className="w-full h-full py-2.5 px-1 outline-none text-center bg-transparent focus:bg-white text-slate-800 font-bold text-xs" 
+                                />
+                                {res.isSasMissing && res.naSlm !== null && (
+                                  <div className="absolute right-1 top-1 pointer-events-none">
+                                    <Tooltip content="Nilai SAS belum diisi — terbebani bobot 25% (dihitung 0)" position="top">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
+                                    </Tooltip>
+                                  </div>
+                                )}
+                              </div>
                             </td>
                           )}
 
                           {/* Nilai Akhir Rapor (Tingkat 2 Komposit) */}
                           <td className="border border-slate-200 p-2 text-center bg-indigo-50/40 font-black text-xs">
                             {res.finalScore !== null ? (
-                              <span className={`px-2 py-1 rounded-md ${
-                                res.finalScore >= kktp 
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
-                                  : 'bg-rose-100 text-rose-800 border border-rose-300'
-                              }`}>
-                                {res.finalScore}
-                              </span>
+                              <Tooltip 
+                                content={res.isSasMissing ? `SAS Belum Diisi: (${rasioSlmSas.slm}% × ${res.naSlm}) + (${rasioSlmSas.sas}% × 0) = ${res.finalScore}` : `Formula: (${rasioSlmSas.slm}% × ${res.naSlm}) + (${rasioSlmSas.sas}% × ${getScore(s.id, 'sumatifAkhir') || 0}) = ${res.finalScore}`} 
+                                position="top"
+                              >
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md cursor-help ${
+                                  res.finalScore >= kktp 
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                                    : 'bg-rose-100 text-rose-800 border border-rose-300'
+                                }`}>
+                                  <span>{res.finalScore}</span>
+                                  {res.isSasMissing && (
+                                    <AlertTriangle size={11} className="text-amber-600 shrink-0" />
+                                  )}
+                                </span>
+                              </Tooltip>
                             ) : (
                               <span className="text-slate-300 font-mono text-xs">-</span>
                             )}
@@ -801,7 +821,14 @@ export default function InputNilai() {
                           {/* Status Ketercapaian */}
                           <td className="border border-slate-200 p-2 text-center text-[11px] font-medium">
                             {res.finalScore !== null ? (
-                              res.tpsBelumTercapaiCount === 0 ? (
+                              res.isSasMissing && res.naSlm !== null ? (
+                                <Tooltip content={`SAS belum diisi sehingga nilai terbebani bobot 25% (dihitung 0). ${res.tpsBelumTercapaiCount > 0 ? `${res.tpsBelumTercapaiCount} TP Remedial (*)` : 'Semua TP SLM Tuntas'}`} position="top">
+                                  <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-300 font-semibold cursor-help text-[10px]">
+                                    <AlertTriangle size={11} className="text-amber-600" />
+                                    <span>SAS Kosong (0)</span>
+                                  </span>
+                                </Tooltip>
+                              ) : res.tpsBelumTercapaiCount === 0 ? (
                                 <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-semibold">
                                   <CheckCircle2 size={12} />
                                   <span>Tuntas Semua</span>
@@ -914,7 +941,7 @@ export default function InputNilai() {
                   </div>
                   <div className="hidden sm:block text-slate-300">|</div>
                   <div className="text-[11px] text-slate-500">
-                    Formula Rapor: {pakaiSas ? `(${rasioSlmSas.slm}% × NA-SLM) + (${rasioSlmSas.sas}% × SAS)` : '100% NA-SLM'}
+                    Formula Rapor: {pakaiSas ? `(${rasioSlmSas.slm}% × NA-SLM) + (${rasioSlmSas.sas}% × SAS)` : '100% NA-SLM'} {pakaiSas && <span className="text-amber-600 font-medium">(*SAS kosong terhitung beban 0)</span>}
                   </div>
                   <div className="hidden sm:block text-slate-300">|</div>
                   <div className="text-[11px] text-slate-500">

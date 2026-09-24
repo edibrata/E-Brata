@@ -111,6 +111,31 @@ export default function PanduanAsesmen() {
         </div>
       </section>
 
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+            <span className="text-purple-600 font-bold text-lg">4</span>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800">Kaidah Penulisan Deskripsi Rapor (Hlm. 62–65)</h2>
+        </div>
+        <div className="pl-13 ml-12 space-y-4 text-slate-600 leading-relaxed">
+          <p>
+            Menurut <b>Panduan Pembelajaran dan Asesmen Edisi Revisi 2025 (Hlm. 62–65)</b>, deskripsi capaian kompetensi pada rapor menjelaskan apa yang sudah dikuasai murid dan apa yang masih perlu ditingkatkan, berdasarkan ketercapaian tujuan pembelajaran (TP) pada mata pelajaran tersebut.
+          </p>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <h4 className="font-bold text-slate-800 text-sm mb-2">Pola Baku Redaksi:</h4>
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-900 font-medium text-sm">
+              ✨ <b>Formula Deskripsi</b> = <code>Bukti Capaian Konkret Saat Ini (TP)</code> + <code>Arah Belajar / Tindak Lanjut Berikutnya</code>
+            </div>
+            <ul className="mt-3 space-y-1.5 text-xs text-slate-600 list-disc list-inside">
+              <li><b>Sangat Baik:</b> Diberi tantangan baru, pengayaan, atau perluasan konteks masalah yang lebih kompleks.</li>
+              <li><b>Baik (Tuntas):</b> Diberi penguatan, pendalaman konsep, atau latihan dengan konteks yang lebih beragam.</li>
+              <li><b>Perlu Bimbingan:</b> Diberi pendampingan bertahap, contoh konkret, dan latihan terarah untuk konsep dasar.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-indigo-50/50 rounded-xl p-6 border border-indigo-100 mt-8 flex gap-4 items-start">
         <Info className="w-6 h-6 text-indigo-600 shrink-0 mt-1" />
         <div>

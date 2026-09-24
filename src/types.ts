@@ -96,11 +96,17 @@ export interface Ekstrakurikuler {
   kode: string;
   nama: string;
   jenis: 'Wajib' | 'Pilihan';
+  tampilRapor?: boolean;
 }
 
 export interface NilaiMapelSiswa {
   tpScores: Record<string, number | null>; // tpId -> score (0-100)
   sumatifAkhir: number | null;
+}
+
+export interface NilaiEkskul {
+  predikat: string;
+  deskripsi: string;
 }
 
 export interface DataProjek {
@@ -136,9 +142,14 @@ export interface AppState {
   tpEkskul: TujuanPembelajaran[];
   // studentId -> mapelId -> NilaiMapelSiswa
   nilai: Record<string, Record<string, NilaiMapelSiswa>>;
+  // studentId -> ekskulId -> NilaiEkskul
+  nilaiEkskul?: Record<string, Record<string, NilaiEkskul>>;
   projek: DataProjek[];
   dimensiProjek: DimensiProjek[];
   // studentId -> dimensiId -> NilaiProjek
   nilaiP5: Record<string, Record<string, NilaiProjek>>;
+  // Ruang Transit Deskripsi Capaian
+  customDeskripsiMapel?: Record<string, Record<string, string>>; // studentId -> mapelId -> custom text
+  customDeskripsiKokurikuler?: Record<string, Record<string, string>>; // studentId -> projekId -> custom text
   trash: TrashItem[];
 }

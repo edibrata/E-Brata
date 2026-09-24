@@ -30,7 +30,7 @@ export default function NilaiProjek() {
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200">
-      <h2 className="text-lg font-bold text-slate-800 mb-6 pb-2 border-b border-slate-100">Input Nilai Projek Profil Pelajar Pancasila</h2>
+      <h2 className="text-lg font-bold text-slate-800 mb-6 pb-2 border-b border-slate-100">Input Nilai Kokurikuler (Projek Penguatan Karakter)</h2>
 
       <div className="mb-4 text-xs space-x-4 bg-slate-50/50 p-4 rounded-xl flex flex-wrap border border-slate-100/50">
         <span className="font-bold text-slate-700">Keterangan Penilaian:</span>

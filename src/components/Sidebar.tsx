@@ -33,29 +33,25 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
       items: [
         { id: 'kegiatan-akademik', label: 'Intrakurikuler', icon: <Calendar size={18} /> },
         { id: 'data-ekskul', label: 'Ekstrakurikuler', icon: <Medal size={18} /> },
+        { id: 'data-projek', label: 'Kokurikuler', icon: <FolderGit2 size={18} /> },
         { id: 'data-siswa', label: 'Data Murid', icon: <Users size={18} /> },
         { id: 'data-pendukung', label: 'Data Pendukung', icon: <FolderPlus size={18} /> },
       ]
     },
     {
-      title: 'Akademik & Penilaian',
+      title: 'Penilaian',
       items: [
         { id: 'input-nilai', label: 'Nilai Intrakurikuler', icon: <PenTool size={18} /> },
-        { id: 'sesuaikan-capaian', label: 'Sesuaikan Capaian', icon: <CheckSquare size={18} /> },
         { id: 'nilai-ekskul', label: 'Nilai Ekstrakurikuler', icon: <Activity size={18} /> },
-        { id: 'data-projek', label: 'Data Projek', icon: <FolderGit2 size={18} /> },
         { id: 'nilai-projek', label: 'Nilai Kokurikuler', icon: <Star size={18} /> },
+        { id: 'sesuaikan-capaian', label: 'Sesuaikan Capaian', icon: <CheckSquare size={18} /> },
         { id: 'leger', label: 'Leger Nilai', icon: <FileSpreadsheet size={18} /> },
       ]
     },
     {
-      title: 'Output/Cetak',
+      title: 'Output / Cetak',
       items: [
-        { id: 'jilid-identitas', label: 'Jilid & Identitas', icon: <Book size={18} /> },
-        { id: 'biodata-murid', label: 'Biodata Murid', icon: <Contact size={18} /> },
-        { id: 'cetak-rapor', label: 'Cetak Rapor', icon: <Printer size={18} /> },
-        { id: 'lampiran-buku-induk', label: 'Lampiran Buku Induk', icon: <Archive size={18} /> },
-        { id: 'keterangan-pindah', label: 'Keterangan Pindah', icon: <ArrowRightLeft size={18} /> },
+        { id: 'cetak-rapor', label: 'Output / Cetak Terpadu', icon: <Printer size={18} /> },
       ]
     },
     {
