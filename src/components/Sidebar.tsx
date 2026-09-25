@@ -55,7 +55,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
       title: 'Output & Cetak',
       items: [
         { id: 'output-capaian', label: 'Sesuaikan Capaian Rapor', icon: <CheckSquare size={18} /> },
-        { id: 'output-catatan', label: 'Generate Catatan Wali Kelas', icon: <Sparkles size={18} /> },
+        { id: 'output-catatan', label: 'Catatan Wali Kelas', icon: <Sparkles size={18} /> },
         { id: 'output-leger', label: 'Leger Nilai', icon: <FileSpreadsheet size={18} /> },
         { id: 'output-cetak', label: 'Cetak', icon: <Printer size={18} /> },
       ]

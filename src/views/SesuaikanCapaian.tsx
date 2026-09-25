@@ -17,7 +17,6 @@ import {
   Filter,
   Layers,
   ArrowUpDown,
-  Users,
   X
 } from 'lucide-react';
 import Tooltip from '@/components/Tooltip';
@@ -348,25 +347,6 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
     showToast(`Variasi redaksi diterapkan untuk tema "${activeProjek.tema}"`);
   };
 
-  // Statistik Ringkas untuk Header Intrakurikuler (Clean, Compact)
-  const intraStats = useMemo(() => {
-    if (!activeMapel) return { total: siswa.length, variasi: 0, baku: siswa.length };
-    let variasi = 0;
-    siswa.forEach(s => {
-      const key = `${s.id}_${activeMapel.id}`;
-      const custom = customDeskripsiMapel[s.id]?.[activeMapel.id];
-      const defaultD = getDefaultDeskripsiIntra(s.id, activeMapel.id);
-      if ((custom !== undefined && custom !== defaultD) || intrakurikulerVariationIndex[key] !== undefined) {
-        variasi++;
-      }
-    });
-    return {
-      total: siswa.length,
-      variasi,
-      baku: Math.max(0, siswa.length - variasi)
-    };
-  }, [siswa, activeMapel, customDeskripsiMapel, intrakurikulerVariationIndex, mapel, tujuanPembelajaran, nilai]);
-
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 bg-slate-50/60 overflow-hidden">
       {/* Toast Notification */}
@@ -507,34 +487,8 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
             )}
           </div>
 
-          {/* Sisi Kanan: Mini Stats + Aksi + Pencarian Sejajar */}
-          <div className="flex flex-wrap items-center gap-2 justify-between lg:justify-end flex-1">
-            {/* Pill Stats Cepat (Khusus Intrakurikuler) */}
-            {activeTab === 'intrakurikuler' && (
-              <div className="flex items-center gap-1.5">
-                <Tooltip content={`Total Murid Terdaftar: ${intraStats.total} orang`} position="bottom">
-                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold cursor-default select-none shadow-2xs">
-                    <Users size={12} className="text-slate-500" />
-                    <span>M: {intraStats.total}</span>
-                  </div>
-                </Tooltip>
-
-                <Tooltip content={`Narasi Telah Disesuaikan / Divariasikan: ${intraStats.variasi} murid`} position="bottom">
-                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold cursor-default select-none shadow-2xs">
-                    <Sparkles size={12} className="text-amber-500" />
-                    <span>Variasi: {intraStats.variasi}</span>
-                  </div>
-                </Tooltip>
-
-                <Tooltip content={`Narasi Menggunakan Formula Baku PPA: ${intraStats.baku} murid`} position="bottom">
-                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold cursor-default select-none shadow-2xs">
-                    <BookOpen size={12} className="text-indigo-500" />
-                    <span>Baku: {intraStats.baku}</span>
-                  </div>
-                </Tooltip>
-              </div>
-            )}
-
+          {/* Sisi Kanan: Aksi + Pencarian Sejajar */}
+          <div className="flex flex-wrap items-center gap-2 justify-end flex-1">
             {/* Tombol Aksi Utama */}
             <div className="flex items-center gap-1.5">
               {activeTab === 'intrakurikuler' && (

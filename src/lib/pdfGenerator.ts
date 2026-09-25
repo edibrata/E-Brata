@@ -1036,7 +1036,7 @@ export const buildRaporPDF = (
 
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
-  // 2. KOKURIKULER (P5)
+  // 2. KOKURIKULER
   let kokurikulerText = '';
   if (projekList && projekList.length > 0) {
     kokurikulerText = projekList.map(p => {
@@ -1264,9 +1264,8 @@ export const buildRaporPDF = (
   });
 
   const finalYKetidakhadiran = (doc as any).lastAutoTable.finalY;
-  const totalBoxHeight = finalYKetidakhadiran - blockStartY;
-  const renderedHeadH = (doc as any).lastAutoTable.table?.head?.[0]?.height || 7.2;
-  const exactCatatanBodyHeight = Math.max(totalBoxHeight - renderedHeadH, 18);
+  const renderedHeadH = (doc as any).lastAutoTable.head?.[0]?.height || (doc as any).lastAutoTable.table?.head?.[0]?.height || 7.2;
+  const exactCatatanBodyHeight = Math.max(finalYKetidakhadiran - (blockStartY + renderedHeadH), 18);
 
   const catatanWaliKelas = studentDp.catatanWaliKelas?.trim() || 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
 
@@ -1285,7 +1284,7 @@ export const buildRaporPDF = (
     catatanFontSize -= 0.25;
   }
 
-  // 4B. Kotak Kanan: Catatan Wali Kelas (Garis Penutup Kiri Sendiri, Reguler, Shrink to Fit, Tinggi 100% Identik Presisi)
+  // 4B. Kotak Kanan: Catatan Wali Kelas (Garis Penutup Kiri Sendiri, Reguler, Shrink to Fit, Tinggi 100% Identik Presisi & Center Vertikal)
   autoTable(doc, {
     startY: blockStartY,
     margin: { left: startCatatanX, right: 15, bottom: 20 },
@@ -1312,7 +1311,7 @@ export const buildRaporPDF = (
       fontStyle: 'normal',
       halign: 'justify',
       valign: 'middle',
-      minCellHeight: Math.max(exactCatatanBodyHeight - 4.4, 10),
+      minCellHeight: exactCatatanBodyHeight,
       cellPadding: { top: 2.2, bottom: 2.2, left: 3.5, right: 3.5 },
       font: fontName
     },
@@ -1326,10 +1325,11 @@ export const buildRaporPDF = (
         doc.line(cell.x, cell.y, cell.x, cell.y + cell.height); // Kiri
         doc.line(cell.x + cell.width, cell.y, cell.x + cell.width, cell.y + cell.height); // Kanan
       } else if (section === 'body') {
-        // Garis luar kotak kanan dikunci sejajar mutlak dengan garis bawah Ketidakhadiran (finalYKetidakhadiran)
-        doc.line(cell.x, cell.y, cell.x, finalYKetidakhadiran); // Kiri
-        doc.line(cell.x + cell.width, cell.y, cell.x + cell.width, finalYKetidakhadiran); // Kanan
-        doc.line(cell.x, finalYKetidakhadiran, cell.x + cell.width, finalYKetidakhadiran); // Bawah
+        // Garis luar kotak kanan dikunci presisi sejajar dengan garis bawah Ketidakhadiran
+        const bottomY = Math.max(cell.y + cell.height, finalYKetidakhadiran);
+        doc.line(cell.x, cell.y, cell.x, bottomY); // Kiri
+        doc.line(cell.x + cell.width, cell.y, cell.x + cell.width, bottomY); // Kanan
+        doc.line(cell.x, bottomY, cell.x + cell.width, bottomY); // Bawah
       }
     }
   });

@@ -447,7 +447,7 @@ export default function DashboardView({ onOpenDevProfile, onNavigate }: Dashboar
                  </tr>
                  <tr className="hover:bg-slate-50 transition-colors">
                    <td className="py-2.5 px-3 text-center text-slate-500">4</td>
-                   <td className="py-2.5 px-4 font-medium text-slate-800">Generate Catatan Wali Kelas</td>
+                   <td className="py-2.5 px-4 font-medium text-slate-800">Catatan Wali Kelas</td>
                    <td className="py-2.5 px-4">
                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-[10px] font-bold">
                        <Sparkles size={12} /> AI Terintegrasi

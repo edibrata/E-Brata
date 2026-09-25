@@ -7,8 +7,6 @@ import {
   Check, 
   MessageSquareQuote, 
   Bot, 
-  Flame, 
-  Heart, 
   Award, 
   TrendingUp, 
   AlertCircle,
@@ -17,13 +15,27 @@ import {
   Trash2,
   Filter,
   CheckCircle2,
-  BookOpen
+  BookOpen,
+  Compass,
+  Medal,
+  Crown,
+  CalendarCheck2
 } from 'lucide-react';
-import { Siswa, DataPendukungSiswa } from '@/types';
+import { Siswa } from '@/types';
 
 export default function GenerateCatatanWali() {
   const { state, updateState } = useAppStore();
-  const { siswa, mapel, nilai, dataPendukung = {} } = state;
+  const { 
+    siswa, 
+    mapel, 
+    nilai, 
+    ekstrakurikuler = [], 
+    nilaiEkskul = {}, 
+    projek = [], 
+    dimensiProjek = [], 
+    nilaiP5 = {}, 
+    dataPendukung = {} 
+  } = state;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unfilled' | 'filled'>('all');
@@ -31,7 +43,7 @@ export default function GenerateCatatanWali() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
-  // Helper perhitungan nilai per murid untuk memberikan konteks akurat ke AI
+  // Helper perhitungan metrik akademik per murid (Intrakurikuler)
   const studentMetrics = useMemo(() => {
     const metrics: Record<string, { average: number; highestMapel: string; lowestMapel: string; completedMapelCount: number }> = {};
     
@@ -82,7 +94,54 @@ export default function GenerateCatatanWali() {
     return metrics;
   }, [siswa, mapel, nilai]);
 
-  // Update Catatan Wali Kelas saja tanpa mengubah data presensi kehadiran
+  // Helper mengekstrak data komprehensif 4 pilar per murid
+  const getStudentFourPillarsData = (studentId: string) => {
+    // 1. Pilar Intrakurikuler
+    const metric = studentMetrics[studentId] || { average: 75, highestMapel: 'Umum', lowestMapel: '-', completedMapelCount: 0 };
+    
+    // 2. Pilar Ekstrakurikuler
+    const studentEkskuls: Array<{ nama: string; predikat: string; deskripsi?: string }> = [];
+    if (nilaiEkskul && nilaiEkskul[studentId]) {
+      ekstrakurikuler.forEach(e => {
+        const ne = nilaiEkskul[studentId]?.[e.id];
+        if (ne && ne.predikat && ne.predikat !== '-') {
+          studentEkskuls.push({
+            nama: e.nama,
+            predikat: ne.predikat,
+            deskripsi: ne.deskripsi
+          });
+        }
+      });
+    }
+
+    // 3. Pilar Kokurikuler (Karakter & Dimensi Profil Lulusan)
+    const studentProjekNilai = nilaiP5?.[studentId] || {};
+    const strongDimensi: string[] = [];
+    dimensiProjek.forEach(d => {
+      const val = studentProjekNilai[d.id];
+      if (val === 'SAB' || val === 'BSH') {
+        strongDimensi.push(d.nama);
+      }
+    });
+    const projectThemes = projek.map(p => p.tema).filter(Boolean);
+
+    // 4. Pilar Kehadiran
+    const dp = dataPendukung[studentId] || {};
+    const sakit = dp.sakit || 0;
+    const izin = dp.izin || 0;
+    const alpa = dp.alpa || 0;
+    const totalAbsen = sakit + izin + alpa;
+
+    return {
+      metric,
+      ekskuls: studentEkskuls,
+      strongDimensi,
+      projectThemes,
+      kehadiran: { sakit, izin, alpa, totalAbsen }
+    };
+  };
+
+  // Update Catatan Wali Kelas saja tanpa mengganggu data presensi
   const updateStudentCatatan = (studentId: string, catatanWaliKelas: string) => {
     const current = dataPendukung[studentId] || {};
     const updated = {
@@ -100,46 +159,114 @@ export default function GenerateCatatanWali() {
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  // Generate 4 Variasi Catatan AI berdasarkan Profil Asli Murid
+  // Generator 5 Variasi Catatan AI Berbasis Sintesis 4 Pilar
   const generateAISuggestions = (student: Siswa) => {
-    const metric = studentMetrics[student.id] || { average: 75, highestMapel: '-', lowestMapel: '-' };
-    const dp = dataPendukung[student.id] || {};
-    const totalAbsen = (dp.sakit || 0) + (dp.izin || 0) + (dp.alpa || 0);
-    const avg = metric.average;
+    const { metric, ekskuls, strongDimensi, projectThemes, kehadiran } = getStudentFourPillarsData(student.id);
     const nama = student.nama;
+    const avg = metric.average;
+    const highMapel = metric.highestMapel !== 'Belum Ada' ? metric.highestMapel.replace(/\s*\(\d+\)$/, '') : 'mata pelajaran utama';
+    
+    // Data ekskul
+    const mainEkskul = ekskuls.length > 0 ? ekskuls[0] : null;
+    const ekskulPhrase = mainEkskul 
+      ? `kegiatan ekstrakurikuler ${mainEkskul.nama} dengan predikat ${mainEkskul.predikat}` 
+      : 'berbagai kegiatan ekstrakurikuler dan pengembangan minat bakat di sekolah';
 
-    const list = [
+    // Data kokurikuler (karakter & profil lulusan)
+    const temaStr = projectThemes.length > 0 ? `tema "${projectThemes[0]}"` : 'pembelajaran Kokurikuler';
+    const dimensiStr = strongDimensi.length > 0 
+      ? `dimensi ${strongDimensi.slice(0, 2).join(' dan ')}`
+      : 'kemandirian, gotong royong, dan nalar kritis';
+
+    // --- VARIAN 1: Apresiasi Akademik & Disiplin Belajar (Intrakurikuler & Kehadiran) ---
+    const textVarian1 = avg >= 80
+      ? (kehadiran.totalAbsen === 0
+        ? `Selamat atas pencapaian prestasi ananda ${nama} yang sangat membanggakan di semester ini, khususnya keunggulan pada bidang ${highMapel}. Didukung kedisiplinan hadir penuh di kelas, ketekunanmu patut menjadi teladan bagi rekan-rekan sekelas.`
+        : `Ananda ${nama} meraih pencapaian belajar yang sangat baik di semester ini, terutama pada mata pelajaran ${highMapel}. Pertahankan ketekunan ini dan terus rawat semangat belajarmu untuk mempertahankan prestasi gemilang.`)
+      : (kehadiran.totalAbsen > 3
+        ? `Ananda ${nama} menunjukkan kemajuan belajar yang positif pada mata pelajaran ${highMapel}. Tingkatkan konsistensi kehadiran dan keaktifan di kelas pada semester mendatang agar pemahaman materi semakin optimal.`
+        : `Ananda ${nama} menunjukkan proses belajar yang tekun dan bersungguh-sungguh. Terus pupuk rasa ingin tahu dan jangan ragu untuk aktif berdiskusi di kelas demi meraih capaian kompetensi yang semakin tinggi.`);
+
+    // --- VARIAN 2: Penguatan Karakter & Kokurikuler (Dimensi Profil Lulusan) ---
+    const textVarian2 = `Melalui pelaksanaan pembelajaran Kokurikuler ${temaStr}, ananda ${nama} menunjukkan perkembangan karakter yang sangat baik, khususnya pada ${dimensiStr}. Sikap santun, kepedulian sosial, dan tanggung jawab yang ditunjukkan menjadi bukti nyata terbentuknya profil pelajar yang berakhlak mulia.`;
+
+    // --- VARIAN 3: Minat Bakat & Ekstrakurikuler ---
+    const textVarian3 = mainEkskul
+      ? `Ananda ${nama} menunjukkan antusiasme dan komitmen yang membanggakan dalam mengasah potensi non-akademik melalui ${ekskulPhrase}. Keterlibatan aktif ini turut menumbuhkan jiwa sportivitas, kepercayaan diri, dan kepemimpinan yang berharga.`
+      : `Ananda ${nama} memiliki minat dan energi positif yang sangat baik di luar ruang kelas. Terus kembangkan potensi diri, kreativitas, dan kepemimpinan melalui kegiatan ekstrakurikuler serta pembiasaan positif di sekolah.`;
+
+    // --- VARIAN 4: Pembinaan, Refleksi & Motivasi Masa Depan ---
+    const textVarian4 = kehadiran.totalAbsen > 3
+      ? `Ananda ${nama} adalah pribadi yang cerdas dan berpotensi besar. Di semester mendatang, fokuskan perhatian untuk menjaga kesehatan dan meningkatkan kedisiplinan kehadiran di sekolah agar seluruh materi pembelajaran dapat diserap secara menyeluruh dan bermakna.`
+      : `Pertahankan semangat belajar dan sikap positif yang telah ananda ${nama} tunjukkan sepanjang semester ini. Jadikan setiap tantangan belajar baru sebagai peluang untuk semakin mandiri, bernalar kritis, dan menggapai prestasi terbaik.`;
+
+    // --- VARIAN 5: Kompilasi Paripurna (Cerdas & Menyeluruh — Sintesis 4 Pilar) ---
+    const intraOpening = avg >= 80
+      ? `Ananda ${nama} menunjukkan pencapaian akademik yang membanggakan di semester ini, terutama pada penguasaan bidang ${highMapel}.`
+      : `Ananda ${nama} menunjukkan perkembangan belajar yang konsisten dan positif, dengan antusiasme tinggi pada bidang ${highMapel}.`;
+
+    const kokuBridge = `Dalam kegiatan Kokurikuler ${temaStr}, ananda membuktikan kematangan karakter nyata melalui penguatan ${dimensiStr}.`;
+
+    const ekstraBridge = mainEkskul
+      ? `Potensi tersebut kian lengkap dengan keaktifannya pada ${ekskulPhrase}.`
+      : `Keaktifan belajarnya juga berpadu harmonis dengan partisipasi aktif dalam kegiatan pengembangan diri dan minat bakat.`;
+
+    const hadirClosing = kehadiran.totalAbsen === 0
+      ? `Dengan komitmen kedisiplinan dan kehadiran penuh 100%, Ibu/Bapak Guru yakin ananda akan terus tumbuh menjadi pribadi berprestasi dan berkarakter mulia di masa depan.`
+      : kehadiran.totalAbsen <= 3
+        ? `Didukung kedisiplinan presensi yang terjaga baik, teruslah melangkah dengan penuh percaya diri dan rendah hati menyongsong semester berikutnya.`
+        : `Dengan meningkatkan komitmen kedisiplinan kehadiran di semester depan, Ibu/Bapak Guru optimis potensi besar ananda akan berkembang semakin gemilang.`;
+
+    const textVarian5 = `${intraOpening} ${kokuBridge} ${ekstraBridge} ${hadirClosing}`;
+
+    return [
       {
-        kategori: 'Apresiasi Prestasi & Dedikasi',
-        badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        id: 'v1',
+        nomor: 'Varian 1',
+        kategori: 'Apresiasi Akademik & Presensi',
+        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         icon: <Award className="w-4 h-4 text-emerald-600" />,
-        text: avg >= 80 
-          ? `Selamat atas pencapaian prestasi ananda ${nama} yang sangat membanggakan di semester ini. Pertahankan ketekunan, rasa ingin tahu yang tinggi, dan teruslah menjadi inspirasi positif bagi rekan-rekan di kelas.`
-          : `Ananda ${nama} menunjukkan kemajuan belajar yang sangat positif dan konsisten. Tingkatkan terus keaktifan dalam berdiskusi serta eksplorasi bakat untuk meraih prestasi yang semakin gemilang.`
+        text: textVarian1,
+        ringkasan: 'Fokus capaian intrakurikuler & komitmen kedisiplinan kelas'
       },
       {
-        kategori: 'Motivasi Belajar & Kemandirian',
-        badge: 'bg-blue-100 text-blue-800 border-blue-200',
+        id: 'v2',
+        nomor: 'Varian 2',
+        kategori: 'Karakter & Profil Lulusan (Kokurikuler)',
+        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        icon: <Compass className="w-4 h-4 text-indigo-600" />,
+        text: textVarian2,
+        ringkasan: 'Fokus dimensi karakter nyata & kegiatan Kokurikuler'
+      },
+      {
+        id: 'v3',
+        nomor: 'Varian 3',
+        kategori: 'Minat Bakat & Ekstrakurikuler',
+        badge: 'bg-purple-50 text-purple-700 border-purple-200',
+        icon: <Medal className="w-4 h-4 text-purple-600" />,
+        text: textVarian3,
+        ringkasan: 'Fokus talenta, keaktifan ekskul & jiwa kepemimpinan'
+      },
+      {
+        id: 'v4',
+        nomor: 'Varian 4',
+        kategori: 'Pembinaan & Motivasi Masa Depan',
+        badge: 'bg-blue-50 text-blue-700 border-blue-200',
         icon: <TrendingUp className="w-4 h-4 text-blue-600" />,
-        text: `Pertahankan semangat belajarmu, ananda ${nama}. Tingkatkan fokus dalam memahami materi yang menantang dan jangan ragu untuk bertanya kepada guru maupun teman sebaya. Ibu/Bapak Guru yakin potensimu akan terus berkembang pesat.`
+        text: textVarian4,
+        ringkasan: 'Fokus pembinaan kedisiplinan, refleksi diri & dorongan ke depan'
       },
       {
-        kategori: 'Karakter, Adab & Gotong Royong',
-        badge: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        icon: <Heart className="w-4 h-4 text-indigo-600" />,
-        text: `Ananda ${nama} memiliki kepribadian yang santun, ramah, dan senang bekerja sama dengan teman-temannya di kelas. Tetaplah menjadi pribadi yang berakhlak mulia, rendah hati, dan senantiasa peduli terhadap lingkungan sekitar.`
-      },
-      {
-        kategori: totalAbsen > 3 ? 'Kedisiplinan & Kehadiran' : 'Eksplorasi Minat & Bakat',
-        badge: totalAbsen > 3 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-purple-100 text-purple-800 border-purple-200',
-        icon: totalAbsen > 3 ? <AlertCircle className="w-4 h-4 text-amber-600" /> : <Flame className="w-4 h-4 text-purple-600" />,
-        text: totalAbsen > 3
-          ? `Ananda ${nama} memiliki potensi akademik yang sangat baik. Mohon tingkatkan kembali kedisiplinan kehadiran di sekolah pada semester berikutnya agar seluruh rangkaian kegiatan pembelajaran dapat diikuti secara optimal.`
-          : `Ananda ${nama} aktif berpartisipasi dalam berbagai kegiatan sekolah. Terus kembangkan minat, bakat, serta literasi membaca melalui pembiasaan positif di sekolah maupun di rumah.`
+        id: 'v5',
+        nomor: 'Varian 5',
+        kategori: 'Kompilasi Paripurna (Sintesis 4 Pilar)',
+        badge: 'bg-gradient-to-r from-amber-100 to-indigo-100 text-indigo-950 border-amber-300 font-bold',
+        icon: <Crown className="w-4 h-4 text-amber-600" />,
+        text: textVarian5,
+        ringkasan: 'Sintesis cerdas terpadu 4 pilar: Akademik, Kokurikuler, Ekskul, dan Presensi',
+        isMaster: true
       }
     ];
-
-    return list;
   };
 
   const handleApplyAISuggestion = (studentId: string, text: string) => {
@@ -155,27 +282,26 @@ export default function GenerateCatatanWali() {
     showToast('Teks disalin ke clipboard');
   };
 
-  // Isi serentak catatan yang masih kosong dengan rekomendasi AI otomatis
+  // Isi serentak catatan yang masih kosong dengan Varian 5 (Kompilasi Cerdas 4 Pilar)
   const handleFillBatchDefault = () => {
     const updated = { ...dataPendukung };
     let count = 0;
     siswa.forEach(s => {
       const current = updated[s.id] || {};
       if (!current.catatanWaliKelas || !current.catatanWaliKelas.trim()) {
-        const metric = studentMetrics[s.id];
-        current.catatanWaliKelas = metric && metric.average >= 80
-          ? `Selamat atas pencapaian belajar ananda ${s.nama} yang sangat baik di semester ini. Pertahankan ketekunan, rasa ingin tahu yang tinggi, dan akhlak mulia dalam segala kegiatan pembelajaran.`
-          : `Pertahankan semangat belajarmu, ananda ${s.nama}. Tingkatkan terus motivasi, keaktifan belajar, dan akhlak mulia dalam setiap aktivitas di sekolah.`;
+        const suggestions = generateAISuggestions(s);
+        const masterVarian = suggestions.find(sug => sug.id === 'v5') || suggestions[0];
+        current.catatanWaliKelas = masterVarian.text;
         updated[s.id] = current;
         count++;
       }
     });
     updateState('dataPendukung', updated);
-    showToast(`${count} Catatan Wali Kelas berhasil digenerate otomatis!`);
+    showToast(`${count} Catatan Wali Kelas berhasil digenerate dengan Sintesis Komprehensif 4 Pilar!`);
   };
 
   const handleClearAllNotes = () => {
-    if (!confirm('Apakah Anda yakin ingin mengosongkan semua narasi Catatan Wali Kelas? Data presensi/kehadiran TIDAK akan terhapus.')) {
+    if (!confirm('Apakah Anda yakin ingin mengosongkan semua teks Catatan Wali Kelas? Data presensi/kehadiran TIDAK akan terhapus.')) {
       return;
     }
     const updated = { ...dataPendukung };
@@ -222,20 +348,20 @@ export default function GenerateCatatanWali() {
       )}
 
       {/* Header Panel Utama */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
-            <Sparkles className="w-6 h-6 text-amber-300" />
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
+            <Sparkles className="w-5 h-5 text-amber-300" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              Generate Catatan Wali Kelas
-              <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                <Bot className="w-3.5 h-3.5" /> AI Powered
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+              Catatan Wali Kelas
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                <Bot className="w-3 h-3" /> Sintesis 4 Pilar AI
               </span>
             </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Penyusunan narasi Catatan Wali Kelas rapor secara personal dengan bantuan Asisten Cerdas Kurikulum Merdeka.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Penyusunan narasi Catatan Wali Kelas komprehensif berbasis capaian Intrakurikuler, Kokurikuler, Ekstrakurikuler, dan Kehadiran.
             </p>
           </div>
         </div>
@@ -244,10 +370,10 @@ export default function GenerateCatatanWali() {
           <button
             type="button"
             onClick={handleFillBatchDefault}
-            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer active:scale-95"
-            title="Generate narasi otomatis untuk seluruh murid yang catatannya masih kosong"
+            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95"
+            title="Generate narasi otomatis untuk seluruh murid yang catatannya masih kosong (Sintesis 4 Pilar)"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <Crown className="w-3.5 h-3.5 text-amber-300" />
             <span>Isi Serentak Catatan Kosong</span>
           </button>
           
@@ -266,137 +392,140 @@ export default function GenerateCatatanWali() {
       </div>
 
       {/* Ringkasan Statistik & Status Kelengkapan */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500">Total Murid Kelas</p>
-            <h3 className="text-2xl font-black text-slate-800 mt-0.5">{siswa.length}</h3>
+            <p className="text-[11px] font-semibold text-slate-500">Total Murid Kelas</p>
+            <h3 className="text-xl font-black text-slate-800 mt-0.5">{siswa.length}</h3>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Users className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <Users className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500">Catatan Sudah Terisi</p>
-            <h3 className="text-2xl font-black text-emerald-600 mt-0.5">
-              {totalCatatanTerisi} <span className="text-xs font-normal text-slate-400">murid</span>
+            <p className="text-[11px] font-semibold text-slate-500">Catatan Sudah Terisi</p>
+            <h3 className="text-xl font-black text-emerald-600 mt-0.5">
+              {totalCatatanTerisi} <span className="text-[11px] font-normal text-slate-400">murid</span>
             </h3>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500">Catatan Belum Terisi</p>
-            <h3 className={`text-2xl font-black mt-0.5 ${totalCatatanKosong > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-              {totalCatatanKosong} <span className="text-xs font-normal text-slate-400">murid</span>
+            <p className="text-[11px] font-semibold text-slate-500">Catatan Belum Terisi</p>
+            <h3 className={`text-xl font-black mt-0.5 ${totalCatatanKosong > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+              {totalCatatanKosong} <span className="text-[11px] font-normal text-slate-400">murid</span>
             </h3>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-            <MessageSquareQuote className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <MessageSquareQuote className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-600 mb-1.5">
-            <span>Progres Kelengkapan</span>
-            <span className="font-bold text-indigo-700">{progressPercent}%</span>
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold text-slate-500">Kemajuan Pengisian</p>
+            <h3 className="text-xl font-black text-indigo-600 mt-0.5">{progressPercent}%</h3>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-indigo-500 to-emerald-500 h-2.5 rounded-full transition-all duration-500" 
-              style={{ width: `${progressPercent}%` }} 
-            />
+          <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <Sparkles className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        
-        {/* Table Toolbar & Filtering */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama murid / NISN..."
-                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 font-medium"
-              />
-            </div>
-            
-            {/* Filter Status */}
-            <div className="flex items-center bg-white border border-slate-200 rounded-lg p-0.5 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setFilterStatus('all')}
-                className={`px-3 py-1.5 rounded-md transition ${filterStatus === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                Semua ({siswa.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterStatus('unfilled')}
-                className={`px-3 py-1.5 rounded-md transition ${filterStatus === 'unfilled' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                Belum ({totalCatatanKosong})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterStatus('filled')}
-                className={`px-3 py-1.5 rounded-md transition ${filterStatus === 'filled' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                Selesai ({totalCatatanTerisi})
-              </button>
-            </div>
-          </div>
-
-          <div className="text-xs text-slate-500 font-medium">
-            Menampilkan <span className="font-bold text-slate-800">{filteredStudents.length}</span> murid
-          </div>
+      {/* Toolbar Filter & Pencarian */}
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-semibold border border-slate-200/60">
+          <button
+            type="button"
+            onClick={() => setFilterStatus('all')}
+            className={`px-3 py-1 rounded-md transition cursor-pointer ${
+              filterStatus === 'all'
+                ? 'bg-white text-indigo-700 font-bold shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Semua ({siswa.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterStatus('unfilled')}
+            className={`px-3 py-1 rounded-md transition cursor-pointer ${
+              filterStatus === 'unfilled'
+                ? 'bg-white text-amber-700 font-bold shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Belum Terisi ({totalCatatanKosong})
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterStatus('filled')}
+            className={`px-3 py-1 rounded-md transition cursor-pointer ${
+              filterStatus === 'filled'
+                ? 'bg-white text-emerald-700 font-bold shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Sudah Terisi ({totalCatatanTerisi})
+          </button>
         </div>
 
-        {/* Tabel Catatan Wali Kelas (Tanpa Isian Kehadiran) */}
+        <div className="relative w-full sm:w-64">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari murid / NISN..."
+            className="w-full pl-8 pr-8 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 font-medium"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tabel Data Catatan Wali Kelas */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-3 w-12 text-center">No</th>
-                <th className="py-3 px-4 min-w-[240px]">Peserta Didik</th>
-                <th className="py-3 px-4 min-w-[420px]">
-                  <div className="flex items-center justify-between">
-                    <span>Catatan Wali Kelas</span>
-                    <span className="text-[10px] font-medium text-slate-500">
-                      Dapat diedit langsung atau pilih narasi AI
-                    </span>
-                  </div>
-                </th>
-                <th className="py-3 px-4 w-32 text-center">Aksi AI</th>
+              <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                <th className="py-3 px-3 text-center w-12">No</th>
+                <th className="py-3 px-4 w-72">Profil Murid & Capaian</th>
+                <th className="py-3 px-4">Narasi Catatan Wali Kelas</th>
+                <th className="py-3 px-4 text-center w-36">Saran AI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-12 text-center text-slate-400">
-                    Tidak ada peserta didik yang sesuai dengan pencarian atau filter.
+                    Tidak ada murid yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((s, idx) => {
-                  const dp = dataPendukung[s.id] || {};
                   const metric = studentMetrics[s.id];
+                  const dp = dataPendukung[s.id] || {};
                   const hasNote = (dp.catatanWaliKelas || '').trim().length > 0;
+                  const fourPillars = getStudentFourPillarsData(s.id);
 
                   return (
                     <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 px-3 text-center font-mono text-slate-500 font-bold">
+                      <td className="py-3 px-3 text-center font-medium text-slate-400">
                         {idx + 1}
                       </td>
                       <td className="py-3 px-4">
@@ -424,6 +553,11 @@ export default function GenerateCatatanWali() {
                               {metric && metric.highestMapel !== 'Belum Ada' && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-100 truncate max-w-[140px]" title={`Mapel Unggulan: ${metric.highestMapel}`}>
                                   ⭐ {metric.highestMapel}
+                                </span>
+                              )}
+                              {fourPillars.ekskuls.length > 0 && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100 truncate max-w-[140px]" title={`Ekskul: ${fourPillars.ekskuls.map(e => e.nama).join(', ')}`}>
+                                  🏆 {fourPillars.ekskuls[0].nama}
                                 </span>
                               )}
                             </div>
@@ -459,7 +593,7 @@ export default function GenerateCatatanWali() {
                           type="button"
                           onClick={() => setSelectedStudentForAI(s)}
                           className="w-full px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95 group"
-                          title="Buka Rekomendasi Catatan AI"
+                          title="Buka Rekomendasi Catatan Cerdas AI (5 Varian)"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-12 transition-transform" />
                           <span>Saran AI</span>
@@ -474,22 +608,22 @@ export default function GenerateCatatanWali() {
         </div>
       </div>
 
-      {/* MODAL ASISTEN SARAN CATATAN AI */}
+      {/* MODAL ASISTEN SARAN CATATAN AI (5 VARIAN KOMPREHENSIF) */}
       {selectedStudentForAI && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
             
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-900 text-white p-5 flex items-center justify-between border-b border-indigo-800">
+            <div className="bg-gradient-to-r from-indigo-900 via-blue-900 to-indigo-900 text-white p-4 sm:p-5 flex items-center justify-between border-b border-indigo-800 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs border border-white/20">
-                  <Bot className="w-6 h-6 text-amber-300" />
+                  <Bot className="w-5 h-5 text-amber-300" />
                 </div>
                 <div>
                   <h3 className="font-bold text-base flex items-center gap-2">
                     Asisten Catatan AI
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-400 text-indigo-950">
-                      Rekomendasi Cerdas
+                      Sintesis 4 Pilar
                     </span>
                   </h3>
                   <p className="text-xs text-indigo-200">
@@ -507,72 +641,122 @@ export default function GenerateCatatanWali() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-4">
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5">
               
-              {/* Profil Analitik Murid (Sebagai Konteks) */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                  <span className="text-slate-500 font-medium">Rata-rata Nilai:</span>
-                  <span className="font-bold text-slate-800">{studentMetrics[selectedStudentForAI.id]?.average || 0}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 font-medium">Mapel Tertinggi:</span>
-                  <span className="font-bold text-indigo-700">{studentMetrics[selectedStudentForAI.id]?.highestMapel}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 font-medium">Data Kehadiran:</span>
-                  <span className="font-bold text-slate-700">
-                    {(() => {
-                      const dp = dataPendukung[selectedStudentForAI.id] || {};
-                      const s = dp.sakit || 0;
-                      const i = dp.izin || 0;
-                      const a = dp.alpa || 0;
-                      const total = s + i + a;
-                      return total === 0 ? 'Hadir Penuh (0 Absen)' : `S:${s}, I:${i}, A:${a} (${total} hari)`;
-                    })()}
-                  </span>
-                </div>
+              {/* Profil Konteks 4 Pilar Murid */}
+              {(() => {
+                const data4P = getStudentFourPillarsData(selectedStudentForAI.id);
+                return (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="bg-white p-2 rounded-lg border border-slate-200/80 shadow-2xs">
+                      <div className="flex items-center gap-1 text-slate-500 font-medium text-[10px]">
+                        <BookOpen className="w-3 h-3 text-indigo-600" />
+                        <span>1. Intrakurikuler</span>
+                      </div>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate" title={`Rata-rata: ${data4P.metric.average} (${data4P.metric.highestMapel})`}>
+                        Rerata: {data4P.metric.average} <span className="font-normal text-slate-500 text-[10px]">({data4P.metric.highestMapel.replace(/\s*\(\d+\)$/, '')})</span>
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-2 rounded-lg border border-slate-200/80 shadow-2xs">
+                      <div className="flex items-center gap-1 text-slate-500 font-medium text-[10px]">
+                        <Compass className="w-3 h-3 text-blue-600" />
+                        <span>2. Kokurikuler</span>
+                      </div>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate" title={data4P.strongDimensi.length > 0 ? `Dimensi: ${data4P.strongDimensi.join(', ')}` : 'Dimensi Berkembang'}>
+                        {data4P.strongDimensi.length > 0 ? data4P.strongDimensi[0] : (data4P.projectThemes[0] || 'Karakter Baik')}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-2 rounded-lg border border-slate-200/80 shadow-2xs">
+                      <div className="flex items-center gap-1 text-slate-500 font-medium text-[10px]">
+                        <Medal className="w-3 h-3 text-purple-600" />
+                        <span>3. Ekstrakurikuler</span>
+                      </div>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate" title={data4P.ekskuls.length > 0 ? data4P.ekskuls.map(e => `${e.nama} (${e.predikat})`).join(', ') : 'Pengembangan Diri'}>
+                        {data4P.ekskuls.length > 0 ? `${data4P.ekskuls[0].nama} (${data4P.ekskuls[0].predikat})` : 'Aktif Ekskul'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-2 rounded-lg border border-slate-200/80 shadow-2xs">
+                      <div className="flex items-center gap-1 text-slate-500 font-medium text-[10px]">
+                        <CalendarCheck2 className="w-3 h-3 text-emerald-600" />
+                        <span>4. Kehadiran</span>
+                      </div>
+                      <p className="font-bold text-slate-800 mt-0.5 truncate">
+                        {data4P.kehadiran.totalAbsen === 0 
+                          ? <span className="text-emerald-700">Hadir Penuh (0 Absen)</span> 
+                          : `S:${data4P.kehadiran.sakit}, I:${data4P.kehadiran.izin}, A:${data4P.kehadiran.alpa}`}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <p className="font-bold text-slate-700">
+                  Pilih salah satu dari 5 rekomendasi narasi di bawah ini:
+                </p>
+                <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                  Varian 1–4 Tematik • Varian 5 Paripurna
+                </span>
               </div>
 
-              <p className="text-xs font-semibold text-slate-600">
-                Pilih rekomendasi narasi terbaik yang mencerminkan profil karakter dan capaian murid:
-              </p>
-
-              {/* List 4 Pilihan Saran AI */}
+              {/* List 5 Rekomendasi Narasi AI */}
               <div className="space-y-3">
-                {generateAISuggestions(selectedStudentForAI).map((sug, i) => (
+                {generateAISuggestions(selectedStudentForAI).map((sug) => (
                   <div 
-                    key={i} 
-                    className="p-4 rounded-xl border border-slate-200 hover:border-indigo-300 bg-white hover:bg-indigo-50/20 transition-all shadow-xs space-y-2 group"
+                    key={sug.id} 
+                    className={`p-3.5 sm:p-4 rounded-xl border transition-all shadow-2xs space-y-2 group ${
+                      sug.isMaster
+                        ? 'border-indigo-300 bg-gradient-to-br from-indigo-50/60 via-white to-amber-50/40 ring-1 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-indigo-200 bg-white hover:bg-slate-50/50'
+                    }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${sug.badge}`}>
-                        {sug.icon}
-                        {sug.kategori}
-                      </span>
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${sug.badge}`}>
+                          {sug.icon}
+                          {sug.nomor}: {sug.kategori}
+                        </span>
+                        {sug.isMaster && (
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.2 rounded-full bg-amber-400 text-amber-950 shrink-0 hidden sm:inline-block">
+                            ⭐ Paling Direkomendasikan
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
-                          onClick={() => handleCopyText(sug.text, `sug_${i}`)}
+                          onClick={() => handleCopyText(sug.text, sug.id)}
                           className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
                           title="Salin teks narasi"
                         >
-                          {copiedId === `sug_${i}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-                          <span className="text-[11px]">{copiedId === `sug_${i}` ? 'Tersalin' : 'Salin'}</span>
+                          {copiedId === sug.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                          <span className="text-[11px]">{copiedId === sug.id ? 'Tersalin' : 'Salin'}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleApplyAISuggestion(selectedStudentForAI.id, sug.text)}
-                          className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition cursor-pointer active:scale-95"
+                          className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer active:scale-95 ${
+                            sug.isMaster
+                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+                              : 'bg-slate-800 hover:bg-slate-900 text-white'
+                          }`}
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Terapkan</span>
                         </button>
                       </div>
                     </div>
+
                     <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50/80 p-3 rounded-lg border border-slate-100">
                       "{sug.text}"
+                    </p>
+
+                    <p className="text-[10px] text-slate-400 italic">
+                      ℹ️ {sug.ringkasan}
                     </p>
                   </div>
                 ))}
@@ -581,12 +765,15 @@ export default function GenerateCatatanWali() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-              <span>Kurikulum Merdeka • Penilaian Karakter & Akademik</span>
+            <div className="bg-slate-50 px-5 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
+              <span className="flex items-center gap-1 font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                Sintesis 4 Pilar: Intrakurikuler, Kokurikuler, Ekstrakurikuler & Kehadiran
+              </span>
               <button
                 type="button"
                 onClick={() => setSelectedStudentForAI(null)}
-                className="px-4 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                className="px-4 py-1.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-700 hover:bg-slate-100 transition cursor-pointer shadow-2xs"
               >
                 Tutup
               </button>
