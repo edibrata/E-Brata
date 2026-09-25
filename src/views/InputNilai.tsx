@@ -549,9 +549,9 @@ export default function InputNilai() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="overflow-x-auto w-full max-h-[calc(100vh-20rem)] overflow-y-auto">
+              <div className="overflow-x-auto w-full max-h-[calc(100vh-17rem)] overflow-y-auto">
                 <table className="w-full border-collapse text-sm whitespace-nowrap">
-                  <thead className="bg-slate-100/90 backdrop-blur sticky top-0 z-20 text-slate-700 shadow-xs">
+                  <thead className="bg-slate-100 sticky top-0 z-20 text-slate-700 shadow-xs border-b border-slate-200">
                     {/* Baris 1: Header Grup */}
                     <tr>
                       <th rowSpan={2} className="border border-slate-200 p-3 w-12 text-center bg-slate-100">

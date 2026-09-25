@@ -278,9 +278,9 @@ export default function NilaiProjek() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
-          <div className="overflow-auto w-full min-h-[220px] max-h-[calc(100vh-17rem)]">
+          <div className="overflow-auto w-full min-h-[220px] max-h-[calc(100vh-17rem)] overflow-y-auto">
             <table className="w-full border-collapse text-xs whitespace-nowrap">
-              <thead className="bg-slate-100/90 text-slate-700 sticky top-0 z-20 shadow-xs">
+              <thead className="bg-slate-100 text-slate-700 sticky top-0 z-20 shadow-xs border-b border-slate-200">
                 {/* Header Baris 1: Dimensi */}
                 <tr>
                   <th 

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Siswa } from '@/types';
 import Tooltip from '@/components/Tooltip';
+import AutoResizeTextarea from '@/components/AutoResizeTextarea';
 
 export default function GenerateCatatanWali() {
   const { state, updateState } = useAppStore();
@@ -497,15 +498,15 @@ export default function GenerateCatatanWali() {
 
       {/* Tabel Data Catatan Wali Kelas */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[calc(100vh-17rem)] overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <th className="py-3 px-3 text-center w-12">No</th>
-                <th className="py-3 px-4 w-72">Profil Murid & Capaian</th>
-                <th className="py-3 px-4">Narasi Catatan Wali Kelas</th>
-                <th className="py-3 px-2 text-center w-24">Kunci</th>
-                <th className="py-3 px-4 text-center w-28">Variasi</th>
+            <thead className="sticky top-0 z-10 bg-slate-100 shadow-xs border-b border-slate-200">
+              <tr className="bg-slate-100 text-slate-700 font-bold">
+                <th className="py-3 px-3 text-center w-12 bg-slate-100">No</th>
+                <th className="py-3 px-4 w-72 bg-slate-100">Profil Murid & Capaian</th>
+                <th className="py-3 px-4 bg-slate-100">Narasi Catatan Wali Kelas</th>
+                <th className="py-3 px-2 text-center w-24 bg-slate-100">Kunci</th>
+                <th className="py-3 px-4 text-center w-28 bg-slate-100">Variasi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -569,8 +570,8 @@ export default function GenerateCatatanWali() {
                       {/* Kolom Narasi Catatan Wali Kelas */}
                       <td className="py-3 px-4">
                         <div className="relative">
-                          <textarea
-                            rows={3}
+                          <AutoResizeTextarea
+                            minRows={3}
                             value={currentNote}
                             onChange={(e) => {
                               if (isLocked) {

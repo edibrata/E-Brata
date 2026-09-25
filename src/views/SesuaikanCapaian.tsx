@@ -23,6 +23,7 @@ import {
   Award
 } from 'lucide-react';
 import Tooltip from '@/components/Tooltip';
+import AutoResizeTextarea from '@/components/AutoResizeTextarea';
 import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
 import { 
   hitungNilaiMapel, 
@@ -962,8 +963,8 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
 
                   {/* Baris Bawah: Textarea Deskripsi Rapor (Clean & Compact) */}
                   <div className="relative">
-                    <textarea
-                      rows={2}
+                    <AutoResizeTextarea
+                      minRows={2}
                       value={currentText}
                       onChange={(e) => {
                         if (isLocked) {
@@ -1146,8 +1147,8 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
 
                     {/* Baris Bawah: Textarea Full-Width */}
                     <div className="relative">
-                      <textarea
-                        rows={2}
+                      <AutoResizeTextarea
+                        minRows={2}
                         value={deskripsi}
                         onChange={(e) => {
                           if (isLocked) {
@@ -1326,8 +1327,8 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
 
                     {/* Baris Bawah: Textarea Full-Width */}
                     <div className="relative">
-                      <textarea
-                        rows={2}
+                      <AutoResizeTextarea
+                        minRows={2}
                         value={currentText}
                         onChange={(e) => {
                           if (isLocked) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '@/store';
 import { TujuanPembelajaran } from '@/types';
 import Tooltip from '@/components/Tooltip';
+import AutoResizeTextarea from '@/components/AutoResizeTextarea';
 import { 
   Plus, 
   Trash2, 
@@ -379,11 +380,11 @@ export default function TabTPEkskul() {
 
                 {/* Deskripsi TP */}
                 <td className="px-4 py-1.5">
-                  <textarea 
+                  <AutoResizeTextarea 
+                    minRows={1}
                     value={tp.deskripsi || ''} 
                     onChange={(e) => handleUpdate(tp.id, 'deskripsi', e.target.value)} 
                     className="w-full px-2 py-1.5 border border-transparent hover:border-gray-200 focus:border-indigo-400 rounded outline-none text-[12px] bg-transparent focus:bg-white transition-colors text-slate-700 resize-y min-h-[34px] leading-relaxed block font-medium" 
-                    rows={1} 
                   />
                 </td>
               </tr>

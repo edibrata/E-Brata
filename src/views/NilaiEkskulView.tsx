@@ -226,15 +226,15 @@ export default function NilaiEkskulView() {
       {/* Main Table Card */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         {/* Tabel Data Nilai Ekskul - Murni Input Nilai / Predikat */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[calc(100vh-17rem)] overflow-y-auto">
           <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                <th className="py-3 px-3 w-14 text-center">No</th>
-                <th className="py-3 px-4 min-w-[240px]">Nama Peserta Didik</th>
-                <th className="py-3 px-4 w-44 text-center">NISN</th>
-                <th className="py-3 px-4 w-60 text-center">Predikat Capaian</th>
-                <th className="py-3 px-4 w-44 text-center">Status</th>
+            <thead className="sticky top-0 z-10 bg-slate-100 shadow-xs border-b border-slate-200">
+              <tr className="bg-slate-100 text-slate-700 font-bold">
+                <th className="py-3 px-3 w-14 text-center bg-slate-100">No</th>
+                <th className="py-3 px-4 min-w-[240px] bg-slate-100">Nama Peserta Didik</th>
+                <th className="py-3 px-4 w-44 text-center bg-slate-100">NISN</th>
+                <th className="py-3 px-4 w-60 text-center bg-slate-100">Predikat Capaian</th>
+                <th className="py-3 px-4 w-44 text-center bg-slate-100">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
