@@ -50,7 +50,7 @@ type DocumentType = 'jilid' | 'identitas-sekolah' | 'identitas-murid' | 'biodata
 
 export default function CetakRapor() {
   const { state } = useAppStore();
-  const { sekolah, siswa, nilai, tujuanPembelajaran, mapel, ekstrakurikuler, nilaiEkskul, customDeskripsiMapel, projek, customDeskripsiKokurikuler } = state;
+  const { sekolah, siswa, nilai, tujuanPembelajaran, mapel, ekstrakurikuler, nilaiEkskul, customDeskripsiMapel, projek, customDeskripsiKokurikuler, dataPendukung = {} } = state;
   const displayedMapel = mapel.filter(m => m.tampilRapor !== false);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,7 +160,10 @@ export default function CetakRapor() {
         isTanpaAngka,
         paperSize,
         customDeskripsiMapel,
-        pdfFont
+        pdfFont,
+        projek,
+        customDeskripsiKokurikuler,
+        dataPendukung
       );
     }
 
@@ -193,7 +196,8 @@ export default function CetakRapor() {
           customDeskripsiMapel,
           pdfFont,
           projek,
-          customDeskripsiKokurikuler
+          customDeskripsiKokurikuler,
+          dataPendukung
         );
         break;
       case 'buku-induk':
@@ -815,34 +819,39 @@ export default function CetakRapor() {
           </div>
 
           {/* 4. Kehadiran & Catatan Wali Kelas (2 Kotak Terpisah Berdampingan dengan Celah) */}
-          <div className="grid grid-cols-[210px_1fr] gap-3 text-[11px]">
-            {/* Kotak Kiri: Ketidakhadiran */}
-            <div className="border border-slate-900 flex flex-col bg-white">
-              <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
-                Ketidakhadiran
-              </div>
-              <div className="flex-1 flex flex-col divide-y divide-slate-300">
-                <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
-                  <span className="font-bold text-slate-900">Sakit</span>
-                  <span className="font-mono text-slate-900">: 0 hari</span>
-                </div>
-                <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
-                  <span className="font-bold text-slate-900">Izin</span>
-                  <span className="font-mono text-slate-900">: 0 hari</span>
-                </div>
-                <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
-                  <span className="font-bold text-slate-900">Tanpa Keterangan</span>
-                  <span className="font-mono text-slate-900">: 0 hari</span>
-                </div>
-              </div>
-            </div>
+          {(() => {
+            const studentDp = dataPendukung[currentStudent.id] || {};
+            const sakitVal = studentDp.sakit ?? 0;
+            const izinVal = studentDp.izin ?? 0;
+            const alpaVal = studentDp.alpa ?? 0;
+            const catatanText = studentDp.catatanWaliKelas?.trim() || 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
+            const len = catatanText.length;
+            const fontSizeClass = len > 260 ? 'text-[8px] leading-snug' : len > 190 ? 'text-[8.5px] leading-tight' : len > 130 ? 'text-[9.5px] leading-normal' : 'text-[10.5px] leading-relaxed';
 
-            {/* Kotak Kanan: Catatan Wali Kelas (Reguler, Auto Fit / Shrink to Fit) */}
-            {(() => {
-              const catatanText = 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
-              const len = catatanText.length;
-              const fontSizeClass = len > 260 ? 'text-[8px] leading-snug' : len > 190 ? 'text-[8.5px] leading-tight' : len > 130 ? 'text-[9.5px] leading-normal' : 'text-[10.5px] leading-relaxed';
-              return (
+            return (
+              <div className="grid grid-cols-[210px_1fr] gap-3 text-[11px]">
+                {/* Kotak Kiri: Ketidakhadiran */}
+                <div className="border border-slate-900 flex flex-col bg-white">
+                  <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
+                    Ketidakhadiran
+                  </div>
+                  <div className="flex-1 flex flex-col divide-y divide-slate-300">
+                    <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
+                      <span className="font-bold text-slate-900">Sakit</span>
+                      <span className="font-mono text-slate-900">: {sakitVal} hari</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
+                      <span className="font-bold text-slate-900">Izin</span>
+                      <span className="font-mono text-slate-900">: {izinVal} hari</span>
+                    </div>
+                    <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
+                      <span className="font-bold text-slate-900">Tanpa Keterangan</span>
+                      <span className="font-mono text-slate-900">: {alpaVal} hari</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kotak Kanan: Catatan Wali Kelas (Reguler, Auto Fit / Shrink to Fit) */}
                 <div className="border border-slate-900 flex flex-col bg-white">
                   <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
                     Catatan Wali Kelas
@@ -851,9 +860,9 @@ export default function CetakRapor() {
                     {catatanText}
                   </div>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
 
           {/* 5. Tanggapan Orang Tua/ Wali Murid */}
           <div>

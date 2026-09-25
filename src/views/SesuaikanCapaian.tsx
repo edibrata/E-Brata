@@ -16,8 +16,11 @@ import {
   ChevronDown,
   Filter,
   Layers,
-  ArrowUpDown
+  ArrowUpDown,
+  Users,
+  X
 } from 'lucide-react';
+import Tooltip from '@/components/Tooltip';
 import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
 import { 
   hitungNilaiMapel, 
@@ -29,7 +32,11 @@ import {
 
 type TransitTab = 'intrakurikuler' | 'ekstrakurikuler' | 'kokurikuler';
 
-export default function SesuaikanCapaian() {
+interface SesuaikanCapaianProps {
+  defaultTab?: TransitTab;
+}
+
+export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: SesuaikanCapaianProps) {
   const { state, updateState } = useAppStore();
   const { 
     siswa, 
@@ -45,7 +52,7 @@ export default function SesuaikanCapaian() {
     customDeskripsiKokurikuler = {}
   } = state;
 
-  const [activeTab, setActiveTab] = useState<TransitTab>('intrakurikuler');
+  const [activeTab, setActiveTab] = useState<TransitTab>(defaultTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
@@ -341,6 +348,25 @@ export default function SesuaikanCapaian() {
     showToast(`Variasi redaksi diterapkan untuk tema "${activeProjek.tema}"`);
   };
 
+  // Statistik Ringkas untuk Header Intrakurikuler (Clean, Compact)
+  const intraStats = useMemo(() => {
+    if (!activeMapel) return { total: siswa.length, variasi: 0, baku: siswa.length };
+    let variasi = 0;
+    siswa.forEach(s => {
+      const key = `${s.id}_${activeMapel.id}`;
+      const custom = customDeskripsiMapel[s.id]?.[activeMapel.id];
+      const defaultD = getDefaultDeskripsiIntra(s.id, activeMapel.id);
+      if ((custom !== undefined && custom !== defaultD) || intrakurikulerVariationIndex[key] !== undefined) {
+        variasi++;
+      }
+    });
+    return {
+      total: siswa.length,
+      variasi,
+      baku: Math.max(0, siswa.length - variasi)
+    };
+  }, [siswa, activeMapel, customDeskripsiMapel, intrakurikulerVariationIndex, mapel, tujuanPembelajaran, nilai]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] -m-4 md:-m-6 lg:-m-8 bg-slate-50/60 overflow-hidden">
       {/* Toast Notification */}
@@ -352,121 +378,63 @@ export default function SesuaikanCapaian() {
       )}
 
       {/* ========================================================================= */}
-      {/* COMPACT STICKY HEADER */}
+      {/* ULTRA-COMPACT SINGLE BAR STICKY HEADER */}
       {/* ========================================================================= */}
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs px-4 sm:px-6 py-2.5 shrink-0">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 max-w-7xl mx-auto">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs px-3 sm:px-5 py-2.5 shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 max-w-7xl mx-auto">
           
-          {/* Left: Title & Segmented Control Tabs */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 pr-3 border-r border-slate-200">
-              <CheckSquare size={16} className="text-indigo-600 shrink-0" />
-              <h1 className="text-sm font-bold text-slate-800 tracking-tight whitespace-nowrap">
-                Sesuaikan Capaian
-              </h1>
-            </div>
-
+          {/* Sisi Kiri: Ikon + Segmented Control Tabs + Dropdown Selector Sejajar */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Segmented Control Tabs */}
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg text-xs font-medium border border-slate-200/70">
+            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg text-xs font-semibold border border-slate-200/70">
               <button
+                type="button"
                 onClick={() => setActiveTab('intrakurikuler')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   activeTab === 'intrakurikuler'
-                    ? 'bg-white text-indigo-700 font-semibold shadow-xs'
+                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <BookOpen size={13} />
+                <BookOpen size={12} />
                 <span>Intrakurikuler</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('ekstrakurikuler')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   activeTab === 'ekstrakurikuler'
-                    ? 'bg-white text-indigo-700 font-semibold shadow-xs'
+                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Medal size={13} />
+                <Medal size={12} />
                 <span>Ekstrakurikuler</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setActiveTab('kokurikuler')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
                   activeTab === 'kokurikuler'
-                    ? 'bg-white text-indigo-700 font-semibold shadow-xs'
+                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Compass size={13} />
+                <Compass size={12} />
                 <span>Kokurikuler</span>
               </button>
             </div>
-          </div>
 
-          {/* Right: Global Actions */}
-          <div className="flex items-center gap-2 justify-end">
+            {/* Selector Dropdown Intrakurikuler */}
             {activeTab === 'intrakurikuler' && (
-              <>
-                <button
-                  onClick={handleVariasikanSemuaIntra}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-lg text-xs font-semibold shadow-xs transition-all"
-                  title="Variasikan redaksi otomatis untuk semua murid dalam 1 kelas"
-                >
-                  <Sparkles size={13} className="text-amber-300" />
-                  <span>Variasikan 1 Kelas</span>
-                </button>
-
-                <button
-                  onClick={handleResetSemuaIntra}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition-all border border-slate-200/80"
-                  title="Reset semua deskripsi ke formula standar PPA 2025"
-                >
-                  <RotateCcw size={12} />
-                  <span>Reset</span>
-                </button>
-              </>
-            )}
-
-            {activeTab === 'ekstrakurikuler' && (
-              <button
-                onClick={handleVariasikanSemuaEkskul}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-lg text-xs font-semibold shadow-xs transition-all"
-              >
-                <Sparkles size={13} className="text-amber-300" />
-                <span>Variasikan Semua Murid</span>
-              </button>
-            )}
-
-            {activeTab === 'kokurikuler' && (
-              <button
-                onClick={handleVariasikanSemuaKokurikuler}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white rounded-lg text-xs font-semibold shadow-xs transition-all"
-              >
-                <Sparkles size={13} className="text-amber-300" />
-                <span>Variasikan Semua Murid</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Compact Sub-Header Filter Bar (DROPDOWN REPLACEMENT FOR PILL BUTTONS) */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2 mt-2 border-t border-slate-100 max-w-7xl mx-auto">
-          {/* Dropdown Selector */}
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
-            {activeTab === 'intrakurikuler' && (
-              <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
-                  Mata Pelajaran:
-                </span>
-                
-                <div className="relative flex-1 sm:w-80">
+              <div className="flex items-center gap-1">
+                <div className="relative w-44 sm:w-60">
                   <select
                     value={selectedMapelId}
                     onChange={(e) => setSelectedMapelId(e.target.value)}
-                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
+                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100/90 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
                   >
                     {displayedMapel.map(m => (
                       <option key={m.id} value={m.id}>
@@ -474,91 +442,171 @@ export default function SesuaikanCapaian() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown size={14} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown size={14} className="text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
-                {/* Quick Prev / Next Buttons */}
                 <div className="flex items-center gap-0.5 shrink-0">
-                  <button
-                    onClick={handlePrevMapel}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200/80 transition-colors"
-                    title="Mata Pelajaran Sebelumnya"
-                  >
-                    <ChevronLeft size={13} />
-                  </button>
-                  <button
-                    onClick={handleNextMapel}
-                    className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200/80 transition-colors"
-                    title="Mata Pelajaran Berikutnya"
-                  >
-                    <ChevronRight size={13} />
-                  </button>
+                  <Tooltip content="Mapel Sebelumnya" position="bottom">
+                    <button
+                      type="button"
+                      onClick={handlePrevMapel}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors cursor-pointer"
+                      aria-label="Mapel Sebelumnya"
+                    >
+                      <ChevronLeft size={13} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Mapel Berikutnya" position="bottom">
+                    <button
+                      type="button"
+                      onClick={handleNextMapel}
+                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md border border-slate-200 transition-colors cursor-pointer"
+                      aria-label="Mapel Berikutnya"
+                    >
+                      <ChevronRight size={13} />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             )}
 
+            {/* Selector Dropdown Ekstrakurikuler */}
             {activeTab === 'ekstrakurikuler' && displayedEkskul.length > 0 && (
-              <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
-                  Kegiatan:
-                </span>
-                <div className="relative flex-1 sm:w-72">
-                  <select
-                    value={selectedEkskulId}
-                    onChange={(e) => setSelectedEkskulId(e.target.value)}
-                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
-                  >
-                    {displayedEkskul.map(e => (
-                      <option key={e.id} value={e.id}>
-                        {e.nama} ({e.jenis})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+              <div className="relative w-52 sm:w-64">
+                <select
+                  value={selectedEkskulId}
+                  onChange={(e) => setSelectedEkskulId(e.target.value)}
+                  className="w-full appearance-none bg-slate-50 hover:bg-slate-100/90 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
+                >
+                  {displayedEkskul.map(e => (
+                    <option key={e.id} value={e.id}>
+                      {e.nama} ({e.jenis})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             )}
 
+            {/* Selector Dropdown Kokurikuler */}
             {activeTab === 'kokurikuler' && projek.length > 0 && (
-              <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap hidden sm:inline">
-                  Tema:
-                </span>
-                <div className="relative flex-1 sm:w-80">
-                  <select
-                    value={selectedProjekId}
-                    onChange={(e) => setSelectedProjekId(e.target.value)}
-                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-800 text-xs font-semibold rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
-                  >
-                    {projek.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.tema}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+              <div className="relative w-52 sm:w-72">
+                <select
+                  value={selectedProjekId}
+                  onChange={(e) => setSelectedProjekId(e.target.value)}
+                  className="w-full appearance-none bg-slate-50 hover:bg-slate-100/90 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
+                >
+                  {projek.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.tema}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             )}
           </div>
 
-          {/* Search & Counter */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-              <span>{filteredSiswa.length} Murid</span>
-            </div>
+          {/* Sisi Kanan: Mini Stats + Aksi + Pencarian Sejajar */}
+          <div className="flex flex-wrap items-center gap-2 justify-between lg:justify-end flex-1">
+            {/* Pill Stats Cepat (Khusus Intrakurikuler) */}
+            {activeTab === 'intrakurikuler' && (
+              <div className="flex items-center gap-1.5">
+                <Tooltip content={`Total Murid Terdaftar: ${intraStats.total} orang`} position="bottom">
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold cursor-default select-none shadow-2xs">
+                    <Users size={12} className="text-slate-500" />
+                    <span>M: {intraStats.total}</span>
+                  </div>
+                </Tooltip>
 
-            <div className="relative w-full sm:w-56">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari murid..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              />
+                <Tooltip content={`Narasi Telah Disesuaikan / Divariasikan: ${intraStats.variasi} murid`} position="bottom">
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold cursor-default select-none shadow-2xs">
+                    <Sparkles size={12} className="text-amber-500" />
+                    <span>Variasi: {intraStats.variasi}</span>
+                  </div>
+                </Tooltip>
+
+                <Tooltip content={`Narasi Menggunakan Formula Baku PPA: ${intraStats.baku} murid`} position="bottom">
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold cursor-default select-none shadow-2xs">
+                    <BookOpen size={12} className="text-indigo-500" />
+                    <span>Baku: {intraStats.baku}</span>
+                  </div>
+                </Tooltip>
+              </div>
+            )}
+
+            {/* Tombol Aksi Utama */}
+            <div className="flex items-center gap-1.5">
+              {activeTab === 'intrakurikuler' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleVariasikanSemuaIntra}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                    title="Variasikan narasi otomatis untuk seluruh kelas"
+                  >
+                    <Sparkles size={12} className="text-amber-300" />
+                    <span>Variasikan 1 Kelas</span>
+                  </button>
+
+                  <Tooltip content="Reset Semua Deskripsi Mapel Ini ke Formula Baku PPA 2025" position="bottom">
+                    <button
+                      type="button"
+                      onClick={handleResetSemuaIntra}
+                      className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg text-xs transition-all border border-slate-200 hover:border-rose-200 shadow-2xs cursor-pointer active:scale-95"
+                      aria-label="Reset Semua"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                  </Tooltip>
+                </>
+              )}
+
+              {activeTab === 'ekstrakurikuler' && (
+                <button
+                  type="button"
+                  onClick={handleVariasikanSemuaEkskul}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                >
+                  <Sparkles size={12} className="text-amber-300" />
+                  <span>Variasikan 1 Kelas</span>
+                </button>
+              )}
+
+              {activeTab === 'kokurikuler' && (
+                <button
+                  type="button"
+                  onClick={handleVariasikanSemuaKokurikuler}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                >
+                  <Sparkles size={12} className="text-amber-300" />
+                  <span>Variasikan 1 Kelas</span>
+                </button>
+              )}
+
+              {/* Input Pencarian Ramping */}
+              <div className="relative w-36 sm:w-48 shrink-0">
+                <Search size={13} className="text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Cari murid..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-7 pr-6 py-1.5 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
         </div>
       </header>
 
@@ -567,7 +615,7 @@ export default function SesuaikanCapaian() {
       {/* ========================================================================= */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-3 max-w-7xl w-full mx-auto">
         
-        {/* TAB 1: INTRAKURIKULER */}
+        {/* TAB 1: INTRAKURIKULER (COMPACT ROW CARDS) */}
         {activeTab === 'intrakurikuler' && (
           <div className="space-y-3 pb-8">
             {filteredSiswa.map((student, sIdx) => {
@@ -594,147 +642,112 @@ export default function SesuaikanCapaian() {
               return (
                 <div 
                   key={student.id} 
-                  className="bg-white rounded-xl p-3.5 border border-slate-200/90 shadow-xs hover:border-indigo-300 transition-all group"
+                  className="bg-white rounded-xl p-3 border border-slate-200 shadow-2xs hover:border-indigo-300 transition-all group space-y-2"
                 >
-                  <div className="flex flex-col md:flex-row md:items-start gap-3.5">
+                  {/* Baris Atas: Nomor, Nama Murid, Chip Nilai TP Inline, dan Aksi */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     
-                    {/* Kolom Kiri: Profil & Nilai Ringkas Berbasis Bukti TP */}
-                    <div className="md:w-64 shrink-0 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-md bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center shrink-0">
-                          {sIdx + 1}
+                    {/* Sisi Kiri: Identitas Murid & TP Chips Inline */}
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <span className="w-5 h-5 rounded bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0">
+                        {sIdx + 1}
+                      </span>
+                      <span className="font-bold text-xs text-slate-800 truncate" title={student.nama}>
+                        {student.nama}
+                      </span>
+                      {student.nisn && (
+                        <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
+                          ({student.nisn})
                         </span>
-                        <div className="min-w-0">
-                          <h2 className="font-bold text-xs text-slate-800 truncate" title={student.nama}>
-                            {student.nama}
-                          </h2>
-                          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                            <span>NISN: {student.nisn || '-'}</span>
-                            {student.agama && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
-                                {student.agama}
+                      )}
+
+                      {/* TP Badges Inline (Compact & Elegan dengan Tooltip) */}
+                      <div className="flex flex-wrap items-center gap-1 pl-1">
+                        {mapelTps.map((tp, tpIdx) => {
+                          const tpScore = res.tpStatus[tp.id]?.score;
+                          const isMax = res.maxTpItem?.id === tp.id && tpScore !== null;
+                          const isMinUnderKktp = res.minTpItem?.id === tp.id && tpScore !== null && tpScore < kktp;
+                          const isBelow = tpScore !== null && tpScore < kktp;
+
+                          let badgeStyle = 'bg-slate-50 text-slate-600 border-slate-200';
+                          if (isMax) badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
+                          else if (isMinUnderKktp) badgeStyle = 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
+                          else if (isBelow) badgeStyle = 'bg-amber-50 text-amber-800 border-amber-300';
+
+                          return (
+                            <Tooltip key={tp.id} content={`${tp.deskripsi} (Nilai: ${tpScore ?? '-'})`} position="top">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border flex items-center gap-0.5 select-none ${badgeStyle}`}>
+                                <span>TP{tpIdx + 1}:</span>
+                                <b>{tpScore ?? '-'}</b>
+                                {isMax && <span className="text-[8px] text-emerald-600" title="Capaian Tertinggi">★</span>}
+                                {isMinUnderKktp && <span className="text-[8px] text-rose-600" title="Perlu Penguatan">▲</span>}
                               </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Rincian Skor Tiap TP (Bukti Belajar Otentik PPA 2025) */}
-                      <div className="bg-slate-50/90 rounded-lg p-2.5 border border-slate-100 space-y-2 text-[11px]">
-                        <div className="flex items-center justify-between text-[10px] text-slate-600 font-semibold border-b border-slate-200/60 pb-1">
-                          <span>Bukti Nilai per TP:</span>
-                          <span className="text-[9px] text-slate-400 font-normal">{mapelTps.length} TP Terpetakan</span>
-                        </div>
-
-                        {/* List Skor TP */}
-                        {mapelTps.length === 0 ? (
-                          <div className="text-[10px] text-slate-400 italic py-1">
-                            Belum ada TP untuk kategori ini
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {mapelTps.map((tp, tpIdx) => {
-                              const tpScore = res.tpStatus[tp.id]?.score;
-                              const isMax = res.maxTpItem?.id === tp.id && tpScore !== null;
-                              const isMinUnderKktp = res.minTpItem?.id === tp.id && tpScore !== null && tpScore < kktp;
-                              const isBelow = tpScore !== null && tpScore < kktp;
-
-                              let badgeStyle = 'bg-white text-slate-600 border-slate-200';
-                              if (isMax) badgeStyle = 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold';
-                              else if (isMinUnderKktp) badgeStyle = 'bg-rose-50 text-rose-800 border-rose-300 font-bold';
-                              else if (isBelow) badgeStyle = 'bg-amber-50 text-amber-800 border-amber-300';
-
-                              return (
-                                <span
-                                  key={tp.id}
-                                  className={`px-1.5 py-0.5 rounded border text-[10px] flex items-center gap-1 ${badgeStyle}`}
-                                  title={`${tp.deskripsi} (Skor: ${tpScore !== null ? tpScore : '-'})`}
-                                >
-                                  <span>TP{tpIdx + 1}:</span>
-                                  <b>{tpScore !== null ? tpScore : '-'}</b>
-                                  {isMax && <span className="text-[8px] text-emerald-600">★</span>}
-                                  {isMinUnderKktp && <span className="text-[8px] text-rose-600">▲</span>}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Ringkasan Dasar Narasi */}
-                        <div className="text-[10px] text-slate-500 pt-0.5 space-y-0.5">
-                          {res.maxTpItem && (
-                            <div className="truncate text-emerald-700 font-medium">
-                              ★ Capaian Tertinggi ({res.maxTpItem.score} pts)
-                            </div>
-                          )}
-                          {res.minTpItem && res.minTpItem.score < kktp && res.minTpItem.id !== res.maxTpItem?.id && (
-                            <div className="truncate text-rose-700 font-medium">
-                              ▲ Perlu Penguatan ({res.minTpItem.score} pts)
-                            </div>
-                          )}
-                        </div>
+                            </Tooltip>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Kolom Kanan: Editor Deskripsi & Toolbar Compact */}
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-semibold text-slate-600">
-                            Deskripsi Rapor:
-                          </span>
-                          {varIdx !== undefined && (
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded">
-                              ✨ Variasi {varIdx + 1}/5
-                            </span>
-                          )}
-                          {isCustomEdited && varIdx === undefined && (
-                            <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.5 rounded">
-                              ✏️ Diedit Manual
-                            </span>
-                          )}
-                        </div>
+                    {/* Sisi Kanan: Status & Aksi Compact */}
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                      {varIdx !== undefined && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          ✨ Var {varIdx + 1}/5
+                        </span>
+                      )}
+                      {isCustomEdited && varIdx === undefined && (
+                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                          ✏️ Manual
+                        </span>
+                      )}
 
-                        {/* Button Group */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleCycleVariasiIntra(student.id, activeMapel.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition-colors border border-indigo-200/70 active:scale-95 cursor-pointer"
-                            title="Klik untuk berganti ke 5 variasi redaksi kalimat berbeda secara otomatis"
-                          >
-                            <Shuffle size={11} />
-                            <span>Variasi {varIdx !== undefined ? `(${varIdx + 1}/5)` : ''}</span>
-                          </button>
+                      {/* Tombol Ganti Variasi */}
+                      <Tooltip content="Putar ke variasi narasi berikutnya (tersedia 5 variasi unik)" position="top">
+                        <button
+                          type="button"
+                          onClick={() => handleCycleVariasiIntra(student.id, activeMapel.id)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition-colors border border-indigo-200/70 active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          <Shuffle size={11} />
+                          <span>Variasi {varIdx !== undefined ? `(${varIdx + 1}/5)` : ''}</span>
+                        </button>
+                      </Tooltip>
 
-                          <button
-                            onClick={() => handleResetIntra(student.id, activeMapel.id)}
-                            className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                            title="Reset ke deskripsi bawaan formula"
-                          >
-                            <RotateCcw size={12} />
-                          </button>
+                      {/* Tombol Reset Satuan */}
+                      <Tooltip content="Reset narasi murid ini ke formula standar PPA" position="top">
+                        <button
+                          type="button"
+                          onClick={() => handleResetIntra(student.id, activeMapel.id)}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200/60 transition-colors cursor-pointer active:scale-95"
+                          aria-label="Reset Murid"
+                        >
+                          <RotateCcw size={12} />
+                        </button>
+                      </Tooltip>
 
-                          <button
-                            onClick={() => handleCopyText(currentText, student.id)}
-                            className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                            title="Salin deskripsi"
-                          >
-                            {copiedId === student.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Textarea Input Mandiri */}
-                      <textarea
-                        rows={2}
-                        value={currentText}
-                        onChange={(e) => handleUpdateDeskripsiIntra(student.id, activeMapel.id, e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50/60 focus:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-y font-sans"
-                        placeholder="Deskripsi capaian kompetensi murid..."
-                      />
+                      {/* Tombol Salin */}
+                      <Tooltip content="Salin teks deskripsi ini" position="top">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(currentText, student.id)}
+                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200/60 transition-colors cursor-pointer active:scale-95"
+                          aria-label="Salin Teks"
+                        >
+                          {copiedId === student.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                        </button>
+                      </Tooltip>
                     </div>
 
                   </div>
+
+                  {/* Baris Bawah: Textarea Deskripsi Rapor (Clean & Compact) */}
+                  <textarea
+                    rows={2}
+                    value={currentText}
+                    onChange={(e) => handleUpdateDeskripsiIntra(student.id, activeMapel.id, e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50/70 focus:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-y font-sans placeholder:text-slate-400"
+                    placeholder="Deskripsi capaian kompetensi murid..."
+                  />
                 </div>
               );
             })}

@@ -14,6 +14,10 @@ import NilaiProjek from '@/views/NilaiProjek';
 import CetakRapor from '@/views/CetakRapor';
 import SesuaikanCapaian from '@/views/SesuaikanCapaian';
 import KotakSampah from '@/views/KotakSampah';
+import DataPendukung from '@/views/DataPendukung';
+import GenerateCatatanWali from '@/views/GenerateCatatanWali';
+import NilaiEkskulView from '@/views/NilaiEkskulView';
+import ManajemenDataView from '@/views/ManajemenDataView';
 import Placeholder from '@/views/Placeholder';
 import Petunjuk from '@/views/Petunjuk';
 import PanduanAsesmen from '@/views/PanduanAsesmen';
@@ -48,27 +52,38 @@ function Dashboard() {
         <Header toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} onOpenDevProfile={() => setShowDevProfileModal(true)} />
         
         <main className="p-6 lg:p-8 md:p-6 p-4 flex-1 overflow-x-hidden">
-          {activeView === 'dashboard' && <DashboardView onOpenDevProfile={() => setShowDevProfileModal(true)} />}
-          {activeView === 'data-sekolah' && <DataSekolah />}
-          {activeView === 'kegiatan-akademik' && <KegiatanAkademik />}
-          {activeView === 'data-siswa' && <DataSiswa />}
-          {activeView === 'data-ekskul' && <DataEkstrakurikuler />}
-          {activeView === 'kotak-sampah' && <KotakSampah />}
-          {activeView === 'data-pendukung' && <Placeholder title="Data Pendukung" />}
+          {/* 1. UTAMA */}
+          {activeView === 'dashboard' && <DashboardView onOpenDevProfile={() => setShowDevProfileModal(true)} onNavigate={(v) => setActiveView(v)} />}
+          {(activeView === 'data-dasar' || activeView === 'data-sekolah') && <DataSekolah />}
+          {(activeView === 'data-murid' || activeView === 'data-siswa') && <DataSiswa />}
 
-          {activeView === 'input-nilai' && <InputNilai />}
-          {activeView === 'sesuaikan-capaian' && <SesuaikanCapaian />}
-          {activeView === 'nilai-ekskul' && <Placeholder title="Nilai Ekstrakurikuler" />}
-          {activeView === 'data-projek' && <DataProjekView />}
-          {activeView === 'nilai-projek' && <NilaiProjek />}
-          {activeView === 'leger' && <Leger />}
+          {/* 2. INTRAKURIKULER */}
+          {(activeView === 'intra-perencanaan' || activeView === 'kegiatan-akademik') && <KegiatanAkademik />}
+          {(activeView === 'intra-input-nilai' || activeView === 'input-nilai') && <InputNilai />}
 
-          {(activeView === 'cetak-rapor' || activeView === 'output-cetak' || activeView === 'jilid-identitas' || activeView === 'biodata-murid' || activeView === 'lampiran-buku-induk' || activeView === 'keterangan-pindah') && <CetakRapor />}
+          {/* 3. KOKURIKULER */}
+          {(activeView === 'koku-perencanaan' || activeView === 'data-projek') && <DataProjekView />}
+          {(activeView === 'koku-input-nilai' || activeView === 'nilai-projek') && <NilaiProjek />}
 
-          {activeView === 'dashboard-analitik' && <Placeholder title="Dashboard Analitik" />}
-          {activeView === 'ai-assistant' && <Placeholder title="AI Assistant" />}
+          {/* 4. EKSTRAKURIKULER */}
+          {(activeView === 'ekskul-perencanaan' || activeView === 'data-ekskul') && <DataEkstrakurikuler />}
+          {(activeView === 'ekskul-input-nilai' || activeView === 'nilai-ekskul') && <NilaiEkskulView />}
 
-          {activeView === 'petunjuk' && <Petunjuk />}
+          {/* 5. OUTPUT & CETAK */}
+          {(activeView === 'output-capaian' || activeView === 'sesuaikan-capaian' || activeView === 'intra-capaian' || activeView === 'koku-capaian' || activeView === 'ekskul-capaian') && <SesuaikanCapaian />}
+          {(activeView === 'output-catatan' || activeView === 'generate-catatan-wali') && <GenerateCatatanWali />}
+          {(activeView === 'output-leger' || activeView === 'leger') && <Leger />}
+          {(activeView === 'output-cetak' || activeView === 'cetak-rapor' || activeView === 'jilid-identitas' || activeView === 'biodata-murid' || activeView === 'lampiran-buku-induk' || activeView === 'keterangan-pindah') && <CetakRapor />}
+
+          {/* 6. MANAJEMEN DATA */}
+          {(activeView === 'manajemen-sampah' || activeView === 'kotak-sampah') && <ManajemenDataView initialTab="sampah" />}
+          {activeView === 'manajemen-ekspor' && <ManajemenDataView initialTab="ekspor" />}
+          {activeView === 'manajemen-impor' && <ManajemenDataView initialTab="impor" />}
+          {activeView === 'manajemen-backup' && <ManajemenDataView initialTab="backup" />}
+          {activeView === 'manajemen-restore' && <ManajemenDataView initialTab="restore" />}
+
+          {/* 7. SISTEM */}
+          {(activeView === 'sistem-petunjuk' || activeView === 'petunjuk') && <Petunjuk />}
           {activeView === 'panduan-asesmen' && <PanduanAsesmen />}
         </main>
         <footer className="py-5 shrink-0 border-t border-slate-200/80 bg-slate-50/80 backdrop-blur-sm">

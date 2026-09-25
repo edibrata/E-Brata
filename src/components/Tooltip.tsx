@@ -3,7 +3,7 @@ import React, { ReactNode } from 'react';
 interface TooltipProps {
   content: ReactNode;
   children: ReactNode;
-  position?: 'top' | 'bottom' | 'left' | 'right';
+  position?: 'top' | 'bottom' | 'left' | 'right' | 'bottom-left' | 'bottom-right';
   className?: string;
   delay?: boolean;
 }
@@ -22,6 +22,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
     bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
     left: 'right-full top-1/2 -translate-y-1/2 mr-2',
     right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+    'bottom-left': 'top-full right-0 mt-2',
+    'bottom-right': 'top-full left-0 mt-2',
   };
 
   const arrowClasses = {
@@ -29,6 +31,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
     bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-slate-900 border-x-transparent border-t-transparent',
     left: 'left-full top-1/2 -translate-y-1/2 border-l-slate-900 border-y-transparent border-r-transparent',
     right: 'right-full top-1/2 -translate-y-1/2 border-r-slate-900 border-y-transparent border-l-transparent',
+    'bottom-left': 'bottom-full right-3.5 border-b-slate-900 border-x-transparent border-t-transparent',
+    'bottom-right': 'bottom-full left-3.5 border-b-slate-900 border-x-transparent border-t-transparent',
   };
 
   return (

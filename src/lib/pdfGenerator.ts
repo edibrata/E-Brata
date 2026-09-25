@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Sekolah, Siswa, Mapel, NilaiMapelSiswa, TujuanPembelajaran, Ekstrakurikuler, NilaiEkskul } from '@/types';
+import { Sekolah, Siswa, Mapel, NilaiMapelSiswa, TujuanPembelajaran, Ekstrakurikuler, NilaiEkskul, DataPendukungSiswa } from '@/types';
 import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
 import { hitungNilaiMapel } from '@/lib/penilaianUtils';
 
@@ -840,7 +840,8 @@ export const buildRaporPDF = (
   customDeskripsiMapel?: Record<string, Record<string, string>>,
   pdfFont: PdfFontOption = 'arial',
   projekList?: { id: string; tema: string; deskripsi: string }[],
-  customDeskripsiKokurikuler?: Record<string, Record<string, string>>
+  customDeskripsiKokurikuler?: Record<string, Record<string, string>>,
+  dataPendukungMap?: Record<string, DataPendukungSiswa>
 ) => {
   const { fontName, baseBodySize, headerSize } = getFontConfig(pdfFont);
   const startPage = doc.getNumberOfPages() + (isContinuation ? 1 : 0);
@@ -1173,6 +1174,11 @@ export const buildRaporPDF = (
   const startCatatanX = 15 + widthKetidakhadiran + gapWidth;
   const blockStartY = currentY;
 
+  const studentDp = dataPendukungMap?.[student.id] || {};
+  const sakitCount = studentDp.sakit ?? 0;
+  const izinCount = studentDp.izin ?? 0;
+  const alpaCount = studentDp.alpa ?? 0;
+
   // 4A. Kotak Kiri: Ketidakhadiran (Garis Penutup Kanan Sendiri, Tanpa Garis Vertikal Pemisah di Tengah, Garis Dalam Tipis)
   autoTable(doc, {
     startY: blockStartY,
@@ -1186,15 +1192,15 @@ export const buildRaporPDF = (
     body: [
       [
         { content: 'Sakit', styles: { fontStyle: 'bold' as const } },
-        { content: ': 0 hari' }
+        { content: `: ${sakitCount} hari` }
       ],
       [
         { content: 'Izin', styles: { fontStyle: 'bold' as const } },
-        { content: ': 0 hari' }
+        { content: `: ${izinCount} hari` }
       ],
       [
         { content: 'Tanpa Keterangan', styles: { fontStyle: 'bold' as const } },
-        { content: ': 0 hari' }
+        { content: `: ${alpaCount} hari` }
       ]
     ],
     theme: 'plain',
@@ -1262,7 +1268,7 @@ export const buildRaporPDF = (
   const renderedHeadH = (doc as any).lastAutoTable.table?.head?.[0]?.height || 7.2;
   const exactCatatanBodyHeight = Math.max(totalBoxHeight - renderedHeadH, 18);
 
-  const catatanWaliKelas = 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
+  const catatanWaliKelas = studentDp.catatanWaliKelas?.trim() || 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
 
   // Kalkulasi Shrink to Fit dinamis untuk Catatan Wali Kelas agar selalu muat rapi di luas kotak
   const availableTextWidth = widthCatatan - 7;
@@ -1826,7 +1832,10 @@ export const buildCustomBundelPDF = (
   isTanpaAngka = false,
   paperSize: PaperSize = 'a4',
   customDeskripsiMapel?: Record<string, Record<string, string>>,
-  pdfFont: PdfFontOption = 'arial'
+  pdfFont: PdfFontOption = 'arial',
+  projekList?: { id: string; tema: string; deskripsi: string }[],
+  customDeskripsiKokurikuler?: Record<string, Record<string, string>>,
+  dataPendukungMap?: Record<string, DataPendukungSiswa>
 ): jsPDF => {
   const { format } = getPaperDimensions(paperSize);
   const doc = new jsPDF('p', 'mm', format as any);
@@ -1846,7 +1855,7 @@ export const buildCustomBundelPDF = (
       buildBiodataPDF(doc, sekolah, student, paperSize, isContinuation, pdfFont);
       isFirstDoc = false;
     } else if (type === 'rapor') {
-      buildRaporPDF(doc, sekolah, student, mapelList, nilaiMap, tpList, ekskulList, nilaiEkskulMap, isTanpaAngka, paperSize, isContinuation, customDeskripsiMapel, pdfFont);
+      buildRaporPDF(doc, sekolah, student, mapelList, nilaiMap, tpList, ekskulList, nilaiEkskulMap, isTanpaAngka, paperSize, isContinuation, customDeskripsiMapel, pdfFont, projekList, customDeskripsiKokurikuler, dataPendukungMap);
       isFirstDoc = false;
     } else if (type === 'buku-induk') {
       buildBukuIndukPDF(doc, sekolah, student, mapelList, nilaiMap, tpList, paperSize, isContinuation, customDeskripsiMapel, pdfFont);
@@ -1871,7 +1880,10 @@ export const buildBundelLengkapPDF = (
   nilaiEkskulMap: Record<string, Record<string, NilaiEkskul>> | undefined,
   isTanpaAngka = false,
   paperSize: PaperSize = 'a4',
-  pdfFont: PdfFontOption = 'arial'
+  pdfFont: PdfFontOption = 'arial',
+  projekList?: { id: string; tema: string; deskripsi: string }[],
+  customDeskripsiKokurikuler?: Record<string, Record<string, string>>,
+  dataPendukungMap?: Record<string, DataPendukungSiswa>
 ): jsPDF => {
   return buildCustomBundelPDF(
     ['jilid', 'identitas-sekolah', 'identitas-murid', 'rapor', 'buku-induk', 'pindah'],
@@ -1885,6 +1897,9 @@ export const buildBundelLengkapPDF = (
     isTanpaAngka,
     paperSize,
     undefined,
-    pdfFont
+    pdfFont,
+    projekList,
+    customDeskripsiKokurikuler,
+    dataPendukungMap
   );
 };

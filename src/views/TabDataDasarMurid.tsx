@@ -3,15 +3,20 @@ import { useAppStore } from '@/store';
 import { Siswa } from '@/types';
 import Tooltip from '@/components/Tooltip';
 import { normalizeAgama } from '@/lib/agamaUtils';
-import { Plus, Trash2, GripVertical, Upload, Download, UploadCloud } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Upload, Download, UploadCloud, FolderPlus, CalendarCheck2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import DataPendukung from './DataPendukung';
 
-export default function TabDataDasarMurid() {
+interface TabDataDasarMuridProps {
+  initialSubTab?: 'identitas' | 'ortu' | 'pendukung';
+}
+
+export default function TabDataDasarMurid({ initialSubTab = 'identitas' }: TabDataDasarMuridProps) {
   const { state, updateState } = useAppStore();
   const siswa = state.siswa || [];
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  const [subTab, setSubTab] = useState<'identitas' | 'ortu'>('identitas');
+  const [subTab, setSubTab] = useState<'identitas' | 'ortu' | 'pendukung'>(initialSubTab);
 
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
@@ -232,12 +237,11 @@ export default function TabDataDasarMurid() {
 
   return (
     <div className="w-full">
-      <div className="px-6 py-5 border-b border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="px-5 py-3 border-b border-gray-200 bg-white flex flex-row items-center justify-between gap-3">
         <div>
-          <h3 className="font-bold text-sm text-slate-800">Pendaftaran & Pengelolaan Data Murid</h3>
-          <p className="text-[11px] text-gray-500 mt-1">Kelola data murid utama (Nama, NIS, NISN, Ortu, dan TTL).</p>
+          <h3 className="font-bold text-sm text-slate-800 tracking-tight">Pendaftaran & Pengelolaan Data Murid</h3>
         </div>
-        <div className="flex flex-row gap-2 mt-4 sm:mt-0">
+        <div className="flex flex-row items-center gap-1.5 sm:gap-2">
           <input 
             type="file" 
             accept=".xlsx, .xls" 
@@ -293,19 +297,36 @@ export default function TabDataDasarMurid() {
         >
           Data Orang Tua & Wali
         </button>
+        <button
+          onClick={() => setSubTab('pendukung')}
+          className={`flex-1 sm:flex-initial flex items-center gap-1.5 px-6 py-3 text-[11px] font-bold transition-all border-b-2 ${
+            subTab === 'pendukung'
+              ? 'border-indigo-600 text-indigo-700 bg-white'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <CalendarCheck2 className="w-3.5 h-3.5" />
+          Kehadiran
+        </button>
       </div>
 
-      {selectedIds.length > 0 && (
-        <div className="bg-slate-50/80 border-b border-slate-100 px-6 py-3 flex items-center justify-between animate-in fade-in duration-200">
-          <span className="text-slate-950 font-bold text-sm">{selectedIds.length} data murid terpilih</span>
-          <button 
-            onClick={handleDeleteSelected}
-            className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
-          >
-            <Trash2 className="w-4 h-4" /> Hapus Terpilih
-          </button>
+      {subTab === 'pendukung' ? (
+        <div className="p-4 bg-slate-50">
+          <DataPendukung />
         </div>
-      )}
+      ) : (
+        <>
+          {selectedIds.length > 0 && (
+            <div className="bg-slate-50/80 border-b border-slate-100 px-6 py-3 flex items-center justify-between animate-in fade-in duration-200">
+              <span className="text-slate-950 font-bold text-sm">{selectedIds.length} data murid terpilih</span>
+              <button 
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> Hapus Terpilih
+              </button>
+            </div>
+          )}
 
       <div className="overflow-auto bg-white rounded-b-2xl border-t border-gray-200" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         <table className="w-full text-left text-xs whitespace-nowrap">
@@ -552,6 +573,8 @@ export default function TabDataDasarMurid() {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 }

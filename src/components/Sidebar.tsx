@@ -6,7 +6,8 @@ import {
   Target, PenTool, Activity, CheckSquare, 
   BookOpen, FileSpreadsheet, Printer, Book, Contact, 
   Archive, ArrowRightLeft, PieChart, Bot, Lightbulb, 
-  Settings, UserCircle, Star, FolderGit2, ChevronDown, ChevronRight, LogOut, LayoutDashboard, Trash2, Medal
+  Settings, UserCircle, Star, FolderGit2, ChevronDown, ChevronRight, LogOut, LayoutDashboard, Trash2, Medal,
+  Download, Upload, FileJson, RotateCcw, Sparkles
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,49 +26,55 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
       title: 'Utama',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-        { id: 'data-sekolah', label: 'Data Dasar', icon: <School size={18} /> },
+        { id: 'data-dasar', label: 'Data Dasar', icon: <School size={18} /> },
+        { id: 'data-murid', label: 'Data Murid', icon: <Users size={18} /> },
       ]
     },
     {
-      title: 'Perencanaan',
+      title: 'Intrakurikuler',
       items: [
-        { id: 'kegiatan-akademik', label: 'Intrakurikuler', icon: <Calendar size={18} /> },
-        { id: 'data-ekskul', label: 'Ekstrakurikuler', icon: <Medal size={18} /> },
-        { id: 'data-projek', label: 'Kokurikuler', icon: <FolderGit2 size={18} /> },
-        { id: 'data-siswa', label: 'Data Murid', icon: <Users size={18} /> },
-        { id: 'data-pendukung', label: 'Data Pendukung', icon: <FolderPlus size={18} /> },
+        { id: 'intra-perencanaan', label: 'Perencanaan', icon: <Calendar size={18} /> },
+        { id: 'intra-input-nilai', label: 'Input Nilai', icon: <PenTool size={18} /> },
       ]
     },
     {
-      title: 'Penilaian',
+      title: 'Kokurikuler',
       items: [
-        { id: 'input-nilai', label: 'Nilai Intrakurikuler', icon: <PenTool size={18} /> },
-        { id: 'nilai-ekskul', label: 'Nilai Ekstrakurikuler', icon: <Activity size={18} /> },
-        { id: 'nilai-projek', label: 'Nilai Kokurikuler', icon: <Star size={18} /> },
-        { id: 'sesuaikan-capaian', label: 'Sesuaikan Capaian', icon: <CheckSquare size={18} /> },
-        { id: 'leger', label: 'Leger Nilai', icon: <FileSpreadsheet size={18} /> },
+        { id: 'koku-perencanaan', label: 'Perencanaan', icon: <FolderGit2 size={18} /> },
+        { id: 'koku-input-nilai', label: 'Input Nilai', icon: <Star size={18} /> },
       ]
     },
     {
-      title: 'Output / Cetak',
+      title: 'Ekstrakurikuler',
       items: [
-        { id: 'cetak-rapor', label: 'Output / Cetak Terpadu', icon: <Printer size={18} /> },
+        { id: 'ekskul-perencanaan', label: 'Perencanaan', icon: <Medal size={18} /> },
+        { id: 'ekskul-input-nilai', label: 'Input Nilai', icon: <Activity size={18} /> },
       ]
     },
     {
-      title: 'Fitur Professional',
+      title: 'Output & Cetak',
       items: [
-        { id: 'dashboard-analitik', label: 'Dashboard Analitik', icon: <PieChart size={18} /> },
-        { id: 'ai-assistant', label: 'AI Assistant', icon: <Bot size={18} /> },
+        { id: 'output-capaian', label: 'Sesuaikan Capaian Rapor', icon: <CheckSquare size={18} /> },
+        { id: 'output-catatan', label: 'Generate Catatan Wali Kelas', icon: <Sparkles size={18} /> },
+        { id: 'output-leger', label: 'Leger Nilai', icon: <FileSpreadsheet size={18} /> },
+        { id: 'output-cetak', label: 'Cetak', icon: <Printer size={18} /> },
+      ]
+    },
+    {
+      title: 'Manajemen Data',
+      items: [
+        { id: 'manajemen-sampah', label: 'Kotak Sampah', icon: <Trash2 size={18} /> },
+        { id: 'manajemen-ekspor', label: 'Ekspor Excel', icon: <Download size={18} /> },
+        { id: 'manajemen-impor', label: 'Impor Excel', icon: <Upload size={18} /> },
+        { id: 'manajemen-backup', label: 'Backup JSON', icon: <FileJson size={18} /> },
+        { id: 'manajemen-restore', label: 'Restore JSON', icon: <RotateCcw size={18} /> },
       ]
     },
     {
       title: 'Sistem',
       items: [
-        { id: 'panduan-asesmen', label: 'Panduan Asesmen 2025', icon: <BookOpen size={18} /> },
-        { id: 'petunjuk', label: 'Petunjuk Penggunaan', icon: <Lightbulb size={18} /> },
-        { id: 'kotak-sampah', label: 'Kotak Sampah', icon: <Trash2 size={18} /> },
-        { id: 'profil-pengembang', label: 'Profil Pengembang', icon: <UserCircle size={18} /> },
+        { id: 'sistem-petunjuk', label: 'Petunjuk Penggunaan', icon: <Lightbulb size={18} /> },
+        { id: 'sistem-profil', label: 'Profil Pengembang', icon: <UserCircle size={18} /> },
       ]
     }
   ];
@@ -143,7 +150,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
                   <li key={item.id}>
                     <button
                       onClick={() => {
-                        if (item.id === 'profil-pengembang' && onOpenDevProfile) {
+                        if ((item.id === 'sistem-profil' || item.id === 'profil-pengembang') && onOpenDevProfile) {
                           onOpenDevProfile();
                         } else {
                           setActiveView(item.id);

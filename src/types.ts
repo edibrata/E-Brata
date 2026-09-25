@@ -136,6 +136,15 @@ export interface DimensiProjek {
 
 export type NilaiProjek = 'MB' | 'SB' | 'BSH' | 'SAB' | '';
 
+export interface DataPendukungSiswa {
+  sakit?: number;
+  izin?: number;
+  alpa?: number;
+  catatanWaliKelas?: string;
+  tinggiBadan?: number;
+  beratBadan?: number;
+}
+
 export interface TrashItem {
   id: string;
   originalId: string;
@@ -164,5 +173,7 @@ export interface AppState {
   // Ruang Transit Deskripsi Capaian
   customDeskripsiMapel?: Record<string, Record<string, string>>; // studentId -> mapelId -> custom text
   customDeskripsiKokurikuler?: Record<string, Record<string, string>>; // studentId -> projekId -> custom text
+  // studentId -> DataPendukungSiswa (Kehadiran & Catatan Wali Kelas)
+  dataPendukung?: Record<string, DataPendukungSiswa>;
   trash: TrashItem[];
 }
