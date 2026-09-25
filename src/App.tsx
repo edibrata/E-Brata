@@ -60,17 +60,20 @@ function Dashboard() {
           {/* 2. INTRAKURIKULER */}
           {(activeView === 'intra-perencanaan' || activeView === 'kegiatan-akademik') && <KegiatanAkademik />}
           {(activeView === 'intra-input-nilai' || activeView === 'input-nilai') && <InputNilai />}
+          {activeView === 'intra-capaian' && <SesuaikanCapaian defaultTab="intrakurikuler" />}
 
           {/* 3. KOKURIKULER */}
           {(activeView === 'koku-perencanaan' || activeView === 'data-projek') && <DataProjekView />}
           {(activeView === 'koku-input-nilai' || activeView === 'nilai-projek') && <NilaiProjek />}
+          {activeView === 'koku-capaian' && <SesuaikanCapaian defaultTab="kokurikuler" />}
 
           {/* 4. EKSTRAKURIKULER */}
           {(activeView === 'ekskul-perencanaan' || activeView === 'data-ekskul') && <DataEkstrakurikuler />}
           {(activeView === 'ekskul-input-nilai' || activeView === 'nilai-ekskul') && <NilaiEkskulView />}
+          {activeView === 'ekskul-capaian' && <SesuaikanCapaian defaultTab="ekstrakurikuler" />}
 
           {/* 5. OUTPUT & CETAK */}
-          {(activeView === 'output-capaian' || activeView === 'sesuaikan-capaian' || activeView === 'intra-capaian' || activeView === 'koku-capaian' || activeView === 'ekskul-capaian') && <SesuaikanCapaian />}
+          {(activeView === 'output-capaian' || activeView === 'sesuaikan-capaian') && <SesuaikanCapaian />}
           {(activeView === 'output-catatan' || activeView === 'generate-catatan-wali') && <GenerateCatatanWali />}
           {(activeView === 'output-leger' || activeView === 'leger') && <Leger />}
           {(activeView === 'output-cetak' || activeView === 'cetak-rapor' || activeView === 'jilid-identitas' || activeView === 'biodata-murid' || activeView === 'lampiran-buku-induk' || activeView === 'keterangan-pindah') && <CetakRapor />}

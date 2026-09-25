@@ -35,6 +35,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
       items: [
         { id: 'intra-perencanaan', label: 'Perencanaan', icon: <Calendar size={18} /> },
         { id: 'intra-input-nilai', label: 'Input Nilai', icon: <PenTool size={18} /> },
+        { id: 'intra-capaian', label: 'Deskripsi Capaian', icon: <CheckSquare size={18} /> },
       ]
     },
     {
@@ -42,6 +43,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
       items: [
         { id: 'koku-perencanaan', label: 'Perencanaan', icon: <FolderGit2 size={18} /> },
         { id: 'koku-input-nilai', label: 'Input Nilai', icon: <Star size={18} /> },
+        { id: 'koku-capaian', label: 'Deskripsi Capaian', icon: <CheckSquare size={18} /> },
       ]
     },
     {
@@ -49,12 +51,12 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
       items: [
         { id: 'ekskul-perencanaan', label: 'Perencanaan', icon: <Medal size={18} /> },
         { id: 'ekskul-input-nilai', label: 'Input Nilai', icon: <Activity size={18} /> },
+        { id: 'ekskul-capaian', label: 'Deskripsi Capaian', icon: <CheckSquare size={18} /> },
       ]
     },
     {
       title: 'Output & Cetak',
       items: [
-        { id: 'output-capaian', label: 'Sesuaikan Capaian Rapor', icon: <CheckSquare size={18} /> },
         { id: 'output-catatan', label: 'Catatan Wali Kelas', icon: <Sparkles size={18} /> },
         { id: 'output-leger', label: 'Leger Nilai', icon: <FileSpreadsheet size={18} /> },
         { id: 'output-cetak', label: 'Cetak', icon: <Printer size={18} /> },

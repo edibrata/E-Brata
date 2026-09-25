@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '@/store';
 import { 
   CheckSquare, 
@@ -52,6 +52,10 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
   } = state;
 
   const [activeTab, setActiveTab] = useState<TransitTab>(defaultTab);
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
@@ -363,49 +367,43 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs px-3 sm:px-5 py-2.5 shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 max-w-7xl mx-auto">
           
-          {/* Sisi Kiri: Ikon + Segmented Control Tabs + Dropdown Selector Sejajar */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Segmented Control Tabs */}
-            <div className="inline-flex p-0.5 bg-slate-100 rounded-lg text-xs font-semibold border border-slate-200/70">
-              <button
-                type="button"
-                onClick={() => setActiveTab('intrakurikuler')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  activeTab === 'intrakurikuler'
-                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <BookOpen size={12} />
-                <span>Intrakurikuler</span>
-              </button>
+          {/* Sisi Kiri: Konteks Menu + Dropdown Selector Sejajar */}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Header Konteks Sesuai Menu Aktif */}
+            {activeTab === 'intrakurikuler' && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <BookOpen size={16} />
+                </div>
+                <h1 className="text-sm font-bold text-slate-800 whitespace-nowrap">
+                  Deskripsi Capaian <span className="text-indigo-600">Intrakurikuler</span>
+                </h1>
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('ekstrakurikuler')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  activeTab === 'ekstrakurikuler'
-                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Medal size={12} />
-                <span>Ekstrakurikuler</span>
-              </button>
+            {activeTab === 'ekstrakurikuler' && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Medal size={16} />
+                </div>
+                <h1 className="text-sm font-bold text-slate-800 whitespace-nowrap">
+                  Deskripsi Capaian <span className="text-indigo-600">Ekstrakurikuler</span>
+                </h1>
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('kokurikuler')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  activeTab === 'kokurikuler'
-                    ? 'bg-white text-indigo-700 font-bold shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Compass size={12} />
-                <span>Kokurikuler</span>
-              </button>
-            </div>
+            {activeTab === 'kokurikuler' && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Compass size={16} />
+                </div>
+                <h1 className="text-sm font-bold text-slate-800 whitespace-nowrap">
+                  Deskripsi Capaian <span className="text-indigo-600">Kokurikuler</span>
+                </h1>
+              </div>
+            )}
+
+            <div className="h-5 w-px bg-slate-200 hidden sm:block" />
 
             {/* Selector Dropdown Intrakurikuler */}
             {activeTab === 'intrakurikuler' && (

@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { useAppStore } from '@/store';
 import { 
   Sparkles, 
-  Users, 
   Search, 
   Check, 
   MessageSquareQuote, 
@@ -13,8 +12,6 @@ import {
   X,
   Copy,
   Trash2,
-  Filter,
-  CheckCircle2,
   BookOpen,
   Compass,
   Medal,
@@ -318,7 +315,6 @@ export default function GenerateCatatanWali() {
 
   const totalCatatanTerisi = siswa.filter(s => (dataPendukung[s.id]?.catatanWaliKelas || '').trim().length > 0).length;
   const totalCatatanKosong = siswa.length - totalCatatanTerisi;
-  const progressPercent = siswa.length > 0 ? Math.round((totalCatatanTerisi / siswa.length) * 100) : 0;
 
   const filteredStudents = useMemo(() => {
     return siswa.filter(s => {
@@ -347,153 +343,104 @@ export default function GenerateCatatanWali() {
         </div>
       )}
 
-      {/* Header Panel Utama */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
-            <Sparkles className="w-5 h-5 text-amber-300" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+      {/* Single Compact Header: Satu Baris Terpadu & Super Ramping */}
+      <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        {/* Sisi Kiri: Judul + Segmented Filter Pill */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <Sparkles className="w-4 h-4 text-amber-300" />
+            </div>
+            <h1 className="text-sm sm:text-base font-bold text-slate-800 flex items-center whitespace-nowrap">
               Catatan Wali Kelas
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                <Bot className="w-3 h-3" /> Sintesis 4 Pilar AI
-              </span>
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Penyusunan narasi Catatan Wali Kelas komprehensif berbasis capaian Intrakurikuler, Kokurikuler, Ekstrakurikuler, dan Kehadiran.
-            </p>
+          </div>
+
+          <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+          {/* Segmented Filter Pill (Navigasi Filter + Indikator Kelengkapan) */}
+          <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg text-xs font-semibold border border-slate-200/60">
+            <button
+              type="button"
+              onClick={() => setFilterStatus('all')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                filterStatus === 'all'
+                  ? 'bg-white text-indigo-700 font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua ({siswa.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterStatus('unfilled')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                filterStatus === 'unfilled'
+                  ? 'bg-white text-amber-700 font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Belum Terisi ({totalCatatanKosong})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterStatus('filled')}
+              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+                filterStatus === 'filled'
+                  ? 'bg-white text-emerald-700 font-bold shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Sudah Terisi ({totalCatatanTerisi})
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Sisi Kanan: Aksi + Kotak Pencarian Sejajar */}
+        <div className="flex flex-wrap items-center gap-2 justify-end flex-1 sm:flex-initial">
+          {/* Tombol Isi Serentak */}
           <button
             type="button"
             onClick={handleFillBatchDefault}
-            className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95"
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95 whitespace-nowrap"
             title="Generate narasi otomatis untuk seluruh murid yang catatannya masih kosong (Sintesis 4 Pilar)"
           >
             <Crown className="w-3.5 h-3.5 text-amber-300" />
             <span>Isi Serentak Catatan Kosong</span>
           </button>
-          
+
+          {/* Tombol Kosongkan / Reset */}
           {totalCatatanTerisi > 0 && (
             <button
               type="button"
               onClick={handleClearAllNotes}
-              className="px-3 py-2 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+              className="p-1.5 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
               title="Kosongkan seluruh teks catatan wali kelas"
             >
               <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
-              <span>Kosongkan</span>
             </button>
           )}
-        </div>
-      </div>
 
-      {/* Ringkasan Statistik & Status Kelengkapan */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500">Total Murid Kelas</p>
-            <h3 className="text-xl font-black text-slate-800 mt-0.5">{siswa.length}</h3>
+          {/* Kotak Pencarian Ramping */}
+          <div className="relative w-44 sm:w-52">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari murid..."
+              className="w-full pl-8 pr-7 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 font-medium"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-          <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Users className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500">Catatan Sudah Terisi</p>
-            <h3 className="text-xl font-black text-emerald-600 mt-0.5">
-              {totalCatatanTerisi} <span className="text-[11px] font-normal text-slate-400">murid</span>
-            </h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500">Catatan Belum Terisi</p>
-            <h3 className={`text-xl font-black mt-0.5 ${totalCatatanKosong > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-              {totalCatatanKosong} <span className="text-[11px] font-normal text-slate-400">murid</span>
-            </h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-            <MessageSquareQuote className="w-4 h-4" />
-          </div>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500">Kemajuan Pengisian</p>
-            <h3 className="text-xl font-black text-indigo-600 mt-0.5">{progressPercent}%</h3>
-          </div>
-          <div className="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar Filter & Pencarian */}
-      <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg text-xs font-semibold border border-slate-200/60">
-          <button
-            type="button"
-            onClick={() => setFilterStatus('all')}
-            className={`px-3 py-1 rounded-md transition cursor-pointer ${
-              filterStatus === 'all'
-                ? 'bg-white text-indigo-700 font-bold shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Semua ({siswa.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterStatus('unfilled')}
-            className={`px-3 py-1 rounded-md transition cursor-pointer ${
-              filterStatus === 'unfilled'
-                ? 'bg-white text-amber-700 font-bold shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Belum Terisi ({totalCatatanKosong})
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterStatus('filled')}
-            className={`px-3 py-1 rounded-md transition cursor-pointer ${
-              filterStatus === 'filled'
-                ? 'bg-white text-emerald-700 font-bold shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Sudah Terisi ({totalCatatanTerisi})
-          </button>
-        </div>
-
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari murid / NISN..."
-            className="w-full pl-8 pr-8 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 font-medium"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
         </div>
       </div>
 

@@ -1273,16 +1273,22 @@ export const buildRaporPDF = (
   const availableTextWidth = widthCatatan - 7;
   const availableTextHeight = exactCatatanBodyHeight - 3.5;
   let catatanFontSize = baseBodySize - 1;
+  let finalCatatanLines: string[] = [];
   while (catatanFontSize > 5.5) {
     doc.setFont(fontName, 'normal');
     doc.setFontSize(catatanFontSize);
-    const lines = doc.splitTextToSize(catatanWaliKelas, availableTextWidth);
-    const textHeight = lines.length * (catatanFontSize * 0.352777 * 1.25);
+    finalCatatanLines = doc.splitTextToSize(catatanWaliKelas, availableTextWidth);
+    const textHeight = finalCatatanLines.length * (catatanFontSize * 0.352777 * 1.25);
     if (textHeight <= availableTextHeight) {
       break;
     }
     catatanFontSize -= 0.25;
   }
+
+  // Hitung padding vertikal dinamis simetris agar teks selalu center vertikal tepat di tengah kotak Catatan Wali Kelas
+  const actualLineHeightMm = catatanFontSize * 0.352777 * 1.25;
+  const totalCatatanTextHeight = (finalCatatanLines.length || 1) * actualLineHeightMm;
+  const dynamicVerticalPadding = Math.max(2.2, (exactCatatanBodyHeight - totalCatatanTextHeight) / 2);
 
   // 4B. Kotak Kanan: Catatan Wali Kelas (Garis Penutup Kiri Sendiri, Reguler, Shrink to Fit, Tinggi 100% Identik Presisi & Center Vertikal)
   autoTable(doc, {
@@ -1312,7 +1318,7 @@ export const buildRaporPDF = (
       halign: 'justify',
       valign: 'middle',
       minCellHeight: exactCatatanBodyHeight,
-      cellPadding: { top: 2.2, bottom: 2.2, left: 3.5, right: 3.5 },
+      cellPadding: { top: dynamicVerticalPadding, bottom: dynamicVerticalPadding, left: 3.5, right: 3.5 },
       font: fontName
     },
     didDrawCell: (data) => {
