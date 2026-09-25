@@ -78,5 +78,12 @@ export const INITIAL_STATE: AppState = {
   projek: [],
   dimensiProjek: [],
   nilaiP5: {},
+  customDeskripsiMapel: {},
+  customDeskripsiKokurikuler: {},
+  lockedDeskripsiMapel: {},
+  lockedDeskripsiEkskul: {},
+  lockedDeskripsiKokurikuler: {},
+  lockedCatatanWali: {},
+  dataPendukung: {},
   trash: [],
 };

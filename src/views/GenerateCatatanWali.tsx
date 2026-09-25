@@ -16,9 +16,12 @@ import {
   Compass,
   Medal,
   Crown,
-  CalendarCheck2
+  CalendarCheck2,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { Siswa } from '@/types';
+import Tooltip from '@/components/Tooltip';
 
 export default function GenerateCatatanWali() {
   const { state, updateState } = useAppStore();
@@ -31,7 +34,8 @@ export default function GenerateCatatanWali() {
     projek = [], 
     dimensiProjek = [], 
     nilaiP5 = {}, 
-    dataPendukung = {} 
+    dataPendukung = {},
+    lockedCatatanWali = {}
   } = state;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -266,10 +270,30 @@ export default function GenerateCatatanWali() {
     ];
   };
 
+  // Status apakah pernah disintesis sebelumnya
+  const hasSynthesizedAnyCatatan = useMemo(() => {
+    return siswa.some(s => (dataPendukung[s.id]?.catatanWaliKelas || '').trim().length > 0);
+  }, [siswa, dataPendukung]);
+
+  // Toggle kunci status catatan wali kelas per murid
+  const handleToggleLockCatatanWali = (studentId: string) => {
+    const currentLocked = !!lockedCatatanWali?.[studentId];
+    const newLocked = !currentLocked;
+    updateState('lockedCatatanWali', {
+      ...lockedCatatanWali,
+      [studentId]: newLocked
+    });
+    showToast(newLocked ? 'Catatan murid ini dikunci (terproteksi)' : 'Kunci catatan dibuka');
+  };
+
   const handleApplyAISuggestion = (studentId: string, text: string) => {
+    if (lockedCatatanWali?.[studentId]) {
+      showToast('Catatan murid ini terkunci. Buka kunci untuk menerapkan variasi baru.');
+      return;
+    }
     updateStudentCatatan(studentId, text);
     setSelectedStudentForAI(null);
-    showToast('Catatan AI berhasil diterapkan!');
+    showToast('Variasi catatan berhasil diterapkan!');
   };
 
   const handleCopyText = (text: string, id: string) => {
@@ -279,38 +303,56 @@ export default function GenerateCatatanWali() {
     showToast('Teks disalin ke clipboard');
   };
 
-  // Isi serentak catatan yang masih kosong dengan Varian 5 (Kompilasi Cerdas 4 Pilar)
-  const handleFillBatchDefault = () => {
+  // Sintesis / Sintesis Ulang serentak 1 kelas (Melewati murid yang terkunci)
+  const handleSintesisSemuaCatatanWali = () => {
     const updated = { ...dataPendukung };
-    let count = 0;
+    let processedCount = 0;
+    let lockedCount = 0;
+
     siswa.forEach(s => {
-      const current = updated[s.id] || {};
-      if (!current.catatanWaliKelas || !current.catatanWaliKelas.trim()) {
-        const suggestions = generateAISuggestions(s);
-        const masterVarian = suggestions.find(sug => sug.id === 'v5') || suggestions[0];
-        current.catatanWaliKelas = masterVarian.text;
-        updated[s.id] = current;
-        count++;
+      // 1. Lewati murid yang dikunci
+      if (lockedCatatanWali?.[s.id]) {
+        lockedCount++;
+        return;
       }
+
+      const current = updated[s.id] || {};
+      const suggestions = generateAISuggestions(s);
+      const masterVarian = suggestions.find(sug => sug.id === 'v5') || suggestions[0];
+      current.catatanWaliKelas = masterVarian.text;
+      updated[s.id] = current;
+      processedCount++;
     });
+
     updateState('dataPendukung', updated);
-    showToast(`${count} Catatan Wali Kelas berhasil digenerate dengan Sintesis Komprehensif 4 Pilar!`);
+    showToast(
+      `${hasSynthesizedAnyCatatan ? 'Sintesis Ulang' : 'Sintesis'} Catatan Wali Kelas berhasil untuk ${processedCount} murid` +
+      (lockedCount > 0 ? ` (${lockedCount} murid terkunci dilewati)` : '')
+    );
   };
 
   const handleClearAllNotes = () => {
-    if (!confirm('Apakah Anda yakin ingin mengosongkan semua teks Catatan Wali Kelas? Data presensi/kehadiran TIDAK akan terhapus.')) {
+    if (!confirm('Apakah Anda yakin ingin mengosongkan teks Catatan Wali Kelas untuk murid yang tidak terkunci? Data presensi dan catatan murid terkunci TIDAK akan terhapus.')) {
       return;
     }
     const updated = { ...dataPendukung };
+    let resetCount = 0;
+    let lockedCount = 0;
+
     siswa.forEach(s => {
+      if (lockedCatatanWali?.[s.id]) {
+        lockedCount++;
+        return;
+      }
       const current = updated[s.id] || {};
       updated[s.id] = {
         ...current,
         catatanWaliKelas: ''
       };
+      resetCount++;
     });
     updateState('dataPendukung', updated);
-    showToast('Semua Catatan Wali Kelas telah dikosongkan.');
+    showToast(`Catatan Wali Kelas dikosongkan untuk ${resetCount} murid` + (lockedCount > 0 ? ` (${lockedCount} murid terkunci dipertahankan)` : ''));
   };
 
   const totalCatatanTerisi = siswa.filter(s => (dataPendukung[s.id]?.catatanWaliKelas || '').trim().length > 0).length;
@@ -398,27 +440,33 @@ export default function GenerateCatatanWali() {
 
         {/* Sisi Kanan: Aksi + Kotak Pencarian Sejajar */}
         <div className="flex flex-wrap items-center gap-2 justify-end flex-1 sm:flex-initial">
-          {/* Tombol Isi Serentak */}
-          <button
-            type="button"
-            onClick={handleFillBatchDefault}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95 whitespace-nowrap"
-            title="Generate narasi otomatis untuk seluruh murid yang catatannya masih kosong (Sintesis 4 Pilar)"
+          {/* Tombol Sintesis / Sintesis Ulang */}
+          <Tooltip 
+            content={hasSynthesizedAnyCatatan ? "Sintesis ulang catatan seluruh murid 1 kelas (murid terkunci dilindungi)" : "Sintesis catatan wali kelas untuk seluruh murid (Sintesis 4 Pilar)"} 
+            position="bottom"
           >
-            <Crown className="w-3.5 h-3.5 text-amber-300" />
-            <span>Isi Serentak Catatan Kosong</span>
-          </button>
+            <button
+              type="button"
+              onClick={handleSintesisSemuaCatatanWali}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95 whitespace-nowrap"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>{hasSynthesizedAnyCatatan ? 'Sintesis Ulang' : 'Sintesis'}</span>
+            </button>
+          </Tooltip>
 
           {/* Tombol Kosongkan / Reset */}
           {totalCatatanTerisi > 0 && (
-            <button
-              type="button"
-              onClick={handleClearAllNotes}
-              className="p-1.5 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
-              title="Kosongkan seluruh teks catatan wali kelas"
-            >
-              <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
-            </button>
+            <Tooltip content="Kosongkan teks catatan wali kelas untuk murid yang tidak terkunci" position="bottom">
+              <button
+                type="button"
+                onClick={handleClearAllNotes}
+                className="p-1.5 rounded-lg bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
+                aria-label="Kosongkan catatan"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />
+              </button>
+            </Tooltip>
           )}
 
           {/* Kotak Pencarian Ramping */}
@@ -432,13 +480,16 @@ export default function GenerateCatatanWali() {
               className="w-full pl-8 pr-7 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-800 font-medium"
             />
             {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <Tooltip content="Hapus pencarian" position="top">
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  aria-label="Bersihkan pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -453,13 +504,14 @@ export default function GenerateCatatanWali() {
                 <th className="py-3 px-3 text-center w-12">No</th>
                 <th className="py-3 px-4 w-72">Profil Murid & Capaian</th>
                 <th className="py-3 px-4">Narasi Catatan Wali Kelas</th>
-                <th className="py-3 px-4 text-center w-36">Saran AI</th>
+                <th className="py-3 px-2 text-center w-24">Kunci</th>
+                <th className="py-3 px-4 text-center w-28">Variasi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-slate-400">
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
                     Tidak ada murid yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
@@ -467,11 +519,13 @@ export default function GenerateCatatanWali() {
                 filteredStudents.map((s, idx) => {
                   const metric = studentMetrics[s.id];
                   const dp = dataPendukung[s.id] || {};
-                  const hasNote = (dp.catatanWaliKelas || '').trim().length > 0;
+                  const isLocked = !!lockedCatatanWali?.[s.id];
+                  const currentNote = dp.catatanWaliKelas || '';
+                  const hasNote = currentNote.trim().length > 0;
                   const fourPillars = getStudentFourPillarsData(s.id);
 
                   return (
-                    <tr key={s.id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={s.id} className={`transition-colors ${isLocked ? 'bg-amber-50/20' : 'hover:bg-slate-50/70'}`}>
                       <td className="py-3 px-3 text-center font-medium text-slate-400">
                         {idx + 1}
                       </td>
@@ -517,34 +571,81 @@ export default function GenerateCatatanWali() {
                         <div className="relative">
                           <textarea
                             rows={3}
-                            value={dp.catatanWaliKelas || ''}
-                            onChange={(e) => updateStudentCatatan(s.id, e.target.value)}
-                            placeholder="Ketik catatan rapor di sini, atau klik tombol 'Saran AI' di sebelah kanan untuk memilih narasi kurikulum merdeka..."
-                            className={`w-full px-3 py-2 border rounded-xl text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white resize-y transition ${
-                              hasNote ? 'border-slate-200 text-slate-800' : 'border-dashed border-amber-300 bg-amber-50/10 placeholder:text-slate-400'
+                            value={currentNote}
+                            onChange={(e) => {
+                              if (isLocked) {
+                                showToast('Catatan murid ini terkunci. Buka kunci untuk mengedit.');
+                                return;
+                              }
+                              updateStudentCatatan(s.id, e.target.value);
+                            }}
+                            readOnly={isLocked}
+                            placeholder="Klik 'Sintesis' atau 'Variasi' untuk memunculkan catatan wali kelas..."
+                            className={`w-full px-3 py-2 border rounded-xl text-xs leading-relaxed transition resize-y ${
+                              isLocked
+                                ? 'bg-slate-100/70 border-amber-300 text-slate-700 cursor-not-allowed'
+                                : hasNote
+                                  ? 'bg-white border-slate-200 text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500'
+                                  : 'border-dashed border-slate-300 bg-slate-50/40 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500'
                             }`}
                           />
-                          {hasNote && (
+                          {isLocked ? (
+                            <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1">
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-0.5">
+                                <Lock className="w-3 h-3 text-amber-700" /> Terkunci
+                              </span>
+                            </div>
+                          ) : hasNote ? (
                             <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1">
                               <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
                                 <Check className="w-3 h-3" /> Tersimpan
                               </span>
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </td>
 
-                      {/* Tombol Aksi Saran AI */}
+                      {/* Tombol Kunci Satuan */}
+                      <td className="py-3 px-2 text-center">
+                        <Tooltip content={isLocked ? "Buka kuncian catatan murid ini" : "Kunci catatan murid ini agar terlindungi saat Sintesis Ulang"} position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleLockCatatanWali(s.id)}
+                            className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer active:scale-95 shadow-2xs ${
+                              isLocked 
+                                ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
+                                : 'bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
+                            }`}
+                          >
+                            {isLocked ? <Lock size={12} className="text-amber-700" /> : <Unlock size={12} />}
+                            <span>{isLocked ? 'Terkunci' : 'Kunci'}</span>
+                          </button>
+                        </Tooltip>
+                      </td>
+
+                      {/* Tombol Aksi Variasi */}
                       <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStudentForAI(s)}
-                          className="w-full px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95 group"
-                          title="Buka Rekomendasi Catatan Cerdas AI (5 Varian)"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-12 transition-transform" />
-                          <span>Saran AI</span>
-                        </button>
+                        <Tooltip content={isLocked ? "Buka kuncian catatan murid ini terlebih dahulu" : "Pilih variasi catatan terpadu 4 pilar (5 Varian Komprehensif)"} position="top" className="w-full">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isLocked) {
+                                showToast('Catatan murid ini terkunci. Buka kunci untuk memvariasikan.');
+                                return;
+                              }
+                              setSelectedStudentForAI(s);
+                            }}
+                            disabled={isLocked}
+                            className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition group ${
+                              isLocked
+                                ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95'
+                            }`}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-12 transition-transform" />
+                            <span>Variasi</span>
+                          </button>
+                        </Tooltip>
                       </td>
                     </tr>
                   );
@@ -568,23 +669,26 @@ export default function GenerateCatatanWali() {
                 </div>
                 <div>
                   <h3 className="font-bold text-base flex items-center gap-2">
-                    Asisten Catatan AI
+                    Pilihan Variasi Catatan
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-400 text-indigo-950">
                       Sintesis 4 Pilar
                     </span>
                   </h3>
                   <p className="text-xs text-indigo-200">
-                    Saran narasi Kurikulum Merdeka untuk: <strong className="text-white">{selectedStudentForAI.nama}</strong>
+                    Pilih salah satu dari 5 variasi narasi untuk: <strong className="text-white">{selectedStudentForAI.nama}</strong>
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedStudentForAI(null)}
-                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <Tooltip content="Tutup jendela variasi" position="left">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentForAI(null)}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                  aria-label="Tutup modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </Tooltip>
             </div>
 
             {/* Modal Body */}
@@ -674,15 +778,16 @@ export default function GenerateCatatanWali() {
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(sug.text, sug.id)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
-                          title="Salin teks narasi"
-                        >
-                          {copiedId === sug.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-                          <span className="text-[11px]">{copiedId === sug.id ? 'Tersalin' : 'Salin'}</span>
-                        </button>
+                        <Tooltip content="Salin teks narasi ke clipboard" position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(sug.text, sug.id)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
+                          >
+                            {copiedId === sug.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                            <span className="text-[11px]">{copiedId === sug.id ? 'Tersalin' : 'Salin'}</span>
+                          </button>
+                        </Tooltip>
                         <button
                           type="button"
                           onClick={() => handleApplyAISuggestion(selectedStudentForAI.id, sug.text)}

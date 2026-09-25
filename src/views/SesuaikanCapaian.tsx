@@ -17,7 +17,10 @@ import {
   Filter,
   Layers,
   ArrowUpDown,
-  X
+  X,
+  Lock,
+  Unlock,
+  Award
 } from 'lucide-react';
 import Tooltip from '@/components/Tooltip';
 import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
@@ -28,6 +31,11 @@ import {
   get5VariasiKokurikuler,
   getAmbangBatasKktp
 } from '@/lib/penilaianUtils';
+import { 
+  generateVariasiNarasiKokurikuler, 
+  normalisasiSkala, 
+  InputItemSintesis 
+} from '@/data/kokurikuler2025';
 
 type TransitTab = 'intrakurikuler' | 'ekstrakurikuler' | 'kokurikuler';
 
@@ -48,7 +56,10 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
     dimensiProjek, 
     nilaiP5 = {},
     customDeskripsiMapel = {},
-    customDeskripsiKokurikuler = {}
+    customDeskripsiKokurikuler = {},
+    lockedDeskripsiMapel = {},
+    lockedDeskripsiEkskul = {},
+    lockedDeskripsiKokurikuler = {}
   } = state;
 
   const [activeTab, setActiveTab] = useState<TransitTab>(defaultTab);
@@ -159,6 +170,33 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
     );
   };
 
+  // Helper memeriksa apakah murid memiliki nilai pada mapel aktif
+  const studentHasScoresIntra = (studentId: string, mapelId: string): boolean => {
+    const studentNilai = nilai[studentId]?.[mapelId];
+    if (!studentNilai) return false;
+    if (studentNilai.sumatifAkhir !== null && studentNilai.sumatifAkhir !== undefined) return true;
+    return Object.values(studentNilai.tpScores || {}).some(v => v !== null && v !== undefined);
+  };
+
+  // Status apakah di kelas aktif ini sudah pernah disintesis sebelumnya
+  const hasSynthesizedAnyIntra = useMemo(() => {
+    if (!activeMapel) return false;
+    return filteredSiswa.some(s => (customDeskripsiMapel[s.id]?.[activeMapel.id] || '').trim().length > 0);
+  }, [filteredSiswa, activeMapel, customDeskripsiMapel]);
+
+  const hasSynthesizedAnyEkskul = useMemo(() => {
+    if (!activeEkskul) return false;
+    return filteredSiswa.some(s => (nilaiEkskul[s.id]?.[activeEkskul.id]?.deskripsi || '').trim().length > 0);
+  }, [filteredSiswa, activeEkskul, nilaiEkskul]);
+
+  const hasSynthesizedAnyKokurikuler = useMemo(() => {
+    return filteredSiswa.some(s => {
+      const text = customDeskripsiKokurikuler[s.id]?.['__kompilasi__'] || 
+        (projek[0]?.id ? customDeskripsiKokurikuler[s.id]?.[projek[0].id] : '');
+      return (text || '').trim().length > 0;
+    });
+  }, [filteredSiswa, customDeskripsiKokurikuler, projek]);
+
   // Update deskripsi intrakurikuler untuk 1 siswa
   const handleUpdateDeskripsiIntra = (studentId: string, mapelId: string, text: string) => {
     updateState('customDeskripsiMapel', {
@@ -170,21 +208,48 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
     });
   };
 
+  // Toggle kunci status intrakurikuler per murid
+  const handleToggleLockIntra = (studentId: string, mapelId: string) => {
+    const currentLocked = !!lockedDeskripsiMapel?.[studentId]?.[mapelId];
+    const newLocked = !currentLocked;
+    updateState('lockedDeskripsiMapel', {
+      ...lockedDeskripsiMapel,
+      [studentId]: {
+        ...(lockedDeskripsiMapel?.[studentId] || {}),
+        [mapelId]: newLocked
+      }
+    });
+    showToast(newLocked ? 'Deskripsi murid ini dikunci (terproteksi)' : 'Kunci deskripsi dibuka');
+  };
+
   // Putar ke variasi berikutnya untuk 1 siswa (Intrakurikuler)
   const handleCycleVariasiIntra = (studentId: string, mapelId: string) => {
+    if (lockedDeskripsiMapel?.[studentId]?.[mapelId]) {
+      showToast('Deskripsi murid ini terkunci. Buka kunci untuk mengubah variasi.');
+      return;
+    }
+    if (!studentHasScoresIntra(studentId, mapelId)) {
+      showToast('Input nilai belum ada pada murid ini');
+      return;
+    }
     const variations = get5VariasiIntraForStudent(studentId, mapelId);
     if (variations.length === 0) return;
 
     const key = `${studentId}_${mapelId}`;
-    const currentIndex = intrakurikulerVariationIndex[key] !== undefined ? intrakurikulerVariationIndex[key] : 0;
+    const currentIndex = intrakurikulerVariationIndex[key] !== undefined ? intrakurikulerVariationIndex[key] : -1;
     const nextIndex = (currentIndex + 1) % variations.length;
 
     setIntrakurikulerVariationIndex(prev => ({ ...prev, [key]: nextIndex }));
     handleUpdateDeskripsiIntra(studentId, mapelId, variations[nextIndex]);
+    showToast(`Variasi ${nextIndex + 1}/5 diterapkan`);
   };
 
   // Reset deskripsi intrakurikuler ke default PPA 2025 untuk 1 siswa
   const handleResetIntra = (studentId: string, mapelId: string) => {
+    if (lockedDeskripsiMapel?.[studentId]?.[mapelId]) {
+      showToast('Deskripsi murid ini terkunci. Buka kunci untuk me-reset.');
+      return;
+    }
     const defaultText = getDefaultDeskripsiIntra(studentId, mapelId);
     handleUpdateDeskripsiIntra(studentId, mapelId, defaultText);
     const key = `${studentId}_${mapelId}`;
@@ -206,48 +271,82 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
     }
   };
 
-  // Variasikan semua murid secara massal untuk mapel aktif (1 kelas langsung punya redaksi unik dan bisa diputar berkali-kali hingga 5 variasi)
-  const handleVariasikanSemuaIntra = () => {
+  // Sintesis / Sintesis Ulang semua murid secara massal untuk mapel aktif (Melewati yang terkunci & yang belum ada nilai)
+  const handleSintesisSemuaIntra = () => {
     if (!activeMapel) return;
     const updated = { ...customDeskripsiMapel };
     const newIdxMap = { ...intrakurikulerVariationIndex };
+    let processedCount = 0;
+    let lockedCount = 0;
+    let noScoreCount = 0;
 
     filteredSiswa.forEach((student, idx) => {
+      // 1. Lewati murid yang dikunci
+      if (lockedDeskripsiMapel?.[student.id]?.[activeMapel.id]) {
+        lockedCount++;
+        return;
+      }
+
+      // 2. Lewati murid yang belum memiliki input nilai
+      if (!studentHasScoresIntra(student.id, activeMapel.id)) {
+        noScoreCount++;
+        return;
+      }
+
       const variations = get5VariasiIntraForStudent(student.id, activeMapel.id);
       if (variations.length > 0) {
         const key = `${student.id}_${activeMapel.id}`;
         const currentIdx = intrakurikulerVariationIndex[key] !== undefined 
           ? intrakurikulerVariationIndex[key] 
           : (idx % variations.length);
-        const nextIdx = (currentIdx + 1) % variations.length;
+        const nextIdx = hasSynthesizedAnyIntra ? ((currentIdx + 1) % variations.length) : currentIdx;
         newIdxMap[key] = nextIdx;
         if (!updated[student.id]) updated[student.id] = {};
         updated[student.id][activeMapel.id] = variations[nextIdx];
+        processedCount++;
       }
     });
 
     updateState('customDeskripsiMapel', updated);
     setIntrakurikulerVariationIndex(newIdxMap);
-    showToast(`Variasi redaksi diterapkan untuk ${filteredSiswa.length} murid (${activeMapel.nama})`);
+
+    if (processedCount === 0 && noScoreCount > 0 && lockedCount === 0) {
+      showToast(`Belum ada murid yang memiliki input nilai pada ${activeMapel.nama}`);
+    } else {
+      showToast(
+        `${hasSynthesizedAnyIntra ? 'Sintesis Ulang' : 'Sintesis'} selesai untuk ${processedCount} murid` +
+        (lockedCount > 0 ? ` (${lockedCount} murid terkunci dilewati)` : '')
+      );
+    }
   };
 
-  // Reset semua murid ke formula standar PPA 2025
+  // Reset / kosongkan deskripsi murid yang tidak terkunci
   const handleResetSemuaIntra = () => {
     if (!activeMapel) return;
     const updated = { ...customDeskripsiMapel };
     const newIdxMap = { ...intrakurikulerVariationIndex };
+    let resetCount = 0;
+    let lockedCount = 0;
 
     filteredSiswa.forEach(student => {
+      if (lockedDeskripsiMapel?.[student.id]?.[activeMapel.id]) {
+        lockedCount++;
+        return;
+      }
       const key = `${student.id}_${activeMapel.id}`;
       delete newIdxMap[key];
       if (updated[student.id]) {
         delete updated[student.id][activeMapel.id];
+        resetCount++;
       }
     });
 
     updateState('customDeskripsiMapel', updated);
     setIntrakurikulerVariationIndex(newIdxMap);
-    showToast(`Deskripsi ${activeMapel.nama} telah di-reset ke formula baku`);
+    showToast(
+      `Deskripsi ${activeMapel.nama} dikosongkan untuk ${resetCount} murid` +
+      (lockedCount > 0 ? ` (${lockedCount} murid terkunci dipertahankan)` : '')
+    );
   };
 
   // ==========================================
@@ -263,33 +362,91 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
     });
   };
 
+  const handleToggleLockEkskul = (studentId: string, ekskulId: string) => {
+    const currentLocked = !!lockedDeskripsiEkskul?.[studentId]?.[ekskulId];
+    const newLocked = !currentLocked;
+    updateState('lockedDeskripsiEkskul', {
+      ...lockedDeskripsiEkskul,
+      [studentId]: {
+        ...(lockedDeskripsiEkskul?.[studentId] || {}),
+        [ekskulId]: newLocked
+      }
+    });
+    showToast(newLocked ? 'Deskripsi ekstrakurikuler dikunci (terproteksi)' : 'Kunci ekstrakurikuler dibuka');
+  };
+
   const handleCycleVariasiEkskul = (studentId: string, ekskulId: string) => {
+    if (lockedDeskripsiEkskul?.[studentId]?.[ekskulId]) {
+      showToast('Deskripsi ekstrakurikuler murid ini terkunci. Buka kunci untuk mengubah variasi.');
+      return;
+    }
     if (!activeEkskul) return;
     const currentNe = nilaiEkskul[studentId]?.[ekskulId];
-    const predikat = currentNe?.predikat || 'Baik (B)';
+    const predikat = currentNe?.predikat;
+    if (!predikat) {
+      showToast('Tentukan predikat murid terlebih dahulu pada menu Input Nilai Ekstrakurikuler');
+      return;
+    }
     const variations = get5VariasiEkskul(activeEkskul.nama, predikat);
 
     const key = `${studentId}_${ekskulId}`;
-    const currentIndex = ekskulVariationIndex[key] !== undefined ? ekskulVariationIndex[key] : 0;
+    const currentIndex = ekskulVariationIndex[key] !== undefined ? ekskulVariationIndex[key] : -1;
     const nextIndex = (currentIndex + 1) % variations.length;
 
     setEkskulVariationIndex(prev => ({ ...prev, [key]: nextIndex }));
     handleUpdateEkskul(studentId, ekskulId, predikat, variations[nextIndex]);
+    showToast(`Variasi ${nextIndex + 1}/5 diterapkan`);
   };
 
-  const handleVariasikanSemuaEkskul = () => {
+  const handleResetEkskul = (studentId: string, ekskulId: string) => {
+    if (lockedDeskripsiEkskul?.[studentId]?.[ekskulId]) {
+      showToast('Deskripsi ekstrakurikuler murid ini terkunci. Buka kunci untuk me-reset.');
+      return;
+    }
+    if (!activeEkskul) return;
+    const currentNe = nilaiEkskul[studentId]?.[ekskulId];
+    const predikat = currentNe?.predikat;
+    if (!predikat) {
+      handleUpdateEkskul(studentId, ekskulId, '', '');
+      showToast('Deskripsi dikosongkan karena murid belum memiliki predikat');
+      return;
+    }
+    const defaultText = get5VariasiEkskul(activeEkskul.nama, predikat)[0] || '';
+    handleUpdateEkskul(studentId, ekskulId, predikat, defaultText);
+    const key = `${studentId}_${ekskulId}`;
+    setEkskulVariationIndex(prev => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+    showToast('Catatan ekstrakurikuler di-reset ke standar');
+  };
+
+  const handleSintesisSemuaEkskul = () => {
     if (!activeEkskul) return;
     const updated = { ...nilaiEkskul };
     const newIdxMap = { ...ekskulVariationIndex };
+    let processedCount = 0;
+    let lockedCount = 0;
 
     filteredSiswa.forEach((student, idx) => {
-      const currentPred = updated[student.id]?.[activeEkskul.id]?.predikat || 'Baik (B)';
+      if (lockedDeskripsiEkskul?.[student.id]?.[activeEkskul.id]) {
+        lockedCount++;
+        return;
+      }
+
+      const currentPred = updated[student.id]?.[activeEkskul.id]?.predikat;
+      // Hanya sintesis murid yang memiliki predikat nilai (mengikuti ekskul)
+      if (!currentPred) {
+        return;
+      }
+
       const variations = get5VariasiEkskul(activeEkskul.nama, currentPred);
       const key = `${student.id}_${activeEkskul.id}`;
       const currentIdx = ekskulVariationIndex[key] !== undefined 
         ? ekskulVariationIndex[key] 
         : (idx % variations.length);
-      const nextIdx = (currentIdx + 1) % variations.length;
+      const nextIdx = hasSynthesizedAnyEkskul ? ((currentIdx + 1) % variations.length) : currentIdx;
       newIdxMap[key] = nextIdx;
 
       if (!updated[student.id]) updated[student.id] = {};
@@ -297,58 +454,141 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
         predikat: currentPred,
         deskripsi: variations[nextIdx]
       };
+      processedCount++;
     });
 
     updateState('nilaiEkskul', updated);
     setEkskulVariationIndex(newIdxMap);
-    showToast(`Variasi redaksi diterapkan untuk ${activeEkskul.nama}`);
+    showToast(
+      `${hasSynthesizedAnyEkskul ? 'Sintesis Ulang' : 'Sintesis'} ${activeEkskul.nama} diterapkan untuk ${processedCount} murid` +
+      (lockedCount > 0 ? ` (${lockedCount} murid terkunci dilewati)` : '')
+    );
   };
 
   // ==========================================
-  // HANDLERS KOKURIKULER
+  // HANDLERS KOKURIKULER (KOMPILASI TUNGGAL LINTAS KEGIATAN)
   // ==========================================
-  const handleUpdateKokurikuler = (studentId: string, projekId: string, text: string) => {
+  const getStudentAllKokurikulerScores = (studentId: string): InputItemSintesis[] => {
+    const items: InputItemSintesis[] = [];
+    dimensiProjek.forEach(d => {
+      const subNames = d.subdimensi && d.subdimensi.length > 0 ? d.subdimensi : [d.nama];
+      subNames.forEach(sName => {
+        const subKey = `${d.id}__${sName}`;
+        const raw = nilaiP5[studentId]?.[subKey] || nilaiP5[studentId]?.[d.id] || '';
+        const norm = normalisasiSkala(raw);
+        if (norm) {
+          items.push({
+            dimName: d.nama,
+            subdimName: sName,
+            score: norm
+          });
+        }
+      });
+    });
+    return items;
+  };
+
+  const getKompilasiVariasiKokurikulerForStudent = (student: any): string[] => {
+    const scores = getStudentAllKokurikulerScores(student.id);
+    const projectThemes = projek.map(p => p.tema).filter(Boolean);
+    return generateVariasiNarasiKokurikuler(student.nama, projectThemes, scores);
+  };
+
+  const handleUpdateKokurikulerKompilasi = (studentId: string, text: string) => {
+    const existing = customDeskripsiKokurikuler[studentId] || {};
+    const updatedForStudent = {
+      ...existing,
+      '__kompilasi__': text
+    };
+    if (projek.length > 0) {
+      updatedForStudent[projek[0].id] = text;
+    }
     updateState('customDeskripsiKokurikuler', {
       ...customDeskripsiKokurikuler,
-      [studentId]: {
-        ...(customDeskripsiKokurikuler[studentId] || {}),
-        [projekId]: text
-      }
+      [studentId]: updatedForStudent
     });
   };
 
-  const handleCycleVariasiKokurikuler = (studentId: string, projekId: string) => {
-    if (!activeProjek) return;
-    const variations = get5VariasiKokurikuler(activeProjek.tema, activeProjek.deskripsi);
-    const key = `${studentId}_${projekId}`;
-    const currentIndex = kokurikulerVariationIndex[key] !== undefined ? kokurikulerVariationIndex[key] : 0;
+  const handleToggleLockKokurikuler = (studentId: string) => {
+    const currentLocked = !!lockedDeskripsiKokurikuler?.[studentId];
+    const newLocked = !currentLocked;
+    updateState('lockedDeskripsiKokurikuler', {
+      ...lockedDeskripsiKokurikuler,
+      [studentId]: newLocked
+    });
+    showToast(newLocked ? 'Deskripsi kokurikuler dikunci (terproteksi)' : 'Kunci kokurikuler dibuka');
+  };
+
+  const handleCycleVariasiKokurikulerKompilasi = (studentId: string) => {
+    if (lockedDeskripsiKokurikuler?.[studentId]) {
+      showToast('Deskripsi kokurikuler murid ini terkunci. Buka kunci untuk mengubah variasi.');
+      return;
+    }
+    const student = siswa.find(s => s.id === studentId);
+    if (!student) return;
+    const variations = getKompilasiVariasiKokurikulerForStudent(student);
+    const key = `${studentId}__kompilasi__`;
+    const currentIndex = kokurikulerVariationIndex[key] !== undefined ? kokurikulerVariationIndex[key] : -1;
     const nextIndex = (currentIndex + 1) % variations.length;
 
     setKokurikulerVariationIndex(prev => ({ ...prev, [key]: nextIndex }));
-    handleUpdateKokurikuler(studentId, projekId, variations[nextIndex]);
+    handleUpdateKokurikulerKompilasi(studentId, variations[nextIndex]);
+    showToast(`Variasi ${nextIndex + 1}/5 diterapkan`);
   };
 
-  const handleVariasikanSemuaKokurikuler = () => {
-    if (!activeProjek) return;
+  const handleResetKokurikulerKompilasi = (studentId: string) => {
+    if (lockedDeskripsiKokurikuler?.[studentId]) {
+      showToast('Deskripsi kokurikuler murid ini terkunci. Buka kunci untuk me-reset.');
+      return;
+    }
+    const student = siswa.find(s => s.id === studentId);
+    if (!student) return;
+    const variations = getKompilasiVariasiKokurikulerForStudent(student);
+    const defaultText = variations[0] || '';
+    handleUpdateKokurikulerKompilasi(studentId, defaultText);
+    const key = `${studentId}__kompilasi__`;
+    setKokurikulerVariationIndex(prev => {
+      const copy = { ...prev };
+      delete copy[key];
+      return copy;
+    });
+    showToast('Deskripsi kokurikuler di-reset ke standar');
+  };
+
+  const handleSintesisSemuaKokurikulerKompilasi = () => {
     const updated = { ...customDeskripsiKokurikuler };
     const newIdxMap = { ...kokurikulerVariationIndex };
+    let processedCount = 0;
+    let lockedCount = 0;
 
     filteredSiswa.forEach((student, idx) => {
-      const variations = get5VariasiKokurikuler(activeProjek.tema, activeProjek.deskripsi);
-      const key = `${student.id}_${activeProjek.id}`;
+      if (lockedDeskripsiKokurikuler?.[student.id]) {
+        lockedCount++;
+        return;
+      }
+
+      const variations = getKompilasiVariasiKokurikulerForStudent(student);
+      const key = `${student.id}__kompilasi__`;
       const currentIdx = kokurikulerVariationIndex[key] !== undefined 
         ? kokurikulerVariationIndex[key] 
         : (idx % variations.length);
-      const nextIdx = (currentIdx + 1) % variations.length;
+      const nextIdx = hasSynthesizedAnyKokurikuler ? ((currentIdx + 1) % variations.length) : currentIdx;
       newIdxMap[key] = nextIdx;
 
       if (!updated[student.id]) updated[student.id] = {};
-      updated[student.id][activeProjek.id] = variations[nextIdx];
+      updated[student.id]['__kompilasi__'] = variations[nextIdx];
+      if (projek.length > 0) {
+        updated[student.id][projek[0].id] = variations[nextIdx];
+      }
+      processedCount++;
     });
 
     updateState('customDeskripsiKokurikuler', updated);
     setKokurikulerVariationIndex(newIdxMap);
-    showToast(`Variasi redaksi diterapkan untuk tema "${activeProjek.tema}"`);
+    showToast(
+      `${hasSynthesizedAnyKokurikuler ? 'Sintesis Ulang' : 'Sintesis'} kompilasi kokurikuler diterapkan untuk ${processedCount} murid` +
+      (lockedCount > 0 ? ` (${lockedCount} murid terkunci dilewati)` : '')
+    );
   };
 
   return (
@@ -466,21 +706,11 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
               </div>
             )}
 
-            {/* Selector Dropdown Kokurikuler */}
-            {activeTab === 'kokurikuler' && projek.length > 0 && (
-              <div className="relative w-52 sm:w-72">
-                <select
-                  value={selectedProjekId}
-                  onChange={(e) => setSelectedProjekId(e.target.value)}
-                  className="w-full appearance-none bg-slate-50 hover:bg-slate-100/90 border border-slate-200 text-slate-800 text-xs font-bold rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors cursor-pointer"
-                >
-                  {projek.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.tema}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {/* Indikator Kompilasi Kokurikuler */}
+            {activeTab === 'kokurikuler' && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 border border-sky-200 text-sky-800 rounded-lg text-xs font-bold shrink-0">
+                <Layers size={13} className="text-sky-600" />
+                <span>Kompilasi {projek.length} Kegiatan Kokurikuler</span>
               </div>
             )}
           </div>
@@ -491,22 +721,26 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
             <div className="flex items-center gap-1.5">
               {activeTab === 'intrakurikuler' && (
                 <>
-                  <button
-                    type="button"
-                    onClick={handleVariasikanSemuaIntra}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
-                    title="Variasikan narasi otomatis untuk seluruh kelas"
+                  <Tooltip 
+                    content={hasSynthesizedAnyIntra ? "Sintesis ulang narasi untuk seluruh kelas (murid terkunci dilindungi)" : "Sintesis narasi untuk seluruh murid yang telah memiliki input nilai"} 
+                    position="bottom"
                   >
-                    <Sparkles size={12} className="text-amber-300" />
-                    <span>Variasikan 1 Kelas</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleSintesisSemuaIntra}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Sparkles size={12} className="text-amber-300" />
+                      <span>{hasSynthesizedAnyIntra ? 'Sintesis Ulang' : 'Sintesis'}</span>
+                    </button>
+                  </Tooltip>
 
-                  <Tooltip content="Reset Semua Deskripsi Mapel Ini ke Formula Baku PPA 2025" position="bottom">
+                  <Tooltip content="Kosongkan Deskripsi Mapel Ini untuk Murid yang Tidak Terkunci" position="bottom">
                     <button
                       type="button"
                       onClick={handleResetSemuaIntra}
                       className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg text-xs transition-all border border-slate-200 hover:border-rose-200 shadow-2xs cursor-pointer active:scale-95"
-                      aria-label="Reset Semua"
+                      aria-label="Kosongkan Semua"
                     >
                       <RotateCcw size={13} />
                     </button>
@@ -515,25 +749,35 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
               )}
 
               {activeTab === 'ekstrakurikuler' && (
-                <button
-                  type="button"
-                  onClick={handleVariasikanSemuaEkskul}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                <Tooltip 
+                  content={hasSynthesizedAnyEkskul ? "Sintesis ulang catatan ekstrakurikuler 1 kelas (murid terkunci dilindungi)" : "Sintesis catatan ekstrakurikuler untuk seluruh kelas"} 
+                  position="bottom"
                 >
-                  <Sparkles size={12} className="text-amber-300" />
-                  <span>Variasikan 1 Kelas</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSintesisSemuaEkskul}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Sparkles size={12} className="text-amber-300" />
+                    <span>{hasSynthesizedAnyEkskul ? 'Sintesis Ulang' : 'Sintesis'}</span>
+                  </button>
+                </Tooltip>
               )}
 
               {activeTab === 'kokurikuler' && (
-                <button
-                  type="button"
-                  onClick={handleVariasikanSemuaKokurikuler}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                <Tooltip 
+                  content={hasSynthesizedAnyKokurikuler ? "Sintesis ulang narasi kompilasi kokurikuler 1 kelas (murid terkunci dilindungi)" : "Sintesis kompilasi kokurikuler untuk seluruh kelas"} 
+                  position="bottom"
                 >
-                  <Sparkles size={12} className="text-amber-300" />
-                  <span>Variasikan 1 Kelas</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSintesisSemuaKokurikulerKompilasi}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                  >
+                    <Sparkles size={12} className="text-amber-300" />
+                    <span>{hasSynthesizedAnyKokurikuler ? 'Sintesis Ulang' : 'Sintesis'}</span>
+                  </button>
+                </Tooltip>
               )}
 
               {/* Input Pencarian Ramping */}
@@ -581,20 +825,23 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
               const n = nilai[student.id]?.[activeMapel.id];
               const res = hitungNilaiMapel(activeMapel, mapelTps, n, student.id);
               const kktp = getAmbangBatasKktp(activeMapel);
+              const hasScores = studentHasScoresIntra(student.id, activeMapel.id);
 
-              // Teks saat ini di Ruang Transit (atau fallback ke default)
+              // Teks saat ini di Ruang Transit (atau kosong di awal jika belum disintesis)
               const savedCustom = customDeskripsiMapel[student.id]?.[activeMapel.id];
-              const defaultDesk = getDefaultDeskripsiIntra(student.id, activeMapel.id);
-              const currentText = savedCustom !== undefined ? savedCustom : defaultDesk;
+              const currentText = savedCustom !== undefined ? savedCustom : '';
+              const isLocked = !!lockedDeskripsiMapel?.[student.id]?.[activeMapel.id];
 
               const key = `${student.id}_${activeMapel.id}`;
               const varIdx = intrakurikulerVariationIndex[key];
-              const isCustomEdited = savedCustom !== undefined && savedCustom !== defaultDesk;
+              const isCustomEdited = savedCustom !== undefined && savedCustom.trim().length > 0;
 
               return (
                 <div 
                   key={student.id} 
-                  className="bg-white rounded-xl p-3 border border-slate-200 shadow-2xs hover:border-indigo-300 transition-all group space-y-2"
+                  className={`bg-white rounded-xl p-3 border shadow-2xs transition-all group space-y-2 ${
+                    isLocked ? 'border-amber-300/80 bg-amber-50/10' : 'border-slate-200 hover:border-indigo-300'
+                  }`}
                 >
                   {/* Baris Atas: Nomor, Nama Murid, Chip Nilai TP Inline, dan Aksi */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -642,23 +889,39 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
 
                     {/* Sisi Kanan: Status & Aksi Compact */}
                     <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                      {varIdx !== undefined && (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                          ✨ Var {varIdx + 1}/5
-                        </span>
-                      )}
-                      {isCustomEdited && varIdx === undefined && (
-                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
-                          ✏️ Manual
+                      {isCustomEdited && varIdx === undefined && !isLocked && (
+                        <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                          Tersimpan
                         </span>
                       )}
 
-                      {/* Tombol Ganti Variasi */}
-                      <Tooltip content="Putar ke variasi narasi berikutnya (tersedia 5 variasi unik)" position="top">
+                      {/* Tombol Kunci Satuan */}
+                      <Tooltip content={isLocked ? "Buka kuncian deskripsi murid ini" : "Kunci deskripsi murid ini agar terlindungi saat Sintesis Ulang"} position="top">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLockIntra(student.id, activeMapel.id)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all border cursor-pointer active:scale-95 shadow-2xs ${
+                            isLocked 
+                              ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
+                              : 'bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
+                          }`}
+                        >
+                          {isLocked ? <Lock size={11} className="text-amber-700" /> : <Unlock size={11} />}
+                          <span>{isLocked ? 'Terkunci' : 'Kunci'}</span>
+                        </button>
+                      </Tooltip>
+
+                      {/* Tombol Variasi Satuan */}
+                      <Tooltip content={isLocked ? "Buka kunci terlebih dahulu untuk memvariasikan" : "Putar ke variasi narasi berikutnya (tersedia 5 variasi unik)"} position="top">
                         <button
                           type="button"
                           onClick={() => handleCycleVariasiIntra(student.id, activeMapel.id)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition-colors border border-indigo-200/70 active:scale-95 cursor-pointer shadow-2xs"
+                          disabled={isLocked}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-bold text-[11px] transition-colors border shadow-2xs ${
+                            isLocked 
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200/70 active:scale-95 cursor-pointer'
+                          }`}
                         >
                           <Shuffle size={11} />
                           <span>Variasi {varIdx !== undefined ? `(${varIdx + 1}/5)` : ''}</span>
@@ -670,7 +933,12 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
                         <button
                           type="button"
                           onClick={() => handleResetIntra(student.id, activeMapel.id)}
-                          className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200/60 transition-colors cursor-pointer active:scale-95"
+                          disabled={isLocked}
+                          className={`p-1 rounded-md border transition-colors ${
+                            isLocked
+                              ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                              : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-slate-200/60 cursor-pointer active:scale-95'
+                          }`}
                           aria-label="Reset Murid"
                         >
                           <RotateCcw size={12} />
@@ -693,13 +961,36 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
                   </div>
 
                   {/* Baris Bawah: Textarea Deskripsi Rapor (Clean & Compact) */}
-                  <textarea
-                    rows={2}
-                    value={currentText}
-                    onChange={(e) => handleUpdateDeskripsiIntra(student.id, activeMapel.id, e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50/70 focus:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-y font-sans placeholder:text-slate-400"
-                    placeholder="Deskripsi capaian kompetensi murid..."
-                  />
+                  <div className="relative">
+                    <textarea
+                      rows={2}
+                      value={currentText}
+                      onChange={(e) => {
+                        if (isLocked) {
+                          showToast('Deskripsi murid ini terkunci. Buka kunci untuk mengedit.');
+                          return;
+                        }
+                        handleUpdateDeskripsiIntra(student.id, activeMapel.id, e.target.value);
+                      }}
+                      readOnly={isLocked}
+                      className={`w-full px-3 py-2 border rounded-lg text-xs leading-relaxed focus:outline-none transition-all resize-y font-sans placeholder:text-slate-400 ${
+                        isLocked 
+                          ? 'bg-slate-100/70 border-amber-300 text-slate-700 cursor-not-allowed'
+                          : 'bg-slate-50/70 focus:bg-white border-slate-200 text-slate-800 focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500'
+                      }`}
+                      placeholder={
+                        hasScores
+                          ? "Klik tombol 'Sintesis' atau 'Variasi' untuk memunculkan deskripsi otomatis..."
+                          : "Belum ada nilai terinput pada mata pelajaran ini..."
+                      }
+                    />
+                    {isLocked && (
+                      <div className="absolute right-2.5 bottom-2.5 pointer-events-none flex items-center gap-1 bg-amber-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs">
+                        <Lock size={10} />
+                        <span>Terkunci</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -717,10 +1008,13 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
               filteredSiswa.map((student, sIdx) => {
                 if (!activeEkskul) return null;
                 const currentNe = nilaiEkskul[student.id]?.[activeEkskul.id];
-                const predikat = currentNe?.predikat || 'Baik (B)';
-                const deskripsi = currentNe?.deskripsi !== undefined 
-                  ? currentNe.deskripsi 
-                  : `Aktif mengikuti kegiatan ${activeEkskul.nama} dengan tertib dan menunjukkan perkembangan keterampilan yang baik.`;
+                const predikat = currentNe?.predikat || '';
+                const deskripsi = currentNe?.deskripsi !== undefined ? currentNe.deskripsi : '';
+                const isLocked = !!lockedDeskripsiEkskul?.[student.id]?.[activeEkskul.id];
+
+                const isA = predikat.includes('A') || predikat.toLowerCase().includes('sangat');
+                const isC = predikat.includes('C') || predikat.toLowerCase().includes('cukup');
+                const isKurang = predikat.includes('D') || predikat.toLowerCase().includes('kurang');
 
                 const key = `${student.id}_${activeEkskul.id}`;
                 const varIdx = ekskulVariationIndex[key];
@@ -728,60 +1022,158 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
                 return (
                   <div 
                     key={student.id} 
-                    className="bg-white rounded-xl p-3.5 border border-slate-200/90 shadow-xs hover:border-indigo-300 transition-all"
+                    className={`bg-white rounded-xl p-3 border shadow-2xs transition-all group space-y-2 ${
+                      isLocked ? 'border-amber-300/80 bg-amber-50/10' : 'border-slate-200 hover:border-indigo-300'
+                    }`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-start gap-3.5">
-                      {/* Profil & Predikat Dropdown */}
-                      <div className="md:w-56 shrink-0 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-md bg-amber-50 text-amber-700 font-bold text-xs flex items-center justify-center shrink-0">
-                            {sIdx + 1}
+                    {/* Baris Atas: Nomor, Nama Murid, Predikat Dropdown Inline, dan Aksi */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      
+                      {/* Sisi Kiri: Identitas Murid & Predikat Dropdown Inline */}
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
+                        <span className="w-5 h-5 rounded bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0">
+                          {sIdx + 1}
+                        </span>
+                        <span className="font-bold text-xs text-slate-800 truncate" title={student.nama}>
+                          {student.nama}
+                        </span>
+                        {student.nisn && (
+                          <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
+                            ({student.nisn})
                           </span>
-                          <div className="min-w-0">
-                            <h2 className="font-bold text-xs text-slate-800 truncate">{student.nama}</h2>
-                            <div className="text-[11px] text-slate-400">NISN: {student.nisn || '-'}</div>
-                          </div>
-                        </div>
+                        )}
 
-                        {/* Compact Predikat Select */}
-                        <select
-                          value={predikat}
-                          onChange={(e) => {
-                            const newPred = e.target.value;
-                            const defaultNewDesk = get5VariasiEkskul(activeEkskul.nama, newPred)[0];
-                            handleUpdateEkskul(student.id, activeEkskul.id, newPred, defaultNewDesk);
-                          }}
-                          className="w-full px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                        >
-                          <option value="Sangat Baik (A)">Sangat Baik (A)</option>
-                          <option value="Baik (B)">Baik (B)</option>
-                          <option value="Cukup (C)">Cukup (C)</option>
-                        </select>
+                        {/* Read-Only Predikat Badge Inline */}
+                        <div className="flex items-center gap-1 pl-1">
+                          {predikat ? (
+                            <Tooltip content={`Predikat capaian yang diinput dari menu Input Nilai: ${predikat}`} position="top">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1 select-none font-bold ${
+                                isA ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                isC ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                                isKurang ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                                'bg-blue-50 text-blue-800 border-blue-300'
+                              }`}>
+                                <Award size={10} className="shrink-0" />
+                                <span>Predikat: <strong>{predikat}</strong></span>
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip content="Murid ini belum dinilai atau tidak mengikuti ekskul ini di menu Input Nilai" position="top">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-mono border border-slate-200 bg-slate-50 text-slate-400 select-none">
+                                Belum Mengikuti
+                              </span>
+                            </Tooltip>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Deskripsi Catatan */}
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-[11px] font-semibold text-slate-600">
-                            Catatan Ekstrakurikuler:
+                      {/* Sisi Kanan: Status & 4 Tombol Aksi Seragam */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                        {deskripsi && varIdx === undefined && !isLocked && (
+                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                            Tersimpan
                           </span>
+                        )}
 
+                        {/* 1. Tombol Kunci Satuan */}
+                        <Tooltip content={isLocked ? "Buka kuncian ekstrakurikuler murid ini" : "Kunci ekstrakurikuler murid ini agar terlindungi saat Sintesis Ulang"} position="top">
                           <button
+                            type="button"
+                            onClick={() => handleToggleLockEkskul(student.id, activeEkskul.id)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all border cursor-pointer active:scale-95 shadow-2xs ${
+                              isLocked 
+                                ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
+                                : 'bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
+                            }`}
+                          >
+                            {isLocked ? <Lock size={11} className="text-amber-700" /> : <Unlock size={11} />}
+                            <span>{isLocked ? 'Terkunci' : 'Kunci'}</span>
+                          </button>
+                        </Tooltip>
+
+                        {/* 2. Tombol Variasi Satuan */}
+                        <Tooltip content={isLocked ? "Buka kunci terlebih dahulu untuk memvariasikan" : !predikat ? "Tentukan predikat di menu Input Nilai terlebih dahulu" : "Putar ke variasi narasi berikutnya (tersedia 5 variasi unik)"} position="top">
+                          <button
+                            type="button"
                             onClick={() => handleCycleVariasiEkskul(student.id, activeEkskul.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition-colors border border-indigo-200/70"
+                            disabled={isLocked || !predikat}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-bold text-[11px] transition-colors border shadow-2xs ${
+                              isLocked || !predikat
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200/70 active:scale-95 cursor-pointer'
+                            }`}
                           >
                             <Shuffle size={11} />
                             <span>Variasi {varIdx !== undefined ? `(${varIdx + 1}/5)` : ''}</span>
                           </button>
-                        </div>
+                        </Tooltip>
 
-                        <textarea
-                          rows={2}
-                          value={deskripsi}
-                          onChange={(e) => handleUpdateEkskul(student.id, activeEkskul.id, predikat, e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50/60 focus:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-y font-sans"
-                        />
+                        {/* 3. Tombol Reset Satuan */}
+                        <Tooltip content={!predikat ? "Murid belum memiliki predikat nilai" : "Reset narasi ekstrakurikuler murid ini ke standar"} position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleResetEkskul(student.id, activeEkskul.id)}
+                            disabled={isLocked || !predikat}
+                            className={`p-1 rounded-md border transition-colors ${
+                              isLocked || !predikat
+                                ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-slate-200/60 cursor-pointer active:scale-95'
+                            }`}
+                            aria-label="Reset Ekstrakurikuler"
+                          >
+                            <RotateCcw size={12} />
+                          </button>
+                        </Tooltip>
+
+                        {/* 4. Tombol Salin */}
+                        <Tooltip content="Salin teks catatan ekstrakurikuler ini" position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(deskripsi, `ekskul_${student.id}`)}
+                            disabled={!deskripsi}
+                            className={`p-1 rounded-md border transition-colors ${
+                              !deskripsi 
+                                ? 'text-slate-300 border-slate-200 cursor-not-allowed' 
+                                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-slate-200/60 cursor-pointer active:scale-95'
+                            }`}
+                            aria-label="Salin Teks"
+                          >
+                            {copiedId === `ekskul_${student.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                          </button>
+                        </Tooltip>
                       </div>
+                    </div>
+
+                    {/* Baris Bawah: Textarea Full-Width */}
+                    <div className="relative">
+                      <textarea
+                        rows={2}
+                        value={deskripsi}
+                        onChange={(e) => {
+                          if (isLocked) {
+                            showToast('Deskripsi ekstrakurikuler murid ini terkunci. Buka kunci untuk mengedit.');
+                            return;
+                          }
+                          handleUpdateEkskul(student.id, activeEkskul.id, predikat, e.target.value);
+                        }}
+                        readOnly={isLocked}
+                        placeholder={
+                          predikat 
+                            ? "Klik tombol 'Sintesis' atau 'Variasi' untuk memunculkan catatan ekstrakurikuler..."
+                            : "Murid ini belum dinilai di menu Input Nilai Ekstrakurikuler..."
+                        }
+                        className={`w-full px-3 py-2 border rounded-lg text-xs leading-relaxed focus:outline-none transition-all resize-y font-sans placeholder:text-slate-400 ${
+                          isLocked 
+                            ? 'bg-slate-100/70 border-amber-300 text-slate-700 cursor-not-allowed'
+                            : 'bg-slate-50/70 focus:bg-white border-slate-200 text-slate-800 focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500'
+                        }`}
+                      />
+                      {isLocked && (
+                        <div className="absolute right-2.5 bottom-2.5 pointer-events-none flex items-center gap-1 bg-amber-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs">
+                          <Lock size={10} />
+                          <span>Terkunci</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -790,75 +1182,174 @@ export default function SesuaikanCapaian({ defaultTab = 'intrakurikuler' }: Sesu
           </div>
         )}
 
-        {/* TAB 3: KOKURIKULER */}
+        {/* TAB 3: KOKURIKULER (KOMPILASI TUNGGAL RAPOR) */}
         {activeTab === 'kokurikuler' && (
           <div className="space-y-3 pb-8">
             {projek.length === 0 ? (
-              <div className="bg-white p-6 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-                Belum ada data tema kokurikuler.
+              <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500 space-y-1">
+                <p className="font-bold text-slate-700">Belum ada perencanaan kegiatan kokurikuler.</p>
+                <p className="text-[11px] text-slate-400">Silakan buat kegiatan kokurikuler di menu Perencanaan terlebih dahulu.</p>
               </div>
             ) : (
               filteredSiswa.map((student, sIdx) => {
-                if (!activeProjek) return null;
-                const currentText = customDeskripsiKokurikuler[student.id]?.[activeProjek.id] || 
-                  `Menunjukkan partisipasi aktif dalam projek "${activeProjek.tema}", berkembang sangat baik dalam dimensi yang diamati serta konsisten menunjukkan kepedulian dan kerja sama nyata.`;
+                const savedKompilasi = customDeskripsiKokurikuler[student.id]?.['__kompilasi__'] || 
+                  (projek[0]?.id ? customDeskripsiKokurikuler[student.id]?.[projek[0].id] : undefined);
+                const currentText = savedKompilasi !== undefined ? savedKompilasi : '';
+                const isLocked = !!lockedDeskripsiKokurikuler?.[student.id];
 
-                const key = `${student.id}_${activeProjek.id}`;
+                const key = `${student.id}__kompilasi__`;
                 const varIdx = kokurikulerVariationIndex[key];
-                const dims = dimensiProjek.filter(d => d.projekId === activeProjek.id);
 
                 return (
                   <div 
                     key={student.id} 
-                    className="bg-white rounded-xl p-3.5 border border-slate-200/90 shadow-xs hover:border-indigo-300 transition-all"
+                    className={`bg-white rounded-xl p-3 border shadow-2xs transition-all group space-y-2 ${
+                      isLocked ? 'border-amber-300/80 bg-amber-50/10' : 'border-slate-200 hover:border-sky-300'
+                    }`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-start gap-3.5">
-                      {/* Profil & Dimensi */}
-                      <div className="md:w-56 shrink-0 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-md bg-purple-50 text-purple-700 font-bold text-xs flex items-center justify-center shrink-0">
-                            {sIdx + 1}
+                    {/* Baris Atas: Nomor, Nama Murid, Dimensi Badges Inline, dan 4 Aksi */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      
+                      {/* Sisi Kiri: Identitas Murid & Capaian Dimensi Inline */}
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
+                        <span className="w-5 h-5 rounded bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0">
+                          {sIdx + 1}
+                        </span>
+                        <span className="font-bold text-xs text-slate-800 truncate" title={student.nama}>
+                          {student.nama}
+                        </span>
+                        {student.nisn && (
+                          <span className="text-[10px] font-mono text-slate-400 hidden sm:inline">
+                            ({student.nisn})
                           </span>
-                          <div className="min-w-0">
-                            <h2 className="font-bold text-xs text-slate-800 truncate">{student.nama}</h2>
-                            <div className="text-[11px] text-slate-400">NISN: {student.nisn || '-'}</div>
-                          </div>
-                        </div>
-
-                        {dims.length > 0 && (
-                          <div className="text-[10px] text-slate-500 flex flex-wrap gap-1">
-                            {dims.map(d => (
-                              <span key={d.id} className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">
-                                {d.nama.slice(0, 8)}..: <b>{nilaiP5[student.id]?.[d.id] || '-'}</b>
-                              </span>
-                            ))}
-                          </div>
                         )}
+
+                        {/* Rincian Seluruh Subdimensi Terasesmen Inline */}
+                        <div className="flex flex-wrap items-center gap-1 pl-1">
+                          {dimensiProjek.length > 0 ? (
+                            dimensiProjek.map(d => {
+                              const subNames = d.subdimensi && d.subdimensi.length > 0 ? d.subdimensi : [d.nama];
+                              return subNames.map(sName => {
+                                const subKey = `${d.id}__${sName}`;
+                                const sc = normalisasiSkala(nilaiP5[student.id]?.[subKey] || nilaiP5[student.id]?.[d.id] || '');
+                                const badgeColor = sc === 'M' ? 'bg-sky-50 text-sky-800 border-sky-300 font-bold' :
+                                  sc === 'C' ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold' :
+                                  sc === 'B' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                                  'bg-slate-50 text-slate-400 border-slate-200';
+                                return (
+                                  <Tooltip key={subKey} content={`${d.nama} - ${sName} (Nilai: ${sc || '-'})`} position="top">
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border flex items-center gap-0.5 select-none ${badgeColor}`}>
+                                      <span>{sName.length > 12 ? sName.slice(0, 10) + '..' : sName}:</span>
+                                      <b>{sc || '-'}</b>
+                                    </span>
+                                  </Tooltip>
+                                );
+                              });
+                            })
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Belum ada dimensi</span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Deskripsi */}
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-[11px] font-semibold text-slate-600">
-                            Capaian Kokurikuler:
+                      {/* Sisi Kanan: Status & 4 Tombol Aksi Seragam */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                        {currentText && varIdx === undefined && !isLocked && (
+                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
+                            Tersimpan
                           </span>
+                        )}
 
+                        {/* 1. Tombol Kunci Satuan */}
+                        <Tooltip content={isLocked ? "Buka kuncian kokurikuler murid ini" : "Kunci kokurikuler murid ini agar terlindungi saat Sintesis Ulang"} position="top">
                           <button
-                            onClick={() => handleCycleVariasiKokurikuler(student.id, activeProjek.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] transition-colors border border-indigo-200/70"
+                            type="button"
+                            onClick={() => handleToggleLockKokurikuler(student.id)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all border cursor-pointer active:scale-95 shadow-2xs ${
+                              isLocked 
+                                ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
+                                : 'bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
+                            }`}
+                          >
+                            {isLocked ? <Lock size={11} className="text-amber-700" /> : <Unlock size={11} />}
+                            <span>{isLocked ? 'Terkunci' : 'Kunci'}</span>
+                          </button>
+                        </Tooltip>
+
+                        {/* 2. Tombol Variasi Satuan */}
+                        <Tooltip content={isLocked ? "Buka kunci terlebih dahulu untuk memvariasikan" : "Putar ke variasi narasi berikutnya (tersedia 5 variasi unik)"} position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleCycleVariasiKokurikulerKompilasi(student.id)}
+                            disabled={isLocked}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-bold text-[11px] transition-colors border shadow-2xs ${
+                              isLocked 
+                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                : 'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-200/70 active:scale-95 cursor-pointer'
+                            }`}
                           >
                             <Shuffle size={11} />
                             <span>Variasi {varIdx !== undefined ? `(${varIdx + 1}/5)` : ''}</span>
                           </button>
-                        </div>
+                        </Tooltip>
 
-                        <textarea
-                          rows={2}
-                          value={currentText}
-                          onChange={(e) => handleUpdateKokurikuler(student.id, activeProjek.id, e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50/60 focus:bg-white border border-slate-200 rounded-lg text-xs text-slate-800 leading-relaxed focus:outline-none focus:ring-1.5 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all resize-y font-sans"
-                        />
+                        {/* 3. Tombol Reset Satuan */}
+                        <Tooltip content="Reset narasi kokurikuler murid ini ke standar" position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleResetKokurikulerKompilasi(student.id)}
+                            disabled={isLocked}
+                            className={`p-1 rounded-md border transition-colors ${
+                              isLocked
+                                ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-slate-200/60 cursor-pointer active:scale-95'
+                            }`}
+                            aria-label="Reset Kokurikuler"
+                          >
+                            <RotateCcw size={12} />
+                          </button>
+                        </Tooltip>
+
+                        {/* 4. Tombol Salin */}
+                        <Tooltip content="Salin teks deskripsi kokurikuler ini" position="top">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(currentText, `kokur_${student.id}`)}
+                            className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200/60 transition-colors cursor-pointer active:scale-95"
+                            aria-label="Salin Teks"
+                          >
+                            {copiedId === `kokur_${student.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                          </button>
+                        </Tooltip>
                       </div>
+                    </div>
+
+                    {/* Baris Bawah: Textarea Full-Width */}
+                    <div className="relative">
+                      <textarea
+                        rows={2}
+                        value={currentText}
+                        onChange={(e) => {
+                          if (isLocked) {
+                            showToast('Deskripsi kokurikuler murid ini terkunci. Buka kunci untuk mengedit.');
+                            return;
+                          }
+                          handleUpdateKokurikulerKompilasi(student.id, e.target.value);
+                        }}
+                        readOnly={isLocked}
+                        className={`w-full px-3 py-2 border rounded-lg text-xs leading-relaxed focus:outline-none transition-all resize-y font-sans placeholder:text-slate-400 ${
+                          isLocked 
+                            ? 'bg-slate-100/70 border-amber-300 text-slate-700 cursor-not-allowed'
+                            : 'bg-slate-50/70 focus:bg-white border-slate-200 text-slate-800 focus:ring-1.5 focus:ring-sky-500/30 focus:border-sky-500'
+                        }`}
+                        placeholder="Klik tombol 'Sintesis' atau 'Variasi' untuk merangkum capaian kokurikuler seluruh kegiatan..."
+                      />
+                      {isLocked && (
+                        <div className="absolute right-2.5 bottom-2.5 pointer-events-none flex items-center gap-1 bg-amber-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs">
+                          <Lock size={10} />
+                          <span>Terkunci</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

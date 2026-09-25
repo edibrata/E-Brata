@@ -1,6 +1,7 @@
 import { useAppStore } from '@/store';
 import { TrashItem } from '@/types';
 import { RefreshCcw, Trash2, History, AlertCircle } from 'lucide-react';
+import Tooltip from '@/components/Tooltip';
 
 export default function KotakSampah() {
   const { state, updateState } = useAppStore();
@@ -111,24 +112,24 @@ export default function KotakSampah() {
                   {formatDate(item.deletedAt)}
                 </td>
                 <td className="px-4 py-1.5 text-center flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => handleRestore(item)}
-                    className="p-1.5 text-indigo-400 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-colors group/tooltip relative focus:outline-none"
-                  >
-                    <RefreshCcw size={15} />
-                    <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-bottom-1 before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-slate-800">
-                      Pulihkan
-                    </span>
-                  </button>
-                  <button 
-                    onClick={() => handlePermanentDelete(item.id)}
-                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors group/tooltip relative focus:outline-none"
-                  >
-                    <Trash2 size={15} />
-                    <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 bottom-full mb-1.5 left-1/2 -translate-x-1/2 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-bottom-1 before:left-1/2 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-slate-800">
-                      Hapus Permanen
-                    </span>
-                  </button>
+                  <Tooltip content="Pulihkan data ini kembali" position="top">
+                    <button 
+                      onClick={() => handleRestore(item)}
+                      className="p-1.5 text-indigo-500 hover:text-indigo-800 hover:bg-indigo-50 rounded-md transition-colors cursor-pointer"
+                      aria-label="Pulihkan"
+                    >
+                      <RefreshCcw size={15} />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Hapus data ini secara permanen" position="top">
+                    <button 
+                      onClick={() => handlePermanentDelete(item.id)}
+                      className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                      aria-label="Hapus Permanen"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </Tooltip>
                 </td>
               </tr>
             ))}

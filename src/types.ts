@@ -126,15 +126,18 @@ export interface DataProjek {
   id: string;
   tema: string;
   deskripsi: string;
+  bentuk?: 'kolaboratif' | 'g7kaih' | 'lainnya' | string;
+  alokasiWaktu?: string;
 }
 
 export interface DimensiProjek {
   id: string;
   projekId: string;
   nama: string;
+  subdimensi?: string[];
 }
 
-export type NilaiProjek = 'MB' | 'SB' | 'BSH' | 'SAB' | '';
+export type NilaiProjek = 'M' | 'C' | 'B' | 'MB' | 'SB' | 'BSH' | 'SAB' | '';
 
 export interface DataPendukungSiswa {
   sakit?: number;
@@ -175,5 +178,10 @@ export interface AppState {
   customDeskripsiKokurikuler?: Record<string, Record<string, string>>; // studentId -> projekId -> custom text
   // studentId -> DataPendukungSiswa (Kehadiran & Catatan Wali Kelas)
   dataPendukung?: Record<string, DataPendukungSiswa>;
+  // Status Kunci Deskripsi Capaian per Murid (terproteksi dari Sintesis Ulang 1 Kelas)
+  lockedDeskripsiMapel?: Record<string, Record<string, boolean>>; // studentId -> mapelId -> boolean
+  lockedDeskripsiEkskul?: Record<string, Record<string, boolean>>; // studentId -> ekskulId -> boolean
+  lockedDeskripsiKokurikuler?: Record<string, boolean>; // studentId -> boolean
+  lockedCatatanWali?: Record<string, boolean>; // studentId -> boolean
   trash: TrashItem[];
 }

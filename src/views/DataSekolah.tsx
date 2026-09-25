@@ -11,6 +11,7 @@ import React, { useState, useRef } from 'react';
 import { INITIAL_STATE } from '@/constants';
 import * as XLSX from 'xlsx';
 import { formatLokasiTitimangsa } from '@/lib/pdfGenerator';
+import Tooltip from '@/components/Tooltip';
 
 export default function DataSekolah() {
   const { state, updateSekolah } = useAppStore();
@@ -342,71 +343,71 @@ export default function DataSekolah() {
           
           {!isLocked && (
             <>
-              <button 
-                type="button"
-                onClick={handleDownloadExcel} 
-                className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-sm border border-gray-200 transition focus:outline-none group/tooltip relative"
-              >
-                <Download className="w-4 h-4" />
-                <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                  Unduh Excel
-                </span>
-              </button>
+              <Tooltip content="Unduh Data Sekolah ke Excel" position="bottom">
+                <button 
+                  type="button"
+                  onClick={handleDownloadExcel} 
+                  className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-sm border border-gray-200 transition focus:outline-none cursor-pointer"
+                  aria-label="Unduh Excel"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </Tooltip>
               
-              <button 
-                type="button"
-                onClick={() => excelInputRef.current?.click()} 
-                className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition focus:outline-none group/tooltip relative"
-              >
-                <Upload className="w-4 h-4" />
-                <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                  Import Excel
-                </span>
-              </button>
+              <Tooltip content="Impor Data Sekolah dari File Excel" position="bottom">
+                <button 
+                  type="button"
+                  onClick={() => excelInputRef.current?.click()} 
+                  className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition focus:outline-none cursor-pointer"
+                  aria-label="Impor Excel"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+              </Tooltip>
 
-              <button 
-                type="button"
-                onClick={handleDownloadJSON} 
-                className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-sm border border-gray-200 transition focus:outline-none group/tooltip relative"
-              >
-                <FileText className="w-4 h-4" />
-                <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                  Backup JSON
-                </span>
-              </button>
+              <Tooltip content="Cadangkan Data Sekolah ke Format JSON" position="bottom">
+                <button 
+                  type="button"
+                  onClick={handleDownloadJSON} 
+                  className="w-8 h-8 flex items-center justify-center bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg shadow-sm border border-gray-200 transition focus:outline-none cursor-pointer"
+                  aria-label="Backup JSON"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </Tooltip>
 
-              <button 
-                type="button"
-                onClick={() => jsonInputRef.current?.click()} 
-                className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition focus:outline-none group/tooltip relative"
-              >
-                <FileJson className="w-4 h-4" />
-                <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                  Restore JSON
-                </span>
-              </button>
+              <Tooltip content="Pulihkan Data Sekolah dari File JSON" position="bottom">
+                <button 
+                  type="button"
+                  onClick={() => jsonInputRef.current?.click()} 
+                  className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition focus:outline-none cursor-pointer"
+                  aria-label="Restore JSON"
+                >
+                  <FileJson className="w-4 h-4" />
+                </button>
+              </Tooltip>
 
-              <button 
-                type="button"
-                onClick={handleReset} 
-                className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 rounded-lg shadow-sm border border-red-200 transition focus:outline-none group/tooltip relative"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                  Reset Default
-                </span>
-              </button>
+              <Tooltip content="Kembalikan Pengaturan ke Default Pabrik" position="bottom">
+                <button 
+                  type="button"
+                  onClick={handleReset} 
+                  className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 rounded-lg shadow-sm border border-red-200 transition focus:outline-none cursor-pointer"
+                  aria-label="Reset Default"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </Tooltip>
 
-              <button 
-                type="button"
-                onClick={(e) => handleSubmit(e as any)} 
-                className="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition group/tooltip relative"
-              >
-                <Save className="w-4 h-4" />
-                <span className="absolute opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 top-full mt-1.5 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-top-1 before:right-3 before:border-4 before:border-transparent before:border-b-slate-800">
-                  Simpan Perubahan
-                </span>
-              </button>
+              <Tooltip content="Simpan Seluruh Perubahan Data Sekolah" position="bottom">
+                <button 
+                  type="button"
+                  onClick={(e) => handleSubmit(e as any)} 
+                  className="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition cursor-pointer"
+                  aria-label="Simpan Perubahan"
+                >
+                  <Save className="w-4 h-4" />
+                </button>
+              </Tooltip>
             </>
           )}
         </div>

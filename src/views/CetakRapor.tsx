@@ -648,7 +648,13 @@ export default function CetakRapor() {
       const alamatBaris2 = formatAlamatBaris2(sekolah);
 
       let kokurikulerText = '';
-      if (projek && projek.length > 0) {
+      const singleKompilasi = typeof customDeskripsiKokurikuler?.[currentStudent.id] === 'string'
+        ? (customDeskripsiKokurikuler?.[currentStudent.id] as unknown as string)
+        : customDeskripsiKokurikuler?.[currentStudent.id]?.['__kompilasi__'];
+
+      if (singleKompilasi) {
+        kokurikulerText = singleKompilasi;
+      } else if (projek && projek.length > 0) {
         kokurikulerText = projek.map(p => {
           const customK = customDeskripsiKokurikuler?.[currentStudent.id]?.[p.id];
           const desc = customK || p.deskripsi || 'Berpartisipasi aktif dalam kegiatan projek kokurikuler dengan menunjukkan penguatan karakter profil pelajar yang positif.';

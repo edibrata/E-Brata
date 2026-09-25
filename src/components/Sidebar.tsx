@@ -9,6 +9,7 @@ import {
   Settings, UserCircle, Star, FolderGit2, ChevronDown, ChevronRight, LogOut, LayoutDashboard, Trash2, Medal,
   Download, Upload, FileJson, RotateCcw, Sparkles
 } from 'lucide-react';
+import Tooltip from '@/components/Tooltip';
 
 interface SidebarProps {
   activeView: string;
@@ -192,13 +193,15 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
             <p className="text-[10px] text-slate-500 transition-colors">&copy; EduDev {new Date().getFullYear()}</p>
           </div>
         </div>
-        <button 
-          onClick={handleLogout}
-          className="p-2 -mr-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none group relative"
-        >
-          <LogOut size={16} />
-          <span className="absolute opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-slate-800 text-white text-[10px] font-medium rounded px-2 py-1 bottom-full mb-2 right-0 whitespace-nowrap z-50 pointer-events-none shadow-sm before:absolute before:-bottom-1 before:right-2 before:border-4 before:border-transparent before:border-t-slate-800">Ganti Sekolah/Logout</span>
-        </button>
+        <Tooltip content="Ganti Sekolah atau Keluar Akun" position="top">
+          <button 
+            onClick={handleLogout}
+            className="p-2 -mr-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none cursor-pointer"
+            aria-label="Logout"
+          >
+            <LogOut size={16} />
+          </button>
+        </Tooltip>
       </div>
     </aside>
   );

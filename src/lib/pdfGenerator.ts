@@ -1036,9 +1036,15 @@ export const buildRaporPDF = (
 
   currentY = (doc as any).lastAutoTable.finalY + 4;
 
-  // 2. KOKURIKULER
+  // 2. KOKURIKULER (Kompilasi Tunggal Rapor)
   let kokurikulerText = '';
-  if (projekList && projekList.length > 0) {
+  const singleKompilasi = typeof customDeskripsiKokurikuler?.[student.id] === 'string'
+    ? (customDeskripsiKokurikuler?.[student.id] as unknown as string)
+    : customDeskripsiKokurikuler?.[student.id]?.['__kompilasi__'];
+
+  if (singleKompilasi) {
+    kokurikulerText = singleKompilasi;
+  } else if (projekList && projekList.length > 0) {
     kokurikulerText = projekList.map(p => {
       const customK = customDeskripsiKokurikuler?.[student.id]?.[p.id];
       const desc = customK || p.deskripsi || 'Berpartisipasi aktif dalam kegiatan projek kokurikuler dengan menunjukkan penguatan karakter profil pelajar yang positif.';
