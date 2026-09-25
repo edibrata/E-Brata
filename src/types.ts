@@ -38,6 +38,9 @@ export interface Sekolah {
   logoRotation?: number;
   logoOffsetX?: number;
   logoOffsetY?: number;
+  coverNomenklaturBaris1?: string;
+  coverNomenklaturBaris2?: string;
+  useCoverNomenklatur?: boolean;
   useDigitalSignature?: boolean;
   ttdWaliKelas?: string;
   ttdWaliKelasScale?: number;

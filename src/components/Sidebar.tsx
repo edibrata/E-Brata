@@ -7,7 +7,7 @@ import {
   BookOpen, FileSpreadsheet, Printer, Book, Contact, 
   Archive, ArrowRightLeft, PieChart, Bot, Lightbulb, 
   Settings, UserCircle, Star, FolderGit2, ChevronDown, ChevronRight, LogOut, LayoutDashboard, Trash2, Medal,
-  Download, Upload, FileJson, RotateCcw, Sparkles
+  Download, Upload, FileJson, RotateCcw, Sparkles, Lock
 } from 'lucide-react';
 import Tooltip from '@/components/Tooltip';
 
@@ -19,8 +19,18 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevProfile }: SidebarProps) {
-  const { updateState, updateSekolah } = useAppStore();
+  const { state, updateState, updateSekolah } = useAppStore();
+  const { sekolah } = state;
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+  const isUnlocked = Boolean(
+    sekolah?.kepsek?.trim() &&
+    sekolah?.nipKepsek?.trim() &&
+    (sekolah?.waKepalaSekolah?.trim() || (sekolah as any)?.waKepsek?.trim()) &&
+    sekolah?.waliKelas?.trim() &&
+    sekolah?.nipWaliKelas?.trim() &&
+    (sekolah?.waGuru?.trim() || (sekolah as any)?.waWaliKelas?.trim())
+  );
 
   const menuGroups = [
     {
@@ -149,29 +159,68 @@ export default function Sidebar({ activeView, setActiveView, isOpen, onOpenDevPr
               }`}
             >
               <ul className="space-y-1">
-                {group.items.map(item => (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => {
-                        if ((item.id === 'sistem-profil' || item.id === 'profil-pengembang') && onOpenDevProfile) {
-                          onOpenDevProfile();
-                        } else {
-                          setActiveView(item.id);
-                        }
-                      }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-xs transition-all ${
-                        activeView === item.id 
-                          ? 'bg-indigo-50 text-blue-700 font-bold' 
-                          : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      <div className={activeView === item.id ? 'text-blue-700' : 'text-slate-500 group-hover:text-slate-700'}>
-                        {item.icon}
-                      </div>
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
+                {group.items.map(item => {
+                  const isItemUnlocked = isUnlocked || 
+                    item.id === 'dashboard' || 
+                    item.id === 'data-dasar' || 
+                    item.id === 'data-sekolah' || 
+                    group.title === 'Sistem' || 
+                    item.id === 'sistem-petunjuk' || 
+                    item.id === 'panduan-asesmen' || 
+                    item.id === 'sistem-profil' || 
+                    item.id === 'petunjuk' || 
+                    item.id === 'profil-pengembang';
+                  
+                  if (!isItemUnlocked) {
+                    return (
+                      <li key={item.id}>
+                        <Tooltip 
+                          content="Lengkapi Nama, NIP, & Nomor WhatsApp Kepala Sekolah serta Guru/Wali Kelas di menu Data Dasar untuk membuka menu ini" 
+                          position="right"
+                          className="w-full block"
+                        >
+                          <button
+                            type="button"
+                            disabled={true}
+                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-xs transition-all opacity-40 text-slate-400 bg-transparent cursor-not-allowed select-none"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="text-slate-400">
+                                {item.icon}
+                              </div>
+                              <span className="truncate">{item.label}</span>
+                            </div>
+                            <Lock size={12} className="text-slate-400 shrink-0 ml-1.5" />
+                          </button>
+                        </Tooltip>
+                      </li>
+                    );
+                  }
+
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => {
+                          if ((item.id === 'sistem-profil' || item.id === 'profil-pengembang') && onOpenDevProfile) {
+                            onOpenDevProfile();
+                          } else {
+                            setActiveView(item.id);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-xs transition-all cursor-pointer ${
+                          activeView === item.id 
+                            ? 'bg-indigo-50 text-blue-700 font-bold' 
+                            : 'hover:bg-slate-50 text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <div className={activeView === item.id ? 'text-blue-700' : 'text-slate-500 group-hover:text-slate-700'}>
+                          {item.icon}
+                        </div>
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>

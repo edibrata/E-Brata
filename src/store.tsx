@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { AppState } from './types';
 import { INITIAL_STATE } from './constants';
+import { DEFAULT_LOGO_TUT_WURI } from './data/defaultLogoTutWuri';
 import { supabase } from '@/lib/supabase';
 import { normalizeAgama } from '@/lib/agamaUtils';
 
@@ -69,6 +70,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               agama: norm || (s.agama && s.agama.trim() ? s.agama.trim() : 'Islam')
             };
           });
+        }
+        if (!merged.sekolah.logo || merged.sekolah.logo.includes('upload.wikimedia.org') || merged.sekolah.logo.length === 37282 || merged.sekolah.logo.length === 43222) {
+          merged.sekolah.logo = DEFAULT_LOGO_TUT_WURI;
+        }
+        if (merged.sekolah.useCoverNomenklatur === undefined) {
+          merged.sekolah.useCoverNomenklatur = false;
+        }
+        if (merged.sekolah.useDigitalSignature === undefined) {
+          merged.sekolah.useDigitalSignature = false;
+        }
+        if (!merged.sekolah.coverNomenklaturBaris1) {
+          merged.sekolah.coverNomenklaturBaris1 = 'KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH';
+        }
+        if (!merged.sekolah.coverNomenklaturBaris2) {
+          merged.sekolah.coverNomenklaturBaris2 = 'REPUBLIK INDONESIA';
         }
         return merged;
       }

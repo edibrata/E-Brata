@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppStore } from '@/store';
 import { Siswa } from '@/types';
+import { DEFAULT_LOGO_TUT_WURI } from '@/data/defaultLogoTutWuri';
 import Tooltip from '@/components/Tooltip';
 import { 
   Printer, 
@@ -358,23 +359,15 @@ export default function CetakRapor() {
           {/* Logo Tut Wuri Handayani / Sekolah */}
           <div className="space-y-4 pt-6 flex flex-col items-center">
             <div className="w-24 h-24 mb-1 flex items-center justify-center overflow-hidden">
-              {(sekolah.logo || sekolah.logoKiri || sekolah.logoKanan) ? (
-                <img 
-                  src={sekolah.logo || sekolah.logoKiri || sekolah.logoKanan} 
-                  alt="Logo" 
-                  style={{
-                    transform: `translate(${sekolah.logoOffsetX || 0}px, ${sekolah.logoOffsetY || 0}px) rotate(${sekolah.logoRotation || 0}deg) scale(${(sekolah.logoScale || 100) / 100})`,
-                    transformOrigin: 'center center'
-                  }}
-                  className="max-h-full max-w-full object-contain transition-transform" 
-                />
-              ) : (
-                <img 
-                  src="https://upload.wikimedia.org/wikipedia/commons/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg" 
-                  alt="Logo Tut Wuri Handayani" 
-                  className="w-20 h-20 object-contain"
-                />
-              )}
+              <img 
+                src={(sekolah.logo && !sekolah.logo.includes('upload.wikimedia.org') && sekolah.logo.length !== 37282 && sekolah.logo.length !== 43222) ? sekolah.logo : (sekolah.logoKiri || sekolah.logoKanan || DEFAULT_LOGO_TUT_WURI)} 
+                alt="Logo Cover" 
+                style={{
+                  transform: `translate(${sekolah.logoOffsetX || 0}px, ${sekolah.logoOffsetY || 0}px) rotate(${sekolah.logoRotation || 0}deg) scale(${(sekolah.logoScale || 100) / 100})`,
+                  transformOrigin: 'center center'
+                }}
+                className="max-h-full max-w-full object-contain transition-transform" 
+              />
             </div>
 
             <div className="space-y-1 text-black font-extrabold uppercase">
@@ -401,11 +394,15 @@ export default function CetakRapor() {
             </div>
           </div>
 
-          {/* Footer Resmi Kementerian (13pt, Jarak Margin Bawah Proporsional) */}
-          <div className="space-y-1 text-xs sm:text-[13px] md:text-[13px] uppercase font-extrabold text-black pb-6 sm:pb-8 leading-relaxed">
-            <p>KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH</p>
-            <p>REPUBLIK INDONESIA</p>
-          </div>
+          {/* Footer Resmi Kementerian / Nomenklatur Cover (13pt, Jarak Margin Bawah Proporsional) */}
+          {Boolean(sekolah.useCoverNomenklatur) ? (
+            <div className="space-y-1 text-xs sm:text-[13px] md:text-[13px] uppercase font-extrabold text-black pb-6 sm:pb-8 leading-relaxed">
+              <p>{(sekolah.coverNomenklaturBaris1 || 'KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH').toUpperCase()}</p>
+              <p>{(sekolah.coverNomenklaturBaris2 || 'REPUBLIK INDONESIA').toUpperCase()}</p>
+            </div>
+          ) : (
+            <div className="pb-6 sm:pb-8" />
+          )}
         </div>
       );
     };

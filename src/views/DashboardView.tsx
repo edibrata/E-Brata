@@ -35,7 +35,12 @@ export default function DashboardView({ onOpenDevProfile, onNavigate }: Dashboar
   const isSetupComplete = Boolean(
     sekolah.nama && 
     sekolah.npsn && 
-    sekolah.kepsek
+    sekolah.kepsek?.trim() &&
+    sekolah.nipKepsek?.trim() &&
+    (sekolah.waKepalaSekolah?.trim() || (sekolah as any)?.waKepsek?.trim()) &&
+    sekolah.waliKelas?.trim() &&
+    sekolah.nipWaliKelas?.trim() &&
+    (sekolah.waGuru?.trim() || (sekolah as any)?.waWaliKelas?.trim())
   );
   
   const isMuridAda = totalSiswa > 0;

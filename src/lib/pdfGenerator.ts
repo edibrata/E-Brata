@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Sekolah, Siswa, Mapel, NilaiMapelSiswa, TujuanPembelajaran, Ekstrakurikuler, NilaiEkskul, DataPendukungSiswa } from '@/types';
+import { DEFAULT_LOGO_TUT_WURI } from '@/data/defaultLogoTutWuri';
 import { isPabpMapel, filterTpsForStudent } from '@/lib/agamaUtils';
 import { hitungNilaiMapel } from '@/lib/penilaianUtils';
 
@@ -426,7 +427,7 @@ export const buildJilidCoverOnlyPDF = (
 
   // Logo Sekolah / Tut Wuri Handayani di Bagian Atas
   const logoY = paperSize === 'f4' ? 42 : 36;
-  const rawLogo = sekolah.logo || sekolah.logoKiri || sekolah.logoKanan;
+  const rawLogo = (sekolah.logo && !sekolah.logo.includes('upload.wikimedia.org') && sekolah.logo.length !== 37282 && sekolah.logo.length !== 43222) ? sekolah.logo : (sekolah.logoKiri || sekolah.logoKanan || DEFAULT_LOGO_TUT_WURI);
   
   if (rawLogo && rawLogo.startsWith('data:image')) {
     try {
@@ -519,12 +520,16 @@ export const buildJilidCoverOnlyPDF = (
   doc.text(combinedNis, pageWidth / 2, yBoxNisn + (boxHeight / 2) + (nisFontSize * 0.12), { align: 'center' });
 
   // Footer: KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH / REPUBLIK INDONESIA (13pt, margin proporsional)
-  const footY = paperSize === 'f4' ? 290 : 260;
-  doc.setFont(fontName, 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(0, 0, 0);
-  doc.text('KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH', pageWidth / 2, footY, { align: 'center' });
-  doc.text('REPUBLIK INDONESIA', pageWidth / 2, footY + 6.5, { align: 'center' });
+  if (sekolah.useCoverNomenklatur) {
+    const footY = paperSize === 'f4' ? 290 : 260;
+    doc.setFont(fontName, 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(0, 0, 0);
+    const baris1 = (sekolah.coverNomenklaturBaris1 || 'KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH').trim().toUpperCase();
+    const baris2 = (sekolah.coverNomenklaturBaris2 || 'REPUBLIK INDONESIA').trim().toUpperCase();
+    doc.text(baris1, pageWidth / 2, footY, { align: 'center' });
+    doc.text(baris2, pageWidth / 2, footY + 6.5, { align: 'center' });
+  }
 };
 
 // 1B. GENERATE IDENTITAS SATUAN PENDIDIKAN SAJA (Identitas Sekolah)

@@ -26,7 +26,33 @@ import DashboardView from '@/views/DashboardView';
 import DeveloperProfileModal from '@/components/DeveloperProfileModal';
 
 function Dashboard() {
+  const { state } = useAppStore();
+  const { sekolah } = state;
+
+  const isUnlocked = Boolean(
+    sekolah?.kepsek?.trim() &&
+    sekolah?.nipKepsek?.trim() &&
+    (sekolah?.waKepalaSekolah?.trim() || (sekolah as any)?.waKepsek?.trim()) &&
+    sekolah?.waliKelas?.trim() &&
+    sekolah?.nipWaliKelas?.trim() &&
+    (sekolah?.waGuru?.trim() || (sekolah as any)?.waWaliKelas?.trim())
+  );
+
+  const isAlwaysAllowedView = (view: string) => {
+    return (
+      view === 'dashboard' ||
+      view === 'data-dasar' ||
+      view === 'data-sekolah' ||
+      view === 'sistem-petunjuk' ||
+      view === 'petunjuk' ||
+      view === 'panduan-asesmen' ||
+      view === 'sistem-profil' ||
+      view === 'profil-pengembang'
+    );
+  };
+
   const [activeView, setActiveView] = useState('dashboard');
+  const effectiveView = isUnlocked || isAlwaysAllowedView(activeView) ? activeView : 'dashboard';
   const [isSidebarOpen, setIsSidebarOpen] = useState(typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [showDevProfileModal, setShowDevProfileModal] = useState(true);
 
@@ -39,13 +65,17 @@ function Dashboard() {
         />
       )}
       <Sidebar 
-        activeView={activeView} 
+        activeView={effectiveView} 
         setActiveView={(v) => { 
-          setActiveView(v); 
+          if (!isUnlocked && !isAlwaysAllowedView(v)) {
+            setActiveView('data-dasar');
+          } else {
+            setActiveView(v); 
+          }
           if (window.innerWidth < 1024) setIsSidebarOpen(false); 
         }} 
         isOpen={isSidebarOpen} 
-        onOpenDevProfile={() => setShowDevProfileModal(true)} 
+        onOpenDevProfile={() => setShowDevProfileModal(true)}
       />
       
       <div className="flex-1 flex flex-col min-w-0 main-content h-[100dvh] overflow-y-auto">
@@ -53,41 +83,41 @@ function Dashboard() {
         
         <main className="p-6 lg:p-8 md:p-6 p-4 flex-1 overflow-x-hidden">
           {/* 1. UTAMA */}
-          {activeView === 'dashboard' && <DashboardView onOpenDevProfile={() => setShowDevProfileModal(true)} onNavigate={(v) => setActiveView(v)} />}
-          {(activeView === 'data-dasar' || activeView === 'data-sekolah') && <DataSekolah />}
-          {(activeView === 'data-murid' || activeView === 'data-siswa') && <DataSiswa />}
+          {effectiveView === 'dashboard' && <DashboardView onOpenDevProfile={() => setShowDevProfileModal(true)} onNavigate={(v) => setActiveView(v)} />}
+          {(effectiveView === 'data-dasar' || effectiveView === 'data-sekolah') && <DataSekolah />}
+          {(effectiveView === 'data-murid' || effectiveView === 'data-siswa') && <DataSiswa />}
 
           {/* 2. INTRAKURIKULER */}
-          {(activeView === 'intra-perencanaan' || activeView === 'kegiatan-akademik') && <KegiatanAkademik />}
-          {(activeView === 'intra-input-nilai' || activeView === 'input-nilai') && <InputNilai />}
-          {activeView === 'intra-capaian' && <SesuaikanCapaian defaultTab="intrakurikuler" />}
+          {(effectiveView === 'intra-perencanaan' || effectiveView === 'kegiatan-akademik') && <KegiatanAkademik />}
+          {(effectiveView === 'intra-input-nilai' || effectiveView === 'input-nilai') && <InputNilai />}
+          {effectiveView === 'intra-capaian' && <SesuaikanCapaian defaultTab="intrakurikuler" />}
 
           {/* 3. KOKURIKULER */}
-          {(activeView === 'koku-perencanaan' || activeView === 'data-projek') && <DataProjekView />}
-          {(activeView === 'koku-input-nilai' || activeView === 'nilai-projek') && <NilaiProjek />}
-          {activeView === 'koku-capaian' && <SesuaikanCapaian defaultTab="kokurikuler" />}
+          {(effectiveView === 'koku-perencanaan' || effectiveView === 'data-projek') && <DataProjekView />}
+          {(effectiveView === 'koku-input-nilai' || effectiveView === 'nilai-projek') && <NilaiProjek />}
+          {effectiveView === 'koku-capaian' && <SesuaikanCapaian defaultTab="kokurikuler" />}
 
           {/* 4. EKSTRAKURIKULER */}
-          {(activeView === 'ekskul-perencanaan' || activeView === 'data-ekskul') && <DataEkstrakurikuler />}
-          {(activeView === 'ekskul-input-nilai' || activeView === 'nilai-ekskul') && <NilaiEkskulView />}
-          {activeView === 'ekskul-capaian' && <SesuaikanCapaian defaultTab="ekstrakurikuler" />}
+          {(effectiveView === 'ekskul-perencanaan' || effectiveView === 'data-ekskul') && <DataEkstrakurikuler />}
+          {(effectiveView === 'ekskul-input-nilai' || effectiveView === 'nilai-ekskul') && <NilaiEkskulView />}
+          {effectiveView === 'ekskul-capaian' && <SesuaikanCapaian defaultTab="ekstrakurikuler" />}
 
           {/* 5. OUTPUT & CETAK */}
-          {(activeView === 'output-capaian' || activeView === 'sesuaikan-capaian') && <SesuaikanCapaian />}
-          {(activeView === 'output-catatan' || activeView === 'generate-catatan-wali') && <GenerateCatatanWali />}
-          {(activeView === 'output-leger' || activeView === 'leger') && <Leger />}
-          {(activeView === 'output-cetak' || activeView === 'cetak-rapor' || activeView === 'jilid-identitas' || activeView === 'biodata-murid' || activeView === 'lampiran-buku-induk' || activeView === 'keterangan-pindah') && <CetakRapor />}
+          {(effectiveView === 'output-capaian' || effectiveView === 'sesuaikan-capaian') && <SesuaikanCapaian />}
+          {(effectiveView === 'output-catatan' || effectiveView === 'generate-catatan-wali') && <GenerateCatatanWali />}
+          {(effectiveView === 'output-leger' || effectiveView === 'leger') && <Leger />}
+          {(effectiveView === 'output-cetak' || effectiveView === 'cetak-rapor' || effectiveView === 'jilid-identitas' || effectiveView === 'biodata-murid' || effectiveView === 'lampiran-buku-induk' || effectiveView === 'keterangan-pindah') && <CetakRapor />}
 
           {/* 6. MANAJEMEN DATA */}
-          {(activeView === 'manajemen-sampah' || activeView === 'kotak-sampah') && <ManajemenDataView initialTab="sampah" />}
-          {activeView === 'manajemen-ekspor' && <ManajemenDataView initialTab="ekspor" />}
-          {activeView === 'manajemen-impor' && <ManajemenDataView initialTab="impor" />}
-          {activeView === 'manajemen-backup' && <ManajemenDataView initialTab="backup" />}
-          {activeView === 'manajemen-restore' && <ManajemenDataView initialTab="restore" />}
+          {(effectiveView === 'manajemen-sampah' || effectiveView === 'kotak-sampah') && <ManajemenDataView initialTab="sampah" />}
+          {effectiveView === 'manajemen-ekspor' && <ManajemenDataView initialTab="ekspor" />}
+          {effectiveView === 'manajemen-impor' && <ManajemenDataView initialTab="impor" />}
+          {effectiveView === 'manajemen-backup' && <ManajemenDataView initialTab="backup" />}
+          {effectiveView === 'manajemen-restore' && <ManajemenDataView initialTab="restore" />}
 
           {/* 7. SISTEM */}
-          {(activeView === 'sistem-petunjuk' || activeView === 'petunjuk') && <Petunjuk />}
-          {activeView === 'panduan-asesmen' && <PanduanAsesmen />}
+          {(effectiveView === 'sistem-petunjuk' || effectiveView === 'petunjuk') && <Petunjuk />}
+          {effectiveView === 'panduan-asesmen' && <PanduanAsesmen />}
         </main>
         <footer className="py-5 shrink-0 border-t border-slate-200/80 bg-slate-50/80 backdrop-blur-sm">
           <div 

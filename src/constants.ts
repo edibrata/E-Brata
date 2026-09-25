@@ -1,4 +1,5 @@
 import { Mapel, AppState } from './types';
+import { DEFAULT_LOGO_TUT_WURI } from './data/defaultLogoTutWuri';
 
 export const DAFTAR_MAPEL: Mapel[] = [
   { id: 'm1', nama: 'Pendidikan Agama dan Budi Pekerti', kode: 'pabp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
@@ -63,8 +64,12 @@ export const INITIAL_STATE: AppState = {
     tanggalRapor: '',
     bobotSumatifLingkup: 75,
     bobotSumatifSemester: 25,
+    logo: DEFAULT_LOGO_TUT_WURI,
     logoKiri: '',
     logoKanan: '',
+    coverNomenklaturBaris1: 'KEMENTERIAN PENDIDIKAN DASAR DAN MENENGAH',
+    coverNomenklaturBaris2: 'REPUBLIK INDONESIA',
+    useCoverNomenklatur: false,
     useDigitalSignature: false,
     ttdWaliKelas: '',
     ttdKepsek: '',
