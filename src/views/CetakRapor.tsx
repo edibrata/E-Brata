@@ -1010,61 +1010,165 @@ export default function CetakRapor() {
     }
 
     if (type === 'pindah') {
+      const studentNameDisplay = currentStudent.nama ? currentStudent.nama.toUpperCase() : '....................................................................';
+
       return (
-        <div 
-          className="p-10 border border-slate-200 bg-white shadow-md rounded-sm text-[11pt] leading-relaxed space-y-5"
-          style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
-        >
-          <div className="text-center mb-5">
-            <h2 className="text-base font-bold uppercase tracking-wider">KETERANGAN PINDAH SEKOLAH</h2>
-            <p className="text-xs font-semibold text-slate-600 uppercase">{sekolah.nama}</p>
-          </div>
-
-          <p className="text-justify leading-relaxed">
-            Yang bertanda tangan di bawah ini, Kepala <b>{sekolah.nama}</b> menerangkan bahwa:
-          </p>
-
-          <table className="w-full text-left my-4">
-            <tbody className="divide-y divide-slate-100">
-              <tr><td className="py-2 w-48 font-bold text-slate-700">Nama Peserta Didik</td><td className="w-4">:</td><td className="py-2 font-bold uppercase text-slate-900">{currentStudent.nama}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">Nomor Induk / NISN</td><td>:</td><td className="py-2 font-mono">{currentStudent.nis || '-'} / {currentStudent.nisn || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">Jenis Kelamin</td><td>:</td><td className="py-2">{currentStudent.jk === 'L' || currentStudent.jk === 'Laki-Laki' ? 'Laki-laki' : 'Perempuan'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">Tingkat / Kelas</td><td>:</td><td className="py-2 font-bold">Kelas {sekolah.kelas} ({sekolah.fase})</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">Nama Orang Tua/Wali</td><td>:</td><td className="py-2">{currentStudent.namaAyah || currentStudent.namaIbu || currentStudent.namaWali || '-'}</td></tr>
-              <tr><td className="py-2 font-bold text-slate-700">Alamat Orang Tua</td><td>:</td><td className="py-2">{currentStudent.jalanOrtu || currentStudent.alamat || '-'}</td></tr>
-            </tbody>
-          </table>
-
-          <p className="text-justify leading-relaxed">
-            Sesuai dengan surat permohonan pindah sekolah dari orang tua/wali peserta didik tanggal ................................, yang bersangkutan mengajukan pindah ke sekolah tujuan:
-          </p>
-
-          <div className="border border-dashed border-slate-400 p-4 rounded bg-slate-50 space-y-2">
-            <p><b>Nama Sekolah Tujuan :</b> .....................................................................................................</p>
-            <p><b>Alamat Sekolah Tujuan :</b> .....................................................................................................</p>
-            <p><b>Alasan Pindah :</b> Mengikuti tempat tinggal orang tua / lainnya.</p>
-          </div>
-
-          <div className="pt-8 flex justify-end">
-            <div className="text-center w-64 space-y-1 text-xs">
-              <p>{formatLokasiTitimangsa(sekolah)}, ............................. 202...</p>
-              <p className="font-bold">Kepala {sekolah.nama}</p>
-              <div className="relative h-14 flex items-center justify-center">
-                {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                  <img 
-                    src={sekolah.ttdKepsek} 
-                    alt="TTD Kepala Sekolah" 
-                    style={{
-                      transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
-                      transformOrigin: 'center center'
-                    }}
-                    className="absolute max-h-16 max-w-[140px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
-                  />
-                )}
-              </div>
-              <p className="font-bold uppercase underline">{sekolah.kepsek}</p>
-              <p className="font-mono text-[11px]">NIP. {sekolah.nipKepsek || '-'}</p>
+        <div className="space-y-12">
+          {/* HALAMAN 1: KELUAR */}
+          <div 
+            className="p-8 sm:p-12 border border-slate-200 bg-white shadow-md rounded-sm text-black flex flex-col justify-start"
+            style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
+          >
+            <div className="text-center mb-6">
+              <h2 className="text-base font-bold uppercase tracking-wider">KETERANGAN PINDAH SEKOLAH</h2>
             </div>
+
+            <div className="flex items-center text-xs sm:text-sm font-medium mb-3">
+              <span className="w-36 sm:w-44 font-normal">Nama Peserta Didik</span>
+              <span className="w-4 text-center">:</span>
+              <span className="font-bold">{studentNameDisplay}</span>
+            </div>
+
+            <div className="w-full border-2 border-black">
+              {/* Header 1: KELUAR */}
+              <div className="border-b-2 border-black py-1.5 text-center font-bold text-sm tracking-wider uppercase bg-white">
+                KELUAR
+              </div>
+
+              {/* Header 2: Kolom */}
+              <div className="grid grid-cols-12 border-b-2 border-black text-center font-bold text-xs bg-white">
+                <div className="col-span-2 border-r border-black p-2 flex items-center justify-center">
+                  Tanggal
+                </div>
+                <div className="col-span-2 border-r border-black p-2 flex items-center justify-center leading-tight">
+                  Kelas yang<br/>Ditinggalkan
+                </div>
+                <div className="col-span-3 border-r border-black p-2 flex items-center justify-center">
+                  Alasan
+                </div>
+                <div className="col-span-5 p-2 flex items-center justify-center leading-tight text-[11px]">
+                  Tanda Tangan Kepala Sekolah,<br/>Stempel Sekolah, dan<br/>Tanda Tangan Orangtua/Wali
+                </div>
+              </div>
+
+              {/* 3 Baris Data KELUAR */}
+              {[1, 2, 3].map((rowIdx) => (
+                <div 
+                  key={rowIdx} 
+                  className={`grid grid-cols-12 min-h-[190px] sm:min-h-[220px] ${rowIdx !== 3 ? 'border-b border-black' : ''}`}
+                >
+                  <div className="col-span-2 border-r border-black p-2"></div>
+                  <div className="col-span-2 border-r border-black p-2"></div>
+                  <div className="col-span-3 border-r border-black p-2"></div>
+                  <div className="col-span-5 p-3 text-[11px] sm:text-xs flex flex-col justify-between leading-relaxed">
+                    <div>
+                      <p className="text-slate-700">............................., .................................</p>
+                      <p className="mt-0.5 font-normal">Kepala Sekolah,</p>
+                    </div>
+                    <div className="my-6">
+                      <p className="text-slate-700">...............................................................</p>
+                      <p className="font-normal">NIP. </p>
+                    </div>
+                    <div>
+                      <p className="font-normal">Orang Tua/ Wali,</p>
+                      <p className="mt-8 text-slate-700">...............................................................</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer Resmi */}
+            {renderFooter('Hal. 1 dari 2')}
+          </div>
+
+          {/* HALAMAN 2: MASUK */}
+          <div 
+            className="p-8 sm:p-12 border border-slate-200 bg-white shadow-md rounded-sm text-black flex flex-col justify-start"
+            style={{ minHeight: minPageHeight, fontFamily: fontFamilyStyle }}
+          >
+            <div className="text-center mb-6">
+              <h2 className="text-base font-bold uppercase tracking-wider">KETERANGAN PINDAH SEKOLAH</h2>
+            </div>
+
+            <div className="flex items-center text-xs sm:text-sm font-medium mb-3">
+              <span className="w-36 sm:w-44 font-normal">Nama Peserta Didik</span>
+              <span className="w-4 text-center">:</span>
+              <span className="font-bold">{studentNameDisplay}</span>
+            </div>
+
+            <div className="w-full border-2 border-black">
+              {/* Header: NO & MASUK */}
+              <div className="grid grid-cols-12 border-b-2 border-black text-center font-bold text-xs bg-white">
+                <div className="col-span-1 border-r border-black p-2 flex items-center justify-center">
+                  NO.
+                </div>
+                <div className="col-span-11 p-2 flex items-center justify-center tracking-wider text-sm">
+                  MASUK
+                </div>
+              </div>
+
+              {/* 3 Baris Data MASUK */}
+              {[1, 2, 3].map((num) => (
+                <div 
+                  key={num} 
+                  className={`grid grid-cols-12 min-h-[140px] sm:min-h-[160px] ${num !== 3 ? 'border-b border-black' : ''}`}
+                >
+                  <div className="col-span-1 border-r border-black p-2 text-center font-bold text-xs">
+                    {num}
+                  </div>
+                  <div className="col-span-7 border-r border-black p-3 text-[11px] sm:text-xs leading-relaxed space-y-1">
+                    <div className="flex"><span className="w-36 shrink-0">Nama Peserta Didik</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                    <div className="flex"><span className="w-36 shrink-0">Nomor Induk</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                    <div className="flex"><span className="w-36 shrink-0">NISN</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                    <div className="flex"><span className="w-36 shrink-0">Nama Sekolah</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                    <div className="font-medium pt-0.5">Masuk di Sekolah Ini :</div>
+                    <div className="flex pl-3"><span className="w-32 shrink-0">a. Tanggal</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                    <div className="flex pl-3"><span className="w-32 shrink-0">b. Di Kelas</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                    <div className="flex pl-3"><span className="w-32 shrink-0">c. Tahun Pelajaran</span><span className="w-3">:</span><span className="text-slate-600 flex-1 truncate">.....................................................</span></div>
+                  </div>
+                  <div className="col-span-4 p-3 text-[11px] sm:text-xs flex flex-col justify-between">
+                    <div>
+                      <p className="text-slate-700">............................., .................................</p>
+                      <p className="mt-0.5 font-normal">Kepala Sekolah,</p>
+                    </div>
+                    <div className="mt-8">
+                      <p className="text-slate-700">...............................................................</p>
+                      <p className="font-normal">NIP. </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bagian Bawah Halaman 2: Pengesahan Masuk */}
+            <div className="mt-8 space-y-6 text-xs sm:text-sm">
+              <div className="grid grid-cols-2 gap-8">
+                <div className="text-left space-y-1">
+                  <p>Mengetahui:</p>
+                  <p>Orang Tua/ Wali,</p>
+                  <p className="pt-12 text-slate-700">...............................................................</p>
+                </div>
+                <div className="text-left space-y-1 pl-6">
+                  <p className="text-slate-700">............................., .................................</p>
+                  <p>Guru Kelas,</p>
+                  <p className="pt-12 text-slate-700">...............................................................</p>
+                  <p className="text-xs font-mono">NIP. </p>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-center">
+                <div className="text-left space-y-1 w-64">
+                  <p>Mengetahui:</p>
+                  <p>Kepala Sekolah,</p>
+                  <p className="pt-12 text-slate-700">...............................................................</p>
+                  <p className="text-xs font-mono">NIP. </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Resmi */}
+            {renderFooter('Hal. 2 dari 2')}
           </div>
         </div>
       );

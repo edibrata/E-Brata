@@ -1609,7 +1609,7 @@ export const buildBukuIndukPDF = (
   addDocumentFooter(doc, sekolah, student, startPage, endPage, pdfFont);
 };
 
-// 5. GENERATE SURAT PINDAH PDF
+// 5. GENERATE SURAT / BLANKO KETERANGAN PINDAH SEKOLAH RESMI (2 HALAMAN)
 export const buildPindahPDF = (
   doc: jsPDF, 
   sekolah: Sekolah, 
@@ -1618,103 +1618,199 @@ export const buildPindahPDF = (
   isContinuation = false,
   pdfFont: PdfFontOption = 'arial'
 ) => {
-  const { fontName, baseBodySize, headerSize, subHeaderSize } = getFontConfig(pdfFont);
+  const { fontName } = getFontConfig(pdfFont);
   if (isContinuation) {
     doc.addPage();
   }
-
+  const startPage = doc.getNumberOfPages();
   const { width: pageWidth } = getPaperDimensions(paperSize);
 
+  const studentNameStr = student.nama ? student.nama.toUpperCase() : '...........................................................................................';
+
+  // --- HALAMAN 1: KELUAR ---
+  const titleY = paperSize === 'f4' ? 18 : 16;
   doc.setFont(fontName, 'bold');
-  doc.setFontSize(headerSize);
-  doc.setTextColor(15, 23, 42);
-  doc.text('KETERANGAN PINDAH SEKOLAH', pageWidth / 2, 22, { align: 'center' });
-  doc.setFontSize(subHeaderSize);
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.text('KETERANGAN PINDAH SEKOLAH', pageWidth / 2, titleY, { align: 'center' });
+
+  const subY = titleY + 6.5;
   doc.setFont(fontName, 'normal');
-  doc.setTextColor(71, 85, 105);
-  doc.text((sekolah.nama || 'SEKOLAH DASAR').toUpperCase(), pageWidth / 2, 27, { align: 'center' });
-  doc.line(25, 30, pageWidth - 25, 30);
+  doc.setFontSize(9);
+  doc.text('Nama Peserta Didik', 20, subY);
+  doc.text(':', 56, subY);
+  doc.setFont(fontName, 'bold');
+  doc.text(studentNameStr, 60, subY);
 
-  doc.setFontSize(baseBodySize);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`Yang bertanda tangan di bawah ini, Kepala ${sekolah.nama} menerangkan bahwa:`, 25, 40);
+  const table1StartY = subY + 4;
+  const col3Width = (pageWidth - 40) - 24 - 26 - 42;
+  const rowHeightHalaman1 = paperSize === 'f4' ? 74 : 68;
 
-  const studentInfo = [
-    ['Nama Peserta Didik', ':', (student.nama || '-').toUpperCase()],
-    ['Nomor Induk / NISN', ':', `${student.nis || '-'} / ${student.nisn || '-'}`],
-    ['Jenis Kelamin', ':', student.jk === 'L' || student.jk === 'Laki-Laki' ? 'Laki-laki' : 'Perempuan'],
-    ['Tingkat / Kelas', ':', `Kelas ${sekolah.kelas || '-'} (${sekolah.fase || 'Fase'})`],
-    ['Nama Orang Tua / Wali', ':', student.namaAyah || student.namaIbu || student.namaWali || '-'],
-    ['Alamat Orang Tua', ':', student.jalanOrtu || student.alamat || '-']
-  ];
+  const ttdKeluarText = 
+`............................., .................................
+Kepala Sekolah,
+
+
+
+
+...............................................................
+NIP.
+
+Orang Tua/ Wali,
+
+
+
+
+...............................................................`;
 
   autoTable(doc, {
-    startY: 45,
-    margin: { left: 25, right: 25 },
-    body: studentInfo,
-    theme: 'plain',
-    styles: { fontSize: baseBodySize, cellPadding: 2.5, font: fontName },
+    startY: table1StartY,
+    margin: { top: 15, bottom: 10, left: 20, right: 20 },
+    theme: 'grid',
+    rowPageBreak: 'avoid',
+    pageBreak: 'avoid',
+    head: [
+      [{ content: 'KELUAR', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold', fontSize: 9.5, minCellHeight: 6, fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.25 } }],
+      [
+        { content: 'Tanggal', styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 8 } },
+        { content: 'Kelas yang\nDitinggalkan', styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 8 } },
+        { content: 'Alasan', styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 8 } },
+        { content: 'Tanda Tangan Kepala Sekolah,\nStempel Sekolah, dan\nTanda Tangan Orangtua/Wali', styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 7.5 } }
+      ]
+    ],
+    body: [
+      ['', '', '', ttdKeluarText],
+      ['', '', '', ttdKeluarText],
+      ['', '', '', ttdKeluarText]
+    ],
+    styles: {
+      font: fontName,
+      fontSize: 7.5,
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.25,
+      minCellHeight: rowHeightHalaman1
+    },
+    headStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      lineWidth: 0.25,
+      lineColor: [0, 0, 0]
+    },
     columnStyles: {
-      0: { cellWidth: 50, fontStyle: 'bold' },
-      1: { cellWidth: 6 },
-      2: { fontStyle: 'normal' }
+      0: { cellWidth: 24, halign: 'center', valign: 'top' },
+      1: { cellWidth: 26, halign: 'center', valign: 'top' },
+      2: { cellWidth: 42, halign: 'left', valign: 'top' },
+      3: { cellWidth: col3Width, halign: 'left', valign: 'top', cellPadding: { top: 2.5, left: 3, right: 3, bottom: 2.5 } }
     }
   });
 
-  let curY = (doc as any).lastAutoTable.finalY + 8;
-  doc.setFontSize(baseBodySize);
-  doc.text('Sesuai dengan surat permohonan pindah sekolah dari orang tua/wali peserta didik tanggal ................................,', 25, curY);
-  curY += 5.5;
-  doc.text('yang bersangkutan mengajukan pindah ke sekolah tujuan:', 25, curY);
-  curY += 7;
-
-  // Box Sekolah Tujuan
-  doc.setDrawColor(148, 163, 184);
-  doc.setLineDashPattern([2, 2], 0);
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(25, curY, pageWidth - 50, 36, 2, 2, 'FD');
-  doc.setLineDashPattern([], 0);
+  // --- HALAMAN 2: MASUK ---
+  doc.addPage();
 
   doc.setFont(fontName, 'bold');
-  doc.setFontSize(baseBodySize - 0.5);
-  doc.text('Nama Sekolah Tujuan :', 30, curY + 10);
-  doc.text('Alamat Sekolah Tujuan :', 30, curY + 19);
-  doc.text('Alasan Kepindahan :', 30, curY + 28);
+  doc.setFontSize(12);
+  doc.setTextColor(0, 0, 0);
+  doc.text('KETERANGAN PINDAH SEKOLAH', pageWidth / 2, titleY, { align: 'center' });
 
-  doc.setFont(fontName, 'normal');
-  doc.text('....................................................................................................................', 75, curY + 10);
-  doc.text('....................................................................................................................', 75, curY + 19);
-  doc.text('Mengikuti domisili orang tua / Lainnya.', 75, curY + 28);
-
-  curY += 50;
-  const ttdX = pageWidth - 75;
-
-  const lokasiStrPindah = formatLokasiTitimangsa(sekolah);
-  doc.setFontSize(baseBodySize - 0.5);
-  doc.text(`${lokasiStrPindah}, ............................. 202...`, ttdX, curY);
-  doc.text(`Kepala ${sekolah.nama}`, ttdX, curY + 5);
-
-  if (sekolah.useDigitalSignature && sekolah.ttdKepsek && sekolah.ttdKepsek.startsWith('data:image')) {
-    addProportionalSignature(
-      doc, 
-      sekolah.ttdKepsek, 
-      ttdX, 
-      curY + 14, 
-      28, 
-      14, 
-      sekolah.ttdKepsekScale || 100, 
-      sekolah.ttdKepsekRotation || 0,
-      sekolah.ttdKepsekOffsetX || 0,
-      sekolah.ttdKepsekOffsetY || 0
-    );
-  }
-
-  doc.setFont(fontName, 'bold');
-  doc.setFontSize(baseBodySize);
-  doc.text((sekolah.kepsek || '........................').toUpperCase(), ttdX, curY + 30);
   doc.setFont(fontName, 'normal');
   doc.setFontSize(9);
-  doc.text(`NIP. ${sekolah.nipKepsek || '-'}`, ttdX, curY + 35);
+  doc.text('Nama Peserta Didik', 20, subY);
+  doc.text(':', 56, subY);
+  doc.setFont(fontName, 'bold');
+  doc.text(studentNameStr, 60, subY);
+
+  const ttdMasukColText = 
+`............................., .................................
+Kepala Sekolah,
+
+
+
+
+...............................................................
+NIP.`;
+
+  const dataMasukText = 
+`Nama Peserta Didik  : .....................................................
+Nomor Induk         : .....................................................
+NISN                : .....................................................
+Nama Sekolah        : .....................................................
+Masuk di Sekolah Ini:
+a. Tanggal          : .....................................................
+b. Di Kelas         : .....................................................
+c. Tahun Pelajaran  : .....................................................`;
+
+  const rowHeightHalaman2 = paperSize === 'f4' ? 46 : 41;
+  const colMasukRightWidth = 62;
+  const colMasukLeftWidth = (pageWidth - 40) - 12 - colMasukRightWidth;
+
+  autoTable(doc, {
+    startY: table1StartY,
+    margin: { top: 15, bottom: 10, left: 20, right: 20 },
+    theme: 'grid',
+    rowPageBreak: 'avoid',
+    pageBreak: 'avoid',
+    head: [
+      [
+        { content: 'NO.', styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 8.5 } },
+        { content: 'MASUK', colSpan: 2, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 9 } }
+      ]
+    ],
+    body: [
+      ['1', dataMasukText, ttdMasukColText],
+      ['2', dataMasukText, ttdMasukColText],
+      ['3', dataMasukText, ttdMasukColText]
+    ],
+    styles: {
+      font: fontName,
+      fontSize: 7.5,
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.25,
+      minCellHeight: rowHeightHalaman2
+    },
+    headStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      lineWidth: 0.25,
+      lineColor: [0, 0, 0]
+    },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center', valign: 'top', fontStyle: 'bold' },
+      1: { cellWidth: colMasukLeftWidth, halign: 'left', valign: 'top', cellPadding: { top: 2.2, left: 3, right: 3, bottom: 2.2 } },
+      2: { cellWidth: colMasukRightWidth, halign: 'left', valign: 'top', cellPadding: { top: 2.2, left: 3, right: 3, bottom: 2.2 } }
+    }
+  });
+
+  // Tanda Tangan Bawah Halaman 2 (Formasi Segitiga Resmi)
+  const bottomTtdStartY = (doc as any).lastAutoTable.finalY + (paperSize === 'f4' ? 6 : 5);
+  doc.setFontSize(8);
+  doc.setFont(fontName, 'normal');
+
+  // Baris 1: Orang Tua/Wali (Kiri) & Guru Kelas (Kanan)
+  const leftTtdX = 25;
+  const rightTtdX = pageWidth - 75;
+
+  doc.text('Mengetahui:', leftTtdX, bottomTtdStartY);
+  doc.text('Orang Tua/ Wali,', leftTtdX, bottomTtdStartY + 4);
+  doc.text('...............................................................', leftTtdX, bottomTtdStartY + (paperSize === 'f4' ? 20 : 17));
+
+  doc.text('............................., .................................', rightTtdX, bottomTtdStartY);
+  doc.text('Guru Kelas,', rightTtdX, bottomTtdStartY + 4);
+  doc.text('...............................................................', rightTtdX, bottomTtdStartY + (paperSize === 'f4' ? 20 : 17));
+  doc.text('NIP. ', rightTtdX, bottomTtdStartY + (paperSize === 'f4' ? 24 : 21));
+
+  // Baris 2: Kepala Sekolah (Tengah)
+  const centerTtdY = bottomTtdStartY + (paperSize === 'f4' ? 27 : 23);
+  const centerTtdX = (pageWidth / 2) - 25;
+
+  doc.text('Mengetahui:', centerTtdX, centerTtdY);
+  doc.text('Kepala Sekolah,', centerTtdX, centerTtdY + 4);
+  doc.text('...............................................................', centerTtdX, centerTtdY + (paperSize === 'f4' ? 20 : 17));
+  doc.text('NIP. ', centerTtdX, centerTtdY + (paperSize === 'f4' ? 24 : 21));
+
+  const endPage = doc.getNumberOfPages();
+  addDocumentFooter(doc, sekolah, student, startPage, endPage, pdfFont);
 };
 
 // 6. GENERATE BUNDEL KUSTOM (Berdasarkan Pilihan Centang Dokumen)
