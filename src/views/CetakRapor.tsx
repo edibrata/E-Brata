@@ -1893,25 +1893,37 @@ export default function CetakRapor() {
                   { id: 'identitas-sekolah' as BundleDocType, label: '2. Identitas Satuan Pendidikan', desc: 'Identitas resmi sekolah / profil satuan pendidikan' },
                   { id: 'identitas-murid' as BundleDocType, label: '3. Identitas Peserta Didik (Biodata)', desc: 'Identitas diri, orang tua/wali, & pas foto' },
                   { id: 'rapor' as BundleDocType, label: '4. Laporan Hasil Belajar (Rapor)', desc: 'Nilai, capaian kompetensi, ekskul & presensi' },
-                  { id: 'buku-induk' as BundleDocType, label: '5. Lampiran Buku Induk', desc: 'Rekapitulasi nilai & catatan kemajuan belajar' },
+                  { id: 'buku-induk' as BundleDocType, label: '5. Lampiran Buku Induk', desc: sekolah.bukuIndukActive === false ? '🔒 Lisensi Buku Induk belum diaktifkan oleh admin' : 'Rekapitulasi nilai & catatan kemajuan belajar' },
                   { id: 'pindah' as BundleDocType, label: '6. Keterangan Pindah Sekolah', desc: 'Format surat mutasi/pindah sekolah' },
                 ].map(item => {
-                  const isChecked = selectedBundleDocs.includes(item.id) || (item.id === 'identitas-murid' && selectedBundleDocs.includes('biodata' as any));
+                  const isLocked = item.id === 'buku-induk' && sekolah.bukuIndukActive === false;
+                  const isChecked = !isLocked && (selectedBundleDocs.includes(item.id) || (item.id === 'identitas-murid' && selectedBundleDocs.includes('biodata' as any)));
                   return (
                     <label 
                       key={item.id}
-                      onClick={() => toggleBundleDoc(item.id)}
+                      onClick={() => {
+                        if (isLocked) {
+                          showNotification("🔒 Lisensi Cetak Buku Induk belum diaktifkan untuk sekolah ini.");
+                          return;
+                        }
+                        toggleBundleDoc(item.id);
+                      }}
                       className={`flex items-start gap-3 p-2.5 rounded-xl border transition cursor-pointer ${
-                        isChecked 
-                          ? 'bg-indigo-50/60 border-indigo-200 text-slate-800' 
-                          : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                        isLocked
+                          ? 'bg-slate-100 border-slate-200 text-slate-400 opacity-60'
+                          : isChecked 
+                            ? 'bg-indigo-50/60 border-indigo-200 text-slate-800' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
                       }`}
                     >
-                      <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center transition ${isChecked ? 'bg-indigo-600 text-white' : 'border border-slate-300 bg-white'}`}>
+                      <div className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center transition ${isLocked ? 'bg-slate-200 text-slate-400' : isChecked ? 'bg-indigo-600 text-white' : 'border border-slate-300 bg-white'}`}>
                         {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800">{item.label}</p>
+                        <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                          {item.label}
+                          {isLocked && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Terkunci</span>}
+                        </p>
                         <p className="text-[11px] text-slate-500">{item.desc}</p>
                       </div>
                     </label>

@@ -20,7 +20,8 @@ import * as XLSX from 'xlsx';
 
 export default function DataMapel() {
   const { state, updateState } = useAppStore();
-  const { mapel } = state;
+  const { mapel, sekolah } = state;
+  const isMapelKustomActive = sekolah?.mapelKustomActive !== false;
   const [isAddingMode, setIsAddingMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingAsesmenMapel, setEditingAsesmenMapel] = useState<Mapel | null>(null);
@@ -279,10 +280,20 @@ export default function DataMapel() {
             onChange={handleFileUpload} 
             className="hidden" 
           />
-          <Tooltip content="Import dari File Excel (.xlsx)" position="bottom">
+          <Tooltip content={isMapelKustomActive ? "Import dari File Excel (.xlsx)" : "🔒 Fitur Impor Mapel Kustom Terkunci"} position="bottom">
             <button 
-              onClick={handleImportClick} 
-              className="w-8 h-8 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg shadow-sm border border-emerald-200 transition cursor-pointer"
+              onClick={() => {
+                if (!isMapelKustomActive) {
+                  showNotification("🔒 Lisensi Tambah Mapel Kustom belum diaktifkan oleh admin.");
+                  return;
+                }
+                handleImportClick();
+              }} 
+              className={`w-8 h-8 flex items-center justify-center rounded-lg shadow-sm border transition cursor-pointer ${
+                isMapelKustomActive 
+                  ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' 
+                  : 'bg-slate-100 text-slate-400 border-slate-200 opacity-60'
+              }`}
             >
               <Upload className="w-4 h-4" />
             </button>
@@ -295,10 +306,20 @@ export default function DataMapel() {
               <Download className="w-4 h-4" />
             </button>
           </Tooltip>
-          <Tooltip content="Tambah Mata Pelajaran Baru" position="bottom">
+          <Tooltip content={isMapelKustomActive ? "Tambah Mata Pelajaran Baru" : "🔒 Fitur Tambah Mapel Kustom Terkunci"} position="bottom">
             <button 
-              onClick={() => setIsAddingMode(!isAddingMode)} 
-              className="w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition cursor-pointer"
+              onClick={() => {
+                if (!isMapelKustomActive) {
+                  showNotification("🔒 Lisensi Tambah Mapel Kustom belum diaktifkan oleh admin.");
+                  return;
+                }
+                setIsAddingMode(!isAddingMode);
+              }} 
+              className={`w-8 h-8 flex items-center justify-center rounded-lg shadow-sm transition cursor-pointer ${
+                isMapelKustomActive
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  : 'bg-slate-300 text-slate-500 opacity-60'
+              }`}
             >
               <Plus className="w-4 h-4" />
             </button>

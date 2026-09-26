@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore, deepMerge } from '@/store';
 import { INITIAL_STATE, getDefaultMapelForKelas } from '@/constants';
-import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2, RotateCcw, History, ArrowLeft } from 'lucide-react';
+import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2, RotateCcw, History, ArrowLeft, MessageCircle, X, ShieldAlert, KeyRound } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import DeveloperProfileModal from './DeveloperProfileModal';
 
@@ -13,6 +13,22 @@ export default function LoginModal() {
   const [error, setError] = useState('');
   const [showDevProfileModal, setShowDevProfileModal] = useState(false);
   const { updateSekolah, updateState, setState } = useAppStore();
+  
+  // State for password protection
+  const [requiresPassword, setRequiresPassword] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [targetPassword, setTargetPassword] = useState('');
+  const [schoolNamePrompt, setSchoolNamePrompt] = useState('');
+
+  // State for Error Modal with WhatsApp link
+  const [errorModalType, setErrorModalType] = useState<'npsn' | 'password' | null>(null);
+  const [errorSchoolData, setErrorSchoolData] = useState<{
+    nama?: string;
+    npsn?: string;
+    kecamatan?: string;
+    kabupaten?: string;
+    provinsi?: string;
+  }>({});
   
   // State for step 2
   const [baselineData, setBaselineData] = useState<any>(null);
@@ -71,9 +87,10 @@ export default function LoginModal() {
         return;
       }
 
-      if (!data && sbError) {
-        console.error(sbError);
-        setError('NPSN tidak ditemukan di database. Anda tidak memiliki akses ke aplikasi ini.');
+      if (!data) {
+        setErrorModalType('npsn');
+        setErrorSchoolData({ npsn: npsn.trim() });
+        setError('');
         setIsLoading(false);
         return;
       }
@@ -130,7 +147,42 @@ export default function LoginModal() {
         sekolahUpdates.allowedKelas = [classes.toString()];
       }
 
+      const valPasswordActive = findVal('akses_password_active', 'akses-password-active');
+      const valPassword = findVal('akses_password', 'akses-password');
+      const valMapelKustomActive = findVal('mapel_kustom_active', 'mapel-kustom-active', 'mapel_kustom');
+      const valBukuIndukActive = findVal('buku_induk_active', 'buku-induk-active', 'buku_induk');
+
+      const isPasswordActive = valPasswordActive === true || valPasswordActive === 'true';
+      sekolahUpdates.aksesPasswordActive = isPasswordActive;
+      sekolahUpdates.mapelKustomActive = valMapelKustomActive !== false && valMapelKustomActive !== 'false';
+      sekolahUpdates.bukuIndukActive = valBukuIndukActive !== false && valBukuIndukActive !== 'false';
+
       setBaselineData(sekolahUpdates);
+      setSchoolNamePrompt(sekolahUpdates.nama || 'Sekolah');
+
+      // Check Password Protection if active
+      if (isPasswordActive && !requiresPassword) {
+        setRequiresPassword(true);
+        setTargetPassword(valPassword ? String(valPassword) : '');
+        setIsLoading(false);
+        return;
+      }
+
+      if (requiresPassword) {
+        if (passwordInput.trim() !== targetPassword.trim()) {
+          setErrorModalType('password');
+          setErrorSchoolData({
+            nama: sekolahUpdates.nama || 'Sekolah',
+            npsn: sekolahUpdates.npsn || npsn.trim(),
+            kecamatan: sekolahUpdates.kecamatan || '',
+            kabupaten: sekolahUpdates.kabupatenKotaNama || '',
+            provinsi: sekolahUpdates.provinsi || ''
+          });
+          setError('');
+          setIsLoading(false);
+          return;
+        }
+      }
 
       // Now fetch existing workspaces for this NPSN from aplikasirapor
       let workspacesData = null;
@@ -536,7 +588,7 @@ export default function LoginModal() {
                 Silakan masukkan NPSN sekolah Anda untuk sinkronisasi data dasar dan membuka kunci akses pelaporan.
               </p>
 
-              {error && (
+              {error && !errorModalType && (
                 <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-start gap-3">
                   <AlertCircle size={18} className="shrink-0 mt-0.5" />
                   <p className="text-sm">{error}</p>
@@ -545,17 +597,54 @@ export default function LoginModal() {
 
               <form onSubmit={handleVerifyNpsn} className="space-y-6">
                 <div className="space-y-2">
-                  <label htmlFor="npsn" className="block text-sm font-semibold text-zinc-700">NPSN</label>
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="npsn" className="block text-sm font-semibold text-zinc-700">NPSN</label>
+                    {requiresPassword && (
+                      <button
+                        type="button"
+                        onClick={() => { setRequiresPassword(false); setPasswordInput(''); setError(''); }}
+                        className="text-xs text-indigo-600 font-semibold hover:underline"
+                      >
+                        Ganti NPSN
+                      </button>
+                    )}
+                  </div>
                   <input
                     id="npsn"
                     type="text"
                     placeholder="Masukkan 8 Digit NPSN"
                     value={npsn}
-                    onChange={(e) => setNpsn(e.target.value)}
-                    className="w-full px-4 py-3.5 border border-zinc-300 rounded-xl shadow-xs focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-xl font-bold text-center tracking-wider text-zinc-800 placeholder:text-sm placeholder:font-normal placeholder:tracking-normal"
-                    disabled={isLoading}
+                    onChange={(e) => {
+                      setNpsn(e.target.value);
+                      if (requiresPassword) {
+                        setRequiresPassword(false);
+                        setPasswordInput('');
+                      }
+                    }}
+                    className="w-full px-4 py-3.5 border border-zinc-300 rounded-xl shadow-xs focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-xl font-bold text-center tracking-wider text-zinc-800 placeholder:text-sm placeholder:font-normal placeholder:tracking-normal disabled:bg-zinc-100"
+                    disabled={isLoading || requiresPassword}
                   />
                 </div>
+
+                {requiresPassword && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800 mb-2">
+                      <span className="font-semibold">🔒 Proteksi Password Aktif</span>
+                      <span className="font-bold">{schoolNamePrompt}</span>
+                    </div>
+                    <label htmlFor="akses_password" className="block text-sm font-semibold text-zinc-700">Kata Sandi Akses Sekolah</label>
+                    <input
+                      id="akses_password"
+                      type="password"
+                      placeholder="Masukkan Kata Sandi Akses"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      className="w-full px-4 py-3 border border-zinc-300 rounded-xl shadow-xs focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-base font-semibold text-center text-zinc-800 placeholder:text-sm placeholder:font-normal"
+                      disabled={isLoading}
+                      autoFocus
+                    />
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -564,6 +653,8 @@ export default function LoginModal() {
                 >
                   {isLoading ? (
                     <Loader2 size={18} className="animate-spin" />
+                  ) : requiresPassword ? (
+                    <>Verifikasi Kata Sandi & Masuk <ArrowRight size={18} className="ml-2" /></>
                   ) : (
                     <>Verifikasi NPSN <ArrowRight size={18} className="ml-2" /></>
                   )}
@@ -964,6 +1055,101 @@ export default function LoginModal() {
               >
                 {isDeletingWorkspace ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                 Hapus Permanen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pop-up Overlay Modal: Error NPSN or Password with WhatsApp Link */}
+      {errorModalType && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-zinc-950/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-zinc-100 w-full max-w-md overflow-hidden p-6 relative animate-in zoom-in-95 duration-200">
+            {errorModalType === 'npsn' ? (
+              <>
+                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-inner">
+                  <ShieldAlert size={34} />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900 text-center">NPSN Tidak Terdaftar</h3>
+                <p className="text-xs text-zinc-600 text-center mt-2 leading-relaxed">
+                  NPSN <span className="font-mono font-bold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded">{errorSchoolData.npsn || npsn}</span> belum terdaftar pada sistem E-Rapor Edi Brata atau terjadi kesalahan pengetikan NPSN.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mb-4 mx-auto shadow-inner">
+                  <KeyRound size={34} />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900 text-center">Password Akses Salah</h3>
+                <p className="text-xs text-zinc-600 text-center mt-2 leading-relaxed">
+                  Password yang Anda masukkan untuk <span className="font-bold text-zinc-800">{errorSchoolData.nama || 'Sekolah'}</span> (NPSN: <span className="font-mono font-bold">{errorSchoolData.npsn}</span>) teridentifikasi salah.
+                </p>
+              </>
+            )}
+
+            <div className="mt-5 p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-200/80 text-center">
+              <p className="text-xs text-emerald-900 font-medium">
+                {errorModalType === 'npsn' 
+                  ? 'Silakan hubungi Admin untuk bantuan registrasi.'
+                  : 'Silakan hubungi Admin untuk verifikasi password resmi.'
+                }
+              </p>
+            </div>
+
+            <div className="space-y-2.5 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  let text = '';
+                  if (errorModalType === 'npsn') {
+                    const inputNpsn = errorSchoolData.npsn || npsn || '';
+                    text = `Pa Edi, Saya:
+- Nama:
+- Sekolah:
+- NPSN: ${inputNpsn}
+- Kecamatan:
+- Kabupaten/Kota:
+- Provinsi:
+
+Saya coba input NPSN pada aplikasi E-Rapor Edi Brata muncul pesan bahwa sekolah Saya belum registrasi atau NPSN salah.
+
+Mohon cek apakah betul belum teregistrasi atau hanya salah NPSN.
+
+Jika benar NPSN belum teregistrasi, berapa biaya untuk registrasi aplikasi E-Rapor Edi Brata karya Bapak?
+
+Demikian, terima kasih.`;
+                  } else {
+                    text = `Pa Edi, Saya:
+- Nama:
+- Sekolah: ${errorSchoolData.nama || ''}
+- NPSN: ${errorSchoolData.npsn || npsn || ''}
+- Kecamatan: ${errorSchoolData.kecamatan || ''}
+- Kabupaten/Kota: ${errorSchoolData.kabupaten || ''}
+- Provinsi: ${errorSchoolData.provinsi || ''}
+
+Saya coba input password untuk login pada aplikasi E-Rapor Edi Brata teridentifikasi bahwa password salah.
+
+Mohon berkenan Pa Edi mengirim password yang dapat digunakan pada aplikasi tersebut.
+
+Demikian, terima kasih.`;
+                  }
+                  const url = `https://wa.me/6287773949015?text=${encodeURIComponent(text)}`;
+                  window.open(url, '_blank');
+                }}
+                className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/25 transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer"
+              >
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+                Hubungi Admin via WhatsApp
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setErrorModalType(null)}
+                className="w-full py-2.5 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+              >
+                Tutup & Coba Lagi
               </button>
             </div>
           </div>
