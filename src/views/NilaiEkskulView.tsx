@@ -231,7 +231,7 @@ export default function NilaiEkskulView() {
             <thead className="sticky top-0 z-10 bg-slate-100 shadow-xs border-b border-slate-200">
               <tr className="bg-slate-100 text-slate-700 font-bold">
                 <th className="py-3 px-3 w-14 text-center bg-slate-100">No</th>
-                <th className="py-3 px-4 min-w-[240px] bg-slate-100">Nama Peserta Didik</th>
+                <th className="py-3 px-4 min-w-[240px] text-center bg-slate-100">Nama Peserta Didik</th>
                 <th className="py-3 px-4 w-44 text-center bg-slate-100">NISN</th>
                 <th className="py-3 px-4 w-60 text-center bg-slate-100">Predikat Capaian</th>
                 <th className="py-3 px-4 w-44 text-center bg-slate-100">Status</th>

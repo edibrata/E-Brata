@@ -53,8 +53,11 @@ export default function TujuanPembelajaranView() {
     }
   }, [mapel, selectedMapel]);
 
-  const tps = state.tujuanPembelajaran.filter(tp => tp.mapelId === selectedMapel);
   const activeMapel = mapel.find(m => m.id === selectedMapel);
+  const tps = state.tujuanPembelajaran.filter(tp => 
+    tp.mapelId === selectedMapel || 
+    (activeMapel && (tp.mapelId === activeMapel.kode || tp.mapelId === activeMapel.nama))
+  );
   const activeIntervals = activeMapel?.intervalBatas || [20, 40, 60, 80];
   const activeBatasTuntas = activeIntervals[2] || 60;
 
@@ -94,7 +97,10 @@ export default function TujuanPembelajaranView() {
 
   const isCurrentPabp = activeMapel ? isPabpMapel(activeMapel.nama, activeMapel.kode) : false;
   const displayedTps = isCurrentPabp
-    ? tps.filter(tp => (tp.agama || getTpAgama(tp)) === selectedAgamaFilter)
+    ? tps.filter(tp => {
+        const tpAg = tp.agama || getTpAgama(tp);
+        return !tpAg || tpAg.toLowerCase() === selectedAgamaFilter.toLowerCase();
+      })
     : tps;
 
   const [selectedTpIds, setSelectedTpIds] = useState<string[]>([]);
@@ -766,8 +772,8 @@ export default function TujuanPembelajaranView() {
                 </Tooltip>
               </th>
               <th className="px-3 py-2 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
-              <th className="px-4 py-2 w-48 text-left text-[10px] uppercase tracking-wider">Kode TP</th>
-              <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wider">Deskripsi Tujuan Pembelajaran</th>
+              <th className="px-4 py-2 w-48 text-center text-[10px] uppercase tracking-wider">Kode TP</th>
+              <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wider">Deskripsi Tujuan Pembelajaran</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

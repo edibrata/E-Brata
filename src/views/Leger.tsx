@@ -91,7 +91,7 @@ export default function Leger() {
             <thead className="bg-slate-100 sticky top-0 z-20">
               <tr className="text-slate-600">
                 <th rowSpan={2} className="border border-slate-200 p-3 w-10 text-center sticky left-0 z-30 bg-slate-100">No</th>
-                <th rowSpan={2} className="border border-slate-200 p-3 text-left w-52 sticky left-10 z-30 bg-slate-100 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] font-bold text-slate-700">Nama Siswa</th>
+                <th rowSpan={2} className="border border-slate-200 p-3 text-center w-52 sticky left-10 z-30 bg-slate-100 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] font-bold text-slate-700">Nama Siswa</th>
                 <th colSpan={displayedMapel.length} className="border border-slate-200 p-2 text-center text-[10px] uppercase font-bold tracking-wider text-slate-700">Nilai Rapor Mata Pelajaran</th>
                 <th rowSpan={2} className="border border-slate-200 p-3 w-20 text-center font-bold bg-slate-50 text-[10px] uppercase tracking-wider text-slate-700">Jumlah</th>
                 <th rowSpan={2} className="border border-slate-200 p-3 w-20 text-center font-bold bg-indigo-50 text-[10px] uppercase tracking-wider text-indigo-950">Rerata</th>

@@ -36,25 +36,42 @@ export default function InputNilai() {
     return mapel.find(m => m.id === selectedMapel) || mapel[0];
   }, [mapel, selectedMapel]);
 
+  const isPabp = useMemo(() => {
+    return isPabpMapel(selectedMapelData?.nama, selectedMapelData?.kode);
+  }, [selectedMapelData]);
+
+  const getDefaultAgama = (): string => {
+    for (const s of siswa) {
+      const norm = normalizeAgama(s.agama);
+      if (norm) return norm;
+    }
+    return 'Islam';
+  };
+
   // Otomatis deteksi dan set filter agama saat mata pelajaran berganti
   useEffect(() => {
     if (selectedMapelData) {
-      const specificAgama = getMapelAgama(selectedMapelData.nama, selectedMapelData.kode);
-      if (specificAgama) {
-        setAgamaFilter(specificAgama);
+      if (isPabp) {
+        const specificAgama = getMapelAgama(selectedMapelData.nama, selectedMapelData.kode);
+        if (specificAgama) {
+          setAgamaFilter(specificAgama);
+        } else {
+          setAgamaFilter(getDefaultAgama());
+        }
       } else {
         setAgamaFilter('ALL');
       }
     }
-  }, [selectedMapel, selectedMapelData]);
+  }, [selectedMapel, selectedMapelData, isPabp]);
 
   const mapelTps = useMemo(() => {
-    return tujuanPembelajaran.filter(tp => tp.mapelId === selectedMapel);
-  }, [tujuanPembelajaran, selectedMapel]);
-
-  const isPabp = useMemo(() => {
-    return isPabpMapel(selectedMapelData?.nama, selectedMapelData?.kode);
-  }, [selectedMapelData]);
+    if (!selectedMapelData) return [];
+    return tujuanPembelajaran.filter(tp => 
+      tp.mapelId === selectedMapel || 
+      tp.mapelId === selectedMapelData.kode || 
+      tp.mapelId === selectedMapelData.nama
+    );
+  }, [tujuanPembelajaran, selectedMapel, selectedMapelData]);
 
   const getStudentAgama = (s: { agama?: string }) => {
     return normalizeAgama(s?.agama) || 'Islam';
@@ -68,15 +85,13 @@ export default function InputNilai() {
     return siswa;
   }, [siswa, isPabp, agamaFilter]);
 
-  // Filter TP jika PABP filter aktif
+  // Filter TP jika PABP filter aktif (presisi 100% cocok dengan Tab Tujuan Pembelajaran)
   const displayedTps = useMemo(() => {
     if (isPabp && agamaFilter !== 'ALL') {
-      const filtered = mapelTps.filter(tp => {
-        const tpAg = getTpAgama(tp);
+      return mapelTps.filter(tp => {
+        const tpAg = tp.agama || getTpAgama(tp);
         return !tpAg || tpAg.toLowerCase() === agamaFilter.toLowerCase();
       });
-      // Jika tidak ada TP terfilter untuk agama ini, tetap tampilkan semua TP
-      return filtered.length > 0 ? filtered : mapelTps;
     }
     return mapelTps;
   }, [mapelTps, isPabp, agamaFilter]);
@@ -465,7 +480,6 @@ export default function InputNilai() {
                 value={selectedMapel}
                 onChange={(e) => {
                   setSelectedMapel(e.target.value);
-                  setAgamaFilter('ALL');
                 }}
                 className="w-full border border-slate-200 rounded-xl bg-slate-50/70 hover:bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
               >
@@ -557,7 +571,7 @@ export default function InputNilai() {
                       <th rowSpan={2} className="border border-slate-200 p-3 w-12 text-center bg-slate-100">
                         No
                       </th>
-                      <th rowSpan={2} className="border border-slate-200 p-3 text-left min-w-[200px] max-w-[260px] bg-slate-100 sticky left-0 z-30 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]">
+                      <th rowSpan={2} className="border border-slate-200 p-3 text-center min-w-[200px] max-w-[260px] bg-slate-100 sticky left-0 z-30 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]">
                         Nama Siswa
                       </th>
                       {isPabp && (

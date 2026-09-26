@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore } from '@/store';
 import { 
   Sparkles, 
@@ -18,7 +18,9 @@ import {
   Crown,
   CalendarCheck2,
   Lock,
-  Unlock
+  Unlock,
+  Shuffle,
+  RotateCcw
 } from 'lucide-react';
 import { Siswa } from '@/types';
 import Tooltip from '@/components/Tooltip';
@@ -42,6 +44,8 @@ export default function GenerateCatatanWali() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'unfilled' | 'filled'>('all');
   const [selectedStudentForAI, setSelectedStudentForAI] = useState<Siswa | null>(null);
+  const [modalCategoryTab, setModalCategoryTab] = useState<'v5' | 'v1' | 'v2' | 'v3' | 'v4' | 'all'>('v5');
+  const [catatanWaliVariationIndex, setCatatanWaliVariationIndex] = useState<Record<string, number>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -161,114 +165,401 @@ export default function GenerateCatatanWali() {
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  // Generator 5 Variasi Catatan AI Berbasis Sintesis 4 Pilar
+  // Generator 25 Variasi Catatan AI Berbasis Sintesis Komprehensif 4 Pilar & Data Murid
   const generateAISuggestions = (student: Siswa) => {
     const { metric, ekskuls, strongDimensi, projectThemes, kehadiran } = getStudentFourPillarsData(student.id);
-    const nama = student.nama;
+    
+    // Ambil sapaan personal yang hangat, ringkas, dan hemat karakter (1-2 kata pertama, maks 15 karakter)
+    const nameParts = (student.nama || '').trim().split(/\s+/);
+    const shortName = nameParts.length > 1 && (nameParts[0].length + nameParts[1].length <= 14)
+      ? `${nameParts[0]} ${nameParts[1]}` 
+      : nameParts[0] || 'Murid';
+
     const avg = metric.average;
     const highMapel = metric.highestMapel !== 'Belum Ada' ? metric.highestMapel.replace(/\s*\(\d+\)$/, '') : 'mata pelajaran utama';
+    const lowMapel = metric.lowestMapel !== 'Belum Ada' && metric.lowestMapel !== metric.highestMapel 
+      ? metric.lowestMapel.replace(/\s*\(\d+\)$/, '') 
+      : null;
     
-    // Data ekskul
+    // 1. Data Riil Ekstrakurikuler
     const mainEkskul = ekskuls.length > 0 ? ekskuls[0] : null;
     const ekskulPhrase = mainEkskul 
-      ? `kegiatan ekstrakurikuler ${mainEkskul.nama} dengan predikat ${mainEkskul.predikat}` 
-      : 'berbagai kegiatan ekstrakurikuler dan pengembangan minat bakat di sekolah';
+      ? `kegiatan ${mainEkskul.nama}` 
+      : 'kegiatan minat bakat';
 
-    // Data kokurikuler (karakter & profil lulusan)
-    const temaStr = projectThemes.length > 0 ? `tema "${projectThemes[0]}"` : 'pembelajaran Kokurikuler';
+    // 2. Data Riil Kokurikuler (Dimensi Profil Lulusan & Tema)
+    const temaStr = projectThemes.length > 0 ? `tema "${projectThemes[0]}"` : 'Kokurikuler';
     const dimensiStr = strongDimensi.length > 0 
-      ? `dimensi ${strongDimensi.slice(0, 2).join(' dan ')}`
-      : 'kemandirian, gotong royong, dan nalar kritis';
+      ? strongDimensi[0]
+      : 'kemandirian';
 
-    // --- VARIAN 1: Apresiasi Akademik & Disiplin Belajar (Intrakurikuler & Kehadiran) ---
-    const textVarian1 = avg >= 80
-      ? (kehadiran.totalAbsen === 0
-        ? `Selamat atas pencapaian prestasi ananda ${nama} yang sangat membanggakan di semester ini, khususnya keunggulan pada bidang ${highMapel}. Didukung kedisiplinan hadir penuh di kelas, ketekunanmu patut menjadi teladan bagi rekan-rekan sekelas.`
-        : `Ananda ${nama} meraih pencapaian belajar yang sangat baik di semester ini, terutama pada mata pelajaran ${highMapel}. Pertahankan ketekunan ini dan terus rawat semangat belajarmu untuk mempertahankan prestasi gemilang.`)
-      : (kehadiran.totalAbsen > 3
-        ? `Ananda ${nama} menunjukkan kemajuan belajar yang positif pada mata pelajaran ${highMapel}. Tingkatkan konsistensi kehadiran dan keaktifan di kelas pada semester mendatang agar pemahaman materi semakin optimal.`
-        : `Ananda ${nama} menunjukkan proses belajar yang tekun dan bersungguh-sungguh. Terus pupuk rasa ingin tahu dan jangan ragu untuk aktif berdiskusi di kelas demi meraih capaian kompetensi yang semakin tinggi.`);
+    // 3. Data Riil Presensi / Kehadiran
+    const isNolAbsen = kehadiran.totalAbsen === 0;
+    const isAbsenSedang = kehadiran.totalAbsen > 0 && kehadiran.totalAbsen <= 3;
+    const isAbsenBanyak = kehadiran.totalAbsen > 3;
 
-    // --- VARIAN 2: Penguatan Karakter & Kokurikuler (Dimensi Profil Lulusan) ---
-    const textVarian2 = `Melalui pelaksanaan pembelajaran Kokurikuler ${temaStr}, ananda ${nama} menunjukkan perkembangan karakter yang sangat baik, khususnya pada ${dimensiStr}. Sikap santun, kepedulian sosial, dan tanggung jawab yang ditunjukkan menjadi bukti nyata terbentuknya profil pelajar yang berakhlak mulia.`;
+    // Helper frasa presensi ringkas & padat
+    const presensiPhrase = isNolAbsen
+      ? 'disiplin hadir 100%'
+      : isAbsenSedang
+        ? 'kehadiran baik'
+        : 'perlu tingkatkan kehadiran';
 
-    // --- VARIAN 3: Minat Bakat & Ekstrakurikuler ---
-    const textVarian3 = mainEkskul
-      ? `Ananda ${nama} menunjukkan antusiasme dan komitmen yang membanggakan dalam mengasah potensi non-akademik melalui ${ekskulPhrase}. Keterlibatan aktif ini turut menumbuhkan jiwa sportivitas, kepercayaan diri, dan kepemimpinan yang berharga.`
-      : `Ananda ${nama} memiliki minat dan energi positif yang sangat baik di luar ruang kelas. Terus kembangkan potensi diri, kreativitas, dan kepemimpinan melalui kegiatan ekstrakurikuler serta pembiasaan positif di sekolah.`;
+    // =========================================================================
+    // DEFINISI 5 SUDUT PANDANG SINTESIS HOLISTIK X 5 SUB-VARIAN (130 - 165 KARAKTER)
+    // =========================================================================
 
-    // --- VARIAN 4: Pembinaan, Refleksi & Motivasi Masa Depan ---
-    const textVarian4 = kehadiran.totalAbsen > 3
-      ? `Ananda ${nama} adalah pribadi yang cerdas dan berpotensi besar. Di semester mendatang, fokuskan perhatian untuk menjaga kesehatan dan meningkatkan kedisiplinan kehadiran di sekolah agar seluruh materi pembelajaran dapat diserap secara menyeluruh dan bermakna.`
-      : `Pertahankan semangat belajar dan sikap positif yang telah ananda ${nama} tunjukkan sepanjang semester ini. Jadikan setiap tantangan belajar baru sebagai peluang untuk semakin mandiri, bernalar kritis, dan menggapai prestasi terbaik.`;
-
-    // --- VARIAN 5: Kompilasi Paripurna (Cerdas & Menyeluruh — Sintesis 4 Pilar) ---
-    const intraOpening = avg >= 80
-      ? `Ananda ${nama} menunjukkan pencapaian akademik yang membanggakan di semester ini, terutama pada penguasaan bidang ${highMapel}.`
-      : `Ananda ${nama} menunjukkan perkembangan belajar yang konsisten dan positif, dengan antusiasme tinggi pada bidang ${highMapel}.`;
-
-    const kokuBridge = `Dalam kegiatan Kokurikuler ${temaStr}, ananda membuktikan kematangan karakter nyata melalui penguatan ${dimensiStr}.`;
-
-    const ekstraBridge = mainEkskul
-      ? `Potensi tersebut kian lengkap dengan keaktifannya pada ${ekskulPhrase}.`
-      : `Keaktifan belajarnya juga berpadu harmonis dengan partisipasi aktif dalam kegiatan pengembangan diri dan minat bakat.`;
-
-    const hadirClosing = kehadiran.totalAbsen === 0
-      ? `Dengan komitmen kedisiplinan dan kehadiran penuh 100%, Ibu/Bapak Guru yakin ananda akan terus tumbuh menjadi pribadi berprestasi dan berkarakter mulia di masa depan.`
-      : kehadiran.totalAbsen <= 3
-        ? `Didukung kedisiplinan presensi yang terjaga baik, teruslah melangkah dengan penuh percaya diri dan rendah hati menyongsong semester berikutnya.`
-        : `Dengan meningkatkan komitmen kedisiplinan kehadiran di semester depan, Ibu/Bapak Guru optimis potensi besar ananda akan berkembang semakin gemilang.`;
-
-    const textVarian5 = `${intraOpening} ${kokuBridge} ${ekstraBridge} ${hadirClosing}`;
-
-    return [
+    const categories = [
+      // --- KATEGORI 5: SINTESIS PARIPURNA (HARMONISASI UTUH 4 PILAR: INTRA, KOKU, EKSTRA, PRESENSI) ---
       {
-        id: 'v1',
-        nomor: 'Varian 1',
-        kategori: 'Apresiasi Akademik & Presensi',
-        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        icon: <Award className="w-4 h-4 text-emerald-600" />,
-        text: textVarian1,
-        ringkasan: 'Fokus capaian intrakurikuler & komitmen kedisiplinan kelas'
-      },
-      {
-        id: 'v2',
-        nomor: 'Varian 2',
-        kategori: 'Karakter & Profil Lulusan (Kokurikuler)',
-        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-        icon: <Compass className="w-4 h-4 text-indigo-600" />,
-        text: textVarian2,
-        ringkasan: 'Fokus dimensi karakter nyata & kegiatan Kokurikuler'
-      },
-      {
-        id: 'v3',
-        nomor: 'Varian 3',
-        kategori: 'Minat Bakat & Ekstrakurikuler',
-        badge: 'bg-purple-50 text-purple-700 border-purple-200',
-        icon: <Medal className="w-4 h-4 text-purple-600" />,
-        text: textVarian3,
-        ringkasan: 'Fokus talenta, keaktifan ekskul & jiwa kepemimpinan'
-      },
-      {
-        id: 'v4',
-        nomor: 'Varian 4',
-        kategori: 'Pembinaan & Motivasi Masa Depan',
-        badge: 'bg-blue-50 text-blue-700 border-blue-200',
-        icon: <TrendingUp className="w-4 h-4 text-blue-600" />,
-        text: textVarian4,
-        ringkasan: 'Fokus pembinaan kedisiplinan, refleksi diri & dorongan ke depan'
-      },
-      {
-        id: 'v5',
+        id: 'v5' as const,
         nomor: 'Varian 5',
-        kategori: 'Kompilasi Paripurna (Sintesis 4 Pilar)',
+        kategori: 'Sintesis Paripurna (Pesan Utuh 4 Pilar)',
         badge: 'bg-gradient-to-r from-amber-100 to-indigo-100 text-indigo-950 border-amber-300 font-bold',
         icon: <Crown className="w-4 h-4 text-amber-600" />,
-        text: textVarian5,
-        ringkasan: 'Sintesis cerdas terpadu 4 pilar: Akademik, Kokurikuler, Ekskul, dan Presensi',
-        isMaster: true
+        deskripsiKategori: 'Sintesis naratif mengalir dan berbobot memadukan Intrakurikuler, Kokurikuler, Ekstrakurikuler, dan Presensi',
+        isMaster: true,
+        items: [
+          {
+            id: 'v5-sub1',
+            subNomor: '5.1',
+            judulSub: 'Harmonisasi Naratif & Apresiasi Mengalir',
+            gaya: 'Gaya Naratif Mengalir',
+            text: `Ketekunan ananda ${shortName} dalam ${highMapel} berpadu indah dengan ${isNolAbsen ? 'kedisiplinan hadir 100%' : 'kehadiran yang baik'} di kelas. Keaktifan pada ${ekskulPhrase} serta projek kokurikuler membuktikan potensinya yang terus mekar. Rawat terus nyala semangat ini!`,
+            ringkasan: 'Naratif organis merajut ketekunan akademik, ketertiban presensi, dinamika projek, dan ekskul'
+          },
+          {
+            id: 'v5-sub2',
+            subNomor: '5.2',
+            judulSub: 'Refleksi Karakter & Kepemimpinan Teladan',
+            gaya: 'Gaya Reflektif Kepemimpinan',
+            text: `Ananda ${shortName} tumbuh menjadi pribadi tangguh; unggul dalam ${highMapel}, berdaya nalar kritis saat projek, dan antusias di ${ekskulPhrase}. Didukung ${presensiPhrase}, teruslah melangkah menjadi insan teladan yang menginspirasi sesama.`,
+            ringkasan: 'Pesan kepemimpinan dan kematangan bernalar menghubungkan capaian akademik dan keaktifan non-akademik'
+          },
+          {
+            id: 'v5-sub3',
+            subNomor: '5.3',
+            judulSub: 'Harmonisasi Bakat & Disiplin Belajar',
+            gaya: 'Gaya Harmonisasi Bakat',
+            text: `Keseimbangan yang membanggakan ditunjukkan ananda ${shortName} melalui penguasaan ${highMapel}, dedikasi pada projek ${dimensiStr}, serta talenta ${ekskulPhrase}. Pertahankan ${presensiPhrase} ini dan sambutlah semester baru dengan optimisme tinggi!`,
+            ringkasan: 'Harmonisasi penguasaan materi, karakter dimensi projek, minat bakat ekskul, dan presensi'
+          },
+          {
+            id: 'v5-sub4',
+            subNomor: '5.4',
+            judulSub: 'Kesiapan Transformatif & Visioner',
+            gaya: 'Gaya Visioner Transformatif',
+            text: `Didukung ${presensiPhrase}, ananda ${shortName} menunjukkan pemahaman kuat pada ${highMapel} sekaligus aktif berkolaborasi di projek kokurikuler dan ${ekskulPhrase}. Jadikan capaian berharga ini pijakan meraih prestasi yang lebih luas!`,
+            ringkasan: 'Dorongan visioner memperluas potensi melalui kolaborasi projek, ekskul, dan prestasi kelas'
+          },
+          {
+            id: 'v5-sub5',
+            subNomor: '5.5',
+            judulSub: 'Sinergi Perkembangan & Afirmasi Utuh',
+            gaya: 'Gaya Afirmasi Sinergis',
+            text: `Perkembangan ananda ${shortName} semester ini sangat memuaskan, baik pada capaian ${highMapel}, kepedulian dalam projek ${dimensiStr}, maupun kreativitas di ${ekskulPhrase}. Teruslah ${isNolAbsen ? 'tertib hadir' : 'menjaga kehadiran'} dan pupuk rasa percaya dirimu!`,
+            ringkasan: 'Afirmasi komprehensif mengapresiasi pencapaian multidimensi siswa secara hangat dan bermakna'
+          }
+        ]
+      },
+
+      // --- KATEGORI 1: APRESIASI KETEKUNAN & PRESTASI BELAJAR (HOLISTIK AKADEMIK) ---
+      {
+        id: 'v1' as const,
+        nomor: 'Varian 1',
+        kategori: 'Apresiasi Ketekunan & Prestasi Belajar',
+        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        icon: <Award className="w-4 h-4 text-emerald-600" />,
+        deskripsiKategori: 'Apresiasi penguasaan materi akademik yang diselaraskan dengan ketekunan, karakter, dan kehadiran',
+        items: [
+          {
+            id: 'v1-sub1',
+            subNomor: '1.1',
+            judulSub: 'Apresiasi Penguasaan Materi & Keteladanan Belajar',
+            gaya: 'Gaya Apresiatif Formal',
+            text: `Selamat atas capaian ananda ${shortName} pada ${highMapel}. Didukung kehadiran yang baik, rawat terus semangat belajarmu dan tetaplah rendah hati menggapai prestasi!`,
+            ringkasan: 'Apresiasi penguasaan materi terbaik, keteladanan sikap, dan konsistensi presensi'
+          },
+          {
+            id: 'v1-sub2',
+            subNomor: '1.2',
+            judulSub: 'Dedikasi Belajar & Keaktifan di Ruang Kelas',
+            gaya: 'Gaya Naratif Mengalir',
+            text: `Dedikasi belajar ananda ${shortName} membuahkan hasil positif pada ${highMapel}. Tingkatkan keaktifan berdiskusi agar pemahaman konsepmu semakin mendalam di semester baru.`,
+            ringkasan: 'Penggambaran proses ketekunan belajar di kelas dan keaktifan pengembangan diri'
+          },
+          {
+            id: 'v1-sub3',
+            subNomor: '1.3',
+            judulSub: 'Kematangan Bernalar & Sinergi Belajar di Rumah',
+            gaya: 'Gaya Reflektif Kemitraan',
+            text: `Daya nalar ananda ${shortName} pada ${highMapel} berkembang sangat baik. Terus pertahankan komunikasi belajar yang aktif di kelas dan di rumah demi capaian optimal.`,
+            ringkasan: 'Refleksi kematangan daya nalar dan apresiasi pendampingan keluarga di rumah'
+          },
+          {
+            id: 'v1-sub4',
+            subNomor: '1.4',
+            judulSub: 'Eksplorasi Potensi Akademik Berkelanjutan',
+            gaya: 'Gaya Motivasi Edukatif',
+            text: `Keberhasilan ananda ${shortName} pada ${highMapel} adalah modal berharga. Jadikan capaian ini pemantik semangat mengeksplorasi wawasan baru dengan daya nalar kritis.`,
+            ringkasan: 'Motivasi edukatif untuk terus mengeksplorasi ilmu pengetahuan secara luas'
+          },
+          {
+            id: 'v1-sub5',
+            subNomor: '1.5',
+            judulSub: 'Rekapitulasi Kemajuan Belajar Positif',
+            gaya: 'Gaya Ringkas Padat',
+            text: `Pencapaian belajar ananda ${shortName} semester ini sangat baik pada ${highMapel}. Teruslah berkarya, asah potensi dirimu, dan raih prestasi yang lebih gemilang!`,
+            ringkasan: 'Pernyataan ringkas dan padat capaian akademik berpadu karakter positif'
+          }
+        ]
+      },
+
+      // --- KATEGORI 2: KETELADANAN KARAKTER & KEMITRAAN KELUARGA (HOLISTIK KARAKTER) ---
+      {
+        id: 'v2' as const,
+        nomor: 'Varian 2',
+        kategori: 'Keteladanan Karakter & Budi Pekerti',
+        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        icon: <Compass className="w-4 h-4 text-indigo-600" />,
+        deskripsiKategori: 'Penguatan budi pekerti luhur dan kepemimpinan yang berpadu dengan capaian belajar serta kemitraan orang tua',
+        items: [
+          {
+            id: 'v2-sub1',
+            subNomor: '2.1',
+            judulSub: 'Kepribadian Berakhlak Mulia & Empati Sosial',
+            gaya: 'Gaya Apresiatif Formal',
+            text: `Ananda ${shortName} menunjukkan akhlak mulia dan peduli sesama. Padukan keluhuran budi ini dengan ketekunan belajar ${highMapel} agar selalu menjadi insan teladan.`,
+            ringkasan: 'Apresiasi budi pekerti luhur, kepedulian sosial, dan keluhuran sikap siswa'
+          },
+          {
+            id: 'v2-sub2',
+            subNomor: '2.2',
+            judulSub: 'Kepemimpinan, Kolaborasi & Jiwa Gotong Royong',
+            gaya: 'Gaya Naratif Kolaboratif',
+            text: `Jiwa gotong royong dan kemandirian ananda ${shortName} tumbuh sangat baik di sekolah. Rawat terus kepedulian sosial ini sebagai bekal menjadi pribadi yang berintegritas.`,
+            ringkasan: 'Penekanan pada kemampuan kolaborasi, kekompakan, dan jiwa kepemimpinan'
+          },
+          {
+            id: 'v2-sub3',
+            subNomor: '2.3',
+            judulSub: 'Kematangan Sikap & Keselarasan Rumah-Sekolah',
+            gaya: 'Gaya Reflektif Kemitraan',
+            text: `Kematangan budi pekerti dan tanggung jawab ananda ${shortName} mencerminkan teladan baik keluarga. Terima kasih kepada orang tua; mari terus dampingi pembiasaan positif ananda.`,
+            ringkasan: 'Refleksi kematangan sikap mandiri dan keselarasan pembiasaan rumah-sekolah'
+          },
+          {
+            id: 'v2-sub4',
+            subNomor: '2.4',
+            judulSub: 'Pengamalan Karakter Menuju Keteladanan Nyata',
+            gaya: 'Gaya Motivasi Edukatif',
+            text: `Integritas dan sikap santun ananda ${shortName} menjadi fondasi kokoh dalam belajar. Teruslah berbuat kebaikan dan jadilah pribadi yang membawa manfaat bagi sesama.`,
+            ringkasan: 'Dorongan menerapkan keluhuran budi pekerti dalam kehidupan sehari-hari'
+          },
+          {
+            id: 'v2-sub5',
+            subNomor: '2.5',
+            judulSub: 'Profil Kepribadian Santun & Mandiri',
+            gaya: 'Gaya Ringkas Padat',
+            text: `Ananda ${shortName} berkepribadian santun, mandiri, dan berakhlak mulia serta tekun belajar di kelas. Terus pupuk sikap terpuji ini dalam setiap langkah kehidupanmu.`,
+            ringkasan: 'Catatan ringkas kepribadian santun, mandiri, dan bertanggung jawab'
+          }
+        ]
+      },
+
+      // --- KATEGORI 3: KESEIMBANGAN DAYA PIKIR & PENGEMBANGAN TALENTA (HOLISTIK POTENSI DIRI) ---
+      {
+        id: 'v3' as const,
+        nomor: 'Varian 3',
+        kategori: 'Keseimbangan Belajar & Pengembangan Talenta',
+        badge: 'bg-purple-50 text-purple-700 border-purple-200',
+        icon: <Medal className="w-4 h-4 text-purple-600" />,
+        deskripsiKategori: 'Harmonisasi antara pencapaian ilmu pengetahuan di kelas dan pengasahan bakat non-akademik',
+        items: [
+          {
+            id: 'v3-sub1',
+            subNomor: '3.1',
+            judulSub: 'Harmonisasi Prestasi Belajar & Sportivitas Bakat',
+            gaya: 'Gaya Apresiatif Formal',
+            text: `Keseimbangan yang baik ditunjukkan ananda ${shortName} dalam belajar ${highMapel} dan mengasah bakat pada ${ekskulPhrase}. Terus asah potensimu membentuk mental juara tangguh!`,
+            ringkasan: 'Apresiasi keseimbangan antara prestasi akademik dan keterlibatan aktif ekstrakurikuler'
+          },
+          {
+            id: 'v3-sub2',
+            subNomor: '3.2',
+            judulSub: 'Kegigihan, Manajemen Waktu & Daya Tahan Mental',
+            gaya: 'Gaya Naratif Inspiratif',
+            text: `Kemampuan ananda ${shortName} membagi waktu antara pelajaran ${highMapel} dan minat bakat patut diapresiasi. Pertahankan disiplin ini agar prestasi terus berjalan selaras.`,
+            ringkasan: 'Inspirasi kematangan manajemen waktu dan ketahanan mental belajar'
+          },
+          {
+            id: 'v3-sub3',
+            subNomor: '3.3',
+            judulSub: 'Pengembangan Potensi Multidimensi & Kemitraan',
+            gaya: 'Gaya Reflektif Kemitraan',
+            text: `Tumbuh kembang bakat ananda ${shortName} yang diimbangi hasil belajar baik mencerminkan dukungan luar biasa keluarga. Mari terus dampingi minat ananda agar tersalurkan optimal.`,
+            ringkasan: 'Refleksi pengembangan talenta anak bersama pendampingan orang tua'
+          },
+          {
+            id: 'v3-sub4',
+            subNomor: '3.4',
+            judulSub: 'Mentalitas Juara & Karakter Berani Berekspresi',
+            gaya: 'Gaya Motivasi Edukatif',
+            text: `Jadikan wadah ${ekskulPhrase} sebagai sarana melatih keberanian ananda ${shortName}. Padukan dengan ketekunan belajar di kelas demi menggapai cita-cita luhur.`,
+            ringkasan: 'Dorongan memupuk jiwa kepemimpinan, keberanian berekspresi, dan mental juara'
+          },
+          {
+            id: 'v3-sub5',
+            subNomor: '3.5',
+            judulSub: 'Rangkuman Keseimbangan Potensi Diri',
+            gaya: 'Gaya Ringkas Padat',
+            text: `Ananda ${shortName} aktif memadukan prestasi belajar ${highMapel} dengan pengembangan potensi diri. Kembangkan terus bakatmu dengan percaya diri dan tetap disiplin di kelas.`,
+            ringkasan: 'Catatan ringkas keterpaduan belajar akademik dan keaktifan bakat'
+          }
+        ]
+      },
+
+      // --- KATEGORI 4: PEMBIMBINGAN EDUKATIF, REFLEKSI & PENINGKATAN KOMITMEN (HOLISTIK PEMBINAAN) ---
+      {
+        id: 'v4' as const,
+        nomor: 'Varian 4',
+        kategori: 'Pembimbingan Edukatif & Peningkatan Komitmen',
+        badge: 'bg-blue-50 text-blue-700 border-blue-200',
+        icon: <TrendingUp className="w-4 h-4 text-blue-600" />,
+        deskripsiKategori: 'Bimbingan konstruktif dan motivasi ramah berdasarkan data kehadiran dan area yang perlu ditingkatkan',
+        items: [
+          {
+            id: 'v4-sub1',
+            subNomor: '4.1',
+            judulSub: 'Bimbingan Kedisiplinan Kehadiran & Optimalisasi Waktu',
+            gaya: 'Gaya Pembinaan Edukatif',
+            text: isAbsenBanyak
+              ? `Ananda ${shortName} berpotensi besar; di semester baru disarankan lebih menjaga kesehatan dan meningkatkan kehadiran tepat waktu agar pembelajaran berlangsung optimal.`
+              : `Kedisiplinan kehadiran ananda ${shortName} di sekolah sangat baik. Pertahankan komitmen hadir dan keaktifan di kelas sebagai fondasi meraih prestasi lebih tinggi di semester depan.`,
+            ringkasan: 'Bimbingan ramah terkait kedisiplinan presensi dan optimalisasi waktu belajar'
+          },
+          {
+            id: 'v4-sub2',
+            subNomor: '4.2',
+            judulSub: 'Peningkatan Fokus & Daya Juang Belajar',
+            gaya: 'Gaya Naratif Edukatif',
+            text: lowMapel
+              ? `Ananda ${shortName} unggul pada ${highMapel}; di semester baru luangkan waktu latihan mandiri pada ${lowMapel} agar pemahaman konsep semakin merata dan meningkat.`
+              : `Ananda ${shortName} memiliki potensi besar; tingkatkan fokus dan jangan ragu bertanya di kelas agar penguasaan kompetensimu semakin mendalam di semester baru.`,
+            ringkasan: 'Dorongan meningkatkan pemahaman materi dan keaktifan diskusi kelas'
+          },
+          {
+            id: 'v4-sub3',
+            subNomor: '4.3',
+            judulSub: 'Refleksi Evaluatif Menuju Perbaikan Berkelanjutan',
+            gaya: 'Gaya Reflektif Kemitraan',
+            text: `Semester ini menjadi ruang pendewasaan berharga bagi ananda ${shortName}. Jadikan setiap proses belajar sebagai pijakan menyusun target baru bersama bimbingan guru dan orang tua.`,
+            ringkasan: 'Refleksi evaluasi diri yang konstruktif dan membangun kemitraan belajar'
+          },
+          {
+            id: 'v4-sub4',
+            subNomor: '4.4',
+            judulSub: 'Penanaman Rasa Percaya Diri & Potensi Tumbuh',
+            gaya: 'Gaya Motivasi Afirmatif',
+            text: `Percayalah pada potensi besar ananda ${shortName}. Bangkitkan rasa percaya diri dan teruslah berikhtiar; dengan ketekunan belajar, ananda pasti mampu meraih prestasi terbaik.`,
+            ringkasan: 'Penanaman rasa percaya diri, daya juang, dan afirmasi potensi positif anak'
+          },
+          {
+            id: 'v4-sub5',
+            subNomor: '4.5',
+            judulSub: 'Pesan Hangat & Harapan Kemajuan Semester Baru',
+            gaya: 'Gaya Ringkas Ramah',
+            text: `Tetaplah bersemangat, rendah hati, dan tekun belajar ananda ${shortName}. Rawat rasa ingin tahumu dan buktikan kemampuanmu meraih kemajuan gemilang di semester mendatang!`,
+            ringkasan: 'Pesan afirmasi positif singkat, ramah, dan memotivasi'
+          }
+        ]
       }
     ];
+
+    // Buat flat list dari 25 variasi agar dapat diputar secara berurutan / acak
+    const flatSuggestions: Array<{
+      id: string;
+      kategoriId: 'v5' | 'v1' | 'v2' | 'v3' | 'v4';
+      nomor: string;
+      subNomor: string;
+      kategori: string;
+      judulSub: string;
+      gaya: string;
+      badge: string;
+      icon: React.ReactNode;
+      text: string;
+      ringkasan: string;
+      isMaster?: boolean;
+    }> = [];
+
+    categories.forEach(cat => {
+      cat.items.forEach(item => {
+        flatSuggestions.push({
+          id: item.id,
+          kategoriId: cat.id,
+          nomor: cat.nomor,
+          subNomor: item.subNomor,
+          kategori: cat.kategori,
+          judulSub: item.judulSub,
+          gaya: item.gaya,
+          badge: cat.badge,
+          icon: cat.icon,
+          text: item.text,
+          ringkasan: item.ringkasan,
+          isMaster: cat.isMaster
+        });
+      });
+    });
+
+    return {
+      categories,
+      flatSuggestions,
+      masterParipurnaItems: categories.find(c => c.id === 'v5')?.items || []
+    };
+  };
+
+  // Helper Indikator Keterbacaan & Ambang Batas Karakter Cetak PDF Rapor
+  const getReadabilityBadge = (text: string) => {
+    const len = (text || '').trim().length;
+    if (len === 0) return null;
+    if (len <= 180) {
+      return {
+        len,
+        badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+        dotClass: 'bg-emerald-500',
+        label: `${len} karakter`,
+        status: 'Optimal di PDF (~10pt)',
+        isWarning: false
+      };
+    }
+    if (len <= 230) {
+      return {
+        len,
+        badgeClass: 'text-blue-700 bg-blue-50 border-blue-200',
+        dotClass: 'bg-blue-500',
+        label: `${len} karakter`,
+        status: 'Aman di PDF (~9.5pt)',
+        isWarning: false
+      };
+    }
+    if (len <= 260) {
+      return {
+        len,
+        badgeClass: 'text-amber-700 bg-amber-50 border-amber-200',
+        dotClass: 'bg-amber-500',
+        label: `${len} karakter`,
+        status: 'Cukup Aman (~8.5-9pt)',
+        isWarning: false
+      };
+    }
+    return {
+      len,
+      badgeClass: 'text-rose-700 bg-rose-50 border-rose-200',
+      dotClass: 'bg-rose-500',
+      label: `${len} karakter`,
+      status: 'Panjang (Font <8pt)',
+      isWarning: true
+    };
   };
 
   // Status apakah pernah disintesis sebelumnya
@@ -287,14 +578,55 @@ export default function GenerateCatatanWali() {
     showToast(newLocked ? 'Catatan murid ini dikunci (terproteksi)' : 'Kunci catatan dibuka');
   };
 
-  const handleApplyAISuggestion = (studentId: string, text: string) => {
+  const handleApplyAISuggestion = (studentId: string, text: string, varianIndex?: number) => {
     if (lockedCatatanWali?.[studentId]) {
       showToast('Catatan murid ini terkunci. Buka kunci untuk menerapkan variasi baru.');
       return;
     }
     updateStudentCatatan(studentId, text);
+    if (varianIndex !== undefined) {
+      setCatatanWaliVariationIndex(prev => ({
+        ...prev,
+        [studentId]: varianIndex
+      }));
+    }
     setSelectedStudentForAI(null);
     showToast('Variasi catatan berhasil diterapkan!');
+  };
+
+  // Putar 25 variasi secara langsung (inline) per murid
+  const handleCycleVariasiSatuan = (student: Siswa) => {
+    if (lockedCatatanWali?.[student.id]) {
+      showToast('Catatan murid ini terkunci. Buka kunci untuk memvariasikan.');
+      return;
+    }
+    const { flatSuggestions } = generateAISuggestions(student);
+    const currIdx = catatanWaliVariationIndex[student.id] ?? -1;
+    const nextIdx = (currIdx + 1) % flatSuggestions.length;
+    
+    setCatatanWaliVariationIndex(prev => ({
+      ...prev,
+      [student.id]: nextIdx
+    }));
+
+    const selectedItem = flatSuggestions[nextIdx];
+    updateStudentCatatan(student.id, selectedItem.text);
+    showToast(`Variasi ${selectedItem.subNomor} (${selectedItem.gaya}) diterapkan untuk ${student.nama}`);
+  };
+
+  // Reset catatan per satuan murid
+  const handleResetCatatanSatuan = (studentId: string, nama: string) => {
+    if (lockedCatatanWali?.[studentId]) {
+      showToast('Catatan murid ini terkunci. Buka kunci untuk mereset.');
+      return;
+    }
+    updateStudentCatatan(studentId, '');
+    setCatatanWaliVariationIndex(prev => {
+      const next = { ...prev };
+      delete next[studentId];
+      return next;
+    });
+    showToast(`Catatan ${nama} dikosongkan.`);
   };
 
   const handleCopyText = (text: string, id: string) => {
@@ -304,13 +636,14 @@ export default function GenerateCatatanWali() {
     showToast('Teks disalin ke clipboard');
   };
 
-  // Sintesis / Sintesis Ulang serentak 1 kelas (Melewati murid yang terkunci)
+  // Sintesis / Sintesis Ulang serentak 1 kelas (Mendistribusikan 25 sub-varian & melewati murid yang terkunci)
   const handleSintesisSemuaCatatanWali = () => {
     const updated = { ...dataPendukung };
+    const newIdxMap = { ...catatanWaliVariationIndex };
     let processedCount = 0;
     let lockedCount = 0;
 
-    siswa.forEach(s => {
+    siswa.forEach((s, sIdx) => {
       // 1. Lewati murid yang dikunci
       if (lockedCatatanWali?.[s.id]) {
         lockedCount++;
@@ -318,16 +651,28 @@ export default function GenerateCatatanWali() {
       }
 
       const current = updated[s.id] || {};
-      const suggestions = generateAISuggestions(s);
-      const masterVarian = suggestions.find(sug => sug.id === 'v5') || suggestions[0];
-      current.catatanWaliKelas = masterVarian.text;
+      const { masterParipurnaItems, flatSuggestions } = generateAISuggestions(s);
+      
+      let nextIdx: number;
+      if (newIdxMap[s.id] !== undefined) {
+        nextIdx = (newIdxMap[s.id] + 1) % flatSuggestions.length;
+      } else {
+        // Distribusi variasi awal 1-5 sub-varian Paripurna agar tidak kembar di satu kelas
+        nextIdx = sIdx % masterParipurnaItems.length;
+      }
+      
+      newIdxMap[s.id] = nextIdx;
+      const targetText = flatSuggestions[nextIdx]?.text || masterParipurnaItems[0]?.text;
+
+      current.catatanWaliKelas = targetText;
       updated[s.id] = current;
       processedCount++;
     });
 
+    setCatatanWaliVariationIndex(newIdxMap);
     updateState('dataPendukung', updated);
     showToast(
-      `${hasSynthesizedAnyCatatan ? 'Sintesis Ulang' : 'Sintesis'} Catatan Wali Kelas berhasil untuk ${processedCount} murid` +
+      `${hasSynthesizedAnyCatatan ? 'Sintesis Ulang' : 'Sintesis'} Catatan Wali Kelas berhasil memvariasikan narasi untuk ${processedCount} murid` +
       (lockedCount > 0 ? ` (${lockedCount} murid terkunci dilewati)` : '')
     );
   };
@@ -503,16 +848,15 @@ export default function GenerateCatatanWali() {
             <thead className="sticky top-0 z-10 bg-slate-100 shadow-xs border-b border-slate-200">
               <tr className="bg-slate-100 text-slate-700 font-bold">
                 <th className="py-3 px-3 text-center w-12 bg-slate-100">No</th>
-                <th className="py-3 px-4 w-72 bg-slate-100">Profil Murid & Capaian</th>
-                <th className="py-3 px-4 bg-slate-100">Narasi Catatan Wali Kelas</th>
-                <th className="py-3 px-2 text-center w-24 bg-slate-100">Kunci</th>
-                <th className="py-3 px-4 text-center w-28 bg-slate-100">Variasi</th>
+                <th className="py-3 px-4 text-center w-72 bg-slate-100">Profil Murid & Capaian</th>
+                <th className="py-3 px-4 text-center bg-slate-100">Narasi Catatan Wali Kelas</th>
+                <th className="py-3 px-3 text-center w-64 min-w-[220px] bg-slate-100">Aksi & Putar Variasi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={4} className="py-12 text-center text-slate-400">
                     Tidak ada murid yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
@@ -524,6 +868,7 @@ export default function GenerateCatatanWali() {
                   const currentNote = dp.catatanWaliKelas || '';
                   const hasNote = currentNote.trim().length > 0;
                   const fourPillars = getStudentFourPillarsData(s.id);
+                  const varIdx = catatanWaliVariationIndex[s.id];
 
                   return (
                     <tr key={s.id} className={`transition-colors ${isLocked ? 'bg-amber-50/20' : 'hover:bg-slate-50/70'}`}>
@@ -592,61 +937,134 @@ export default function GenerateCatatanWali() {
                           />
                           {isLocked ? (
                             <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1">
-                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-0.5">
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 flex items-center gap-0.5 shadow-2xs">
                                 <Lock className="w-3 h-3 text-amber-700" /> Terkunci
                               </span>
                             </div>
                           ) : hasNote ? (
                             <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1">
-                              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5">
+                              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-0.5 shadow-2xs">
                                 <Check className="w-3 h-3" /> Tersimpan
                               </span>
                             </div>
                           ) : null}
                         </div>
+
+                        {/* Indikator Keterbacaan & Jumlah Karakter untuk Cetak PDF */}
+                        {(() => {
+                          const readability = getReadabilityBadge(currentNote);
+                          if (!readability) return null;
+                          return (
+                            <div className="flex items-center justify-between mt-1 px-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${readability.badgeClass}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${readability.dotClass}`} />
+                                  <span>{readability.label}</span>
+                                  <span className="opacity-40">•</span>
+                                  <span>{readability.status}</span>
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 italic hidden sm:inline">
+                                Target Ideal: 160–210 kar
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
-                      {/* Tombol Kunci Satuan */}
-                      <td className="py-3 px-2 text-center">
-                        <Tooltip content={isLocked ? "Buka kuncian catatan murid ini" : "Kunci catatan murid ini agar terlindungi saat Sintesis Ulang"} position="top">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleLockCatatanWali(s.id)}
-                            className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer active:scale-95 shadow-2xs ${
-                              isLocked 
-                                ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
-                                : 'bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
-                            }`}
-                          >
-                            {isLocked ? <Lock size={12} className="text-amber-700" /> : <Unlock size={12} />}
-                            <span>{isLocked ? 'Terkunci' : 'Kunci'}</span>
-                          </button>
-                        </Tooltip>
-                      </td>
+                      {/* Kolom Aksi Terpadu: Kunci, Putar Variasi Inline, Pilihan Modal, Reset, Copy (1 Baris Rapi & Center) */}
+                      <td className="py-3 px-3 text-center align-middle whitespace-nowrap">
+                        <div className="inline-flex items-center justify-center gap-1.5 flex-nowrap">
+                          {/* 1. Tombol Kunci Satuan */}
+                          <Tooltip content={isLocked ? "Buka kuncian catatan murid ini" : "Kunci catatan murid ini agar terlindungi saat Sintesis Ulang"} position="top">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLockCatatanWali(s.id)}
+                              className={`p-1.5 rounded-lg border transition cursor-pointer active:scale-95 shadow-2xs shrink-0 ${
+                                isLocked 
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200' 
+                                  : 'bg-slate-50 text-slate-500 hover:text-slate-800 hover:bg-slate-100 border-slate-200'
+                              }`}
+                              aria-label="Kunci Catatan"
+                            >
+                              {isLocked ? <Lock size={13} className="text-amber-700" /> : <Unlock size={13} />}
+                            </button>
+                          </Tooltip>
 
-                      {/* Tombol Aksi Variasi */}
-                      <td className="py-3 px-4 text-center">
-                        <Tooltip content={isLocked ? "Buka kuncian catatan murid ini terlebih dahulu" : "Pilih variasi catatan terpadu 4 pilar (5 Varian Komprehensif)"} position="top" className="w-full">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (isLocked) {
-                                showToast('Catatan murid ini terkunci. Buka kunci untuk memvariasikan.');
-                                return;
-                              }
-                              setSelectedStudentForAI(s);
-                            }}
-                            disabled={isLocked}
-                            className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition group ${
-                              isLocked
-                                ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95'
-                            }`}
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-amber-300 group-hover:rotate-12 transition-transform" />
-                            <span>Variasi</span>
-                          </button>
-                        </Tooltip>
+                          {/* 2. Tombol Putar 25 Variasi Narasi Inline */}
+                          <Tooltip content={isLocked ? "Buka kunci terlebih dahulu untuk memvariasikan" : "Putar ke variasi narasi berikutnya"} position="top">
+                            <button
+                              type="button"
+                              onClick={() => handleCycleVariasiSatuan(s)}
+                              disabled={isLocked}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-xs transition-colors border shadow-2xs shrink-0 whitespace-nowrap ${
+                                isLocked 
+                                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 active:scale-95 cursor-pointer'
+                              }`}
+                            >
+                              <Shuffle size={12} />
+                              <span>Variasi</span>
+                            </button>
+                          </Tooltip>
+
+                          {/* 3. Tombol Buka Modal 25 Pilihan Lengkap */}
+                          <Tooltip content={isLocked ? "Buka kunci terlebih dahulu" : "Buka asisten pilihan 25 variasi narasi lengkap"} position="top">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isLocked) {
+                                  showToast('Catatan murid ini terkunci. Buka kunci untuk memvariasikan.');
+                                  return;
+                                }
+                                setSelectedStudentForAI(s);
+                              }}
+                              disabled={isLocked}
+                              className={`p-1.5 rounded-lg border transition cursor-pointer active:scale-95 shadow-2xs shrink-0 ${
+                                isLocked
+                                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                              }`}
+                              aria-label="Pilih Variasi AI"
+                            >
+                              <Sparkles size={13} />
+                            </button>
+                          </Tooltip>
+
+                          {/* 4. Tombol Reset Satuan */}
+                          <Tooltip content="Kosongkan catatan murid ini" position="top">
+                            <button
+                              type="button"
+                              onClick={() => handleResetCatatanSatuan(s.id, s.nama)}
+                              disabled={isLocked || !hasNote}
+                              className={`p-1.5 rounded-lg border transition shrink-0 ${
+                                isLocked || !hasNote
+                                  ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-slate-200 cursor-pointer active:scale-95'
+                              }`}
+                              aria-label="Reset Catatan"
+                            >
+                              <RotateCcw size={13} />
+                            </button>
+                          </Tooltip>
+
+                          {/* 5. Tombol Salin */}
+                          <Tooltip content="Salin narasi catatan murid ini" position="top">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(currentNote, s.id)}
+                              disabled={!hasNote}
+                              className={`p-1.5 rounded-lg border transition shrink-0 ${
+                                !hasNote
+                                  ? 'text-slate-300 border-slate-200 cursor-not-allowed'
+                                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-slate-200 cursor-pointer active:scale-95'
+                              }`}
+                              aria-label="Salin Teks"
+                            >
+                              {copiedId === s.id ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                            </button>
+                          </Tooltip>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -745,74 +1163,225 @@ export default function GenerateCatatanWali() {
                 );
               })()}
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <p className="font-bold text-slate-700">
-                  Pilih salah satu dari 5 rekomendasi narasi di bawah ini:
-                </p>
-                <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-                  Varian 1–4 Tematik • Varian 5 Paripurna
-                </span>
+              {/* Navigasi Tab Kategori Variasi (5 Kategori x 5 Sub-Varian) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setModalCategoryTab('v5')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    modalCategoryTab === 'v5'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-200" />
+                  <span>Varian 5: Paripurna (5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalCategoryTab('v1')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    modalCategoryTab === 'v1'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <Award className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Varian 1: Prestasi Belajar (5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalCategoryTab('v2')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    modalCategoryTab === 'v2'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <Compass className="w-3.5 h-3.5 text-indigo-200" />
+                  <span>Varian 2: Karakter & Budi (5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalCategoryTab('v3')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    modalCategoryTab === 'v3'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <Medal className="w-3.5 h-3.5 text-purple-200" />
+                  <span>Varian 3: Talenta & Minat (5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalCategoryTab('v4')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    modalCategoryTab === 'v4'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-200" />
+                  <span>Varian 4: Pembimbingan (5)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalCategoryTab('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    modalCategoryTab === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Semua (25)</span>
+                </button>
               </div>
 
-              {/* List 5 Rekomendasi Narasi AI */}
+              {/* List Sub-Variasi Narasi Sesuai Tab Aktif */}
               <div className="space-y-3">
-                {generateAISuggestions(selectedStudentForAI).map((sug) => (
-                  <div 
-                    key={sug.id} 
-                    className={`p-3.5 sm:p-4 rounded-xl border transition-all shadow-2xs space-y-2 group ${
-                      sug.isMaster
-                        ? 'border-indigo-300 bg-gradient-to-br from-indigo-50/60 via-white to-amber-50/40 ring-1 ring-indigo-500/20'
-                        : 'border-slate-200 hover:border-indigo-200 bg-white hover:bg-slate-50/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${sug.badge}`}>
-                          {sug.icon}
-                          {sug.nomor}: {sug.kategori}
-                        </span>
-                        {sug.isMaster && (
-                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.2 rounded-full bg-amber-400 text-amber-950 shrink-0 hidden sm:inline-block">
-                            ⭐ Paling Direkomendasikan
-                          </span>
-                        )}
+                {(() => {
+                  const { categories, flatSuggestions } = generateAISuggestions(selectedStudentForAI);
+                  
+                  if (modalCategoryTab === 'all') {
+                    return flatSuggestions.map((item, flatIdx) => (
+                      <div 
+                        key={item.id} 
+                        className={`p-3.5 sm:p-4 rounded-xl border transition-all shadow-2xs space-y-2 group ${
+                          item.isMaster
+                            ? 'border-amber-300 bg-amber-50/20 ring-1 ring-amber-500/20'
+                            : 'border-slate-200 hover:border-indigo-200 bg-white hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${item.badge}`}>
+                              {item.icon}
+                              {item.subNomor}: {item.judulSub}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-semibold px-2 py-0.5 rounded bg-slate-100 shrink-0 hidden sm:inline-block">
+                              {item.gaya}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Tooltip content="Salin teks narasi ke clipboard" position="top">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyText(item.text, item.id)}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
+                              >
+                                {copiedId === item.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                                <span className="text-[11px]">{copiedId === item.id ? 'Tersalin' : 'Salin'}</span>
+                              </button>
+                            </Tooltip>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyAISuggestion(selectedStudentForAI.id, item.text, flatIdx)}
+                              className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer active:scale-95 ${
+                                item.isMaster
+                                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                              }`}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Terapkan</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50/80 p-3 rounded-lg border border-slate-100">
+                          "{item.text}"
+                        </p>
+
+                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                          <span className="italic">ℹ️ {item.ringkasan}</span>
+                          {(() => {
+                            const r = getReadabilityBadge(item.text);
+                            if (!r) return null;
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold border ${r.badgeClass}`}>
+                                <span className={`w-1 h-1 rounded-full ${r.dotClass}`} />
+                                <span>{r.len} kar • {r.status}</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
+                    ));
+                  }
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Tooltip content="Salin teks narasi ke clipboard" position="top">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyText(sug.text, sug.id)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
-                          >
-                            {copiedId === sug.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
-                            <span className="text-[11px]">{copiedId === sug.id ? 'Tersalin' : 'Salin'}</span>
-                          </button>
-                        </Tooltip>
-                        <button
-                          type="button"
-                          onClick={() => handleApplyAISuggestion(selectedStudentForAI.id, sug.text)}
-                          className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer active:scale-95 ${
-                            sug.isMaster
-                              ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
-                              : 'bg-slate-800 hover:bg-slate-900 text-white'
-                          }`}
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Terapkan</span>
-                        </button>
+                  const activeCat = categories.find(c => c.id === modalCategoryTab) || categories[0];
+                  return activeCat.items.map((subItem, sIdx) => {
+                    const flatIdx = flatSuggestions.findIndex(f => f.id === subItem.id);
+                    return (
+                      <div 
+                        key={subItem.id} 
+                        className={`p-3.5 sm:p-4 rounded-xl border transition-all shadow-2xs space-y-2 group ${
+                          activeCat.isMaster
+                            ? 'border-indigo-300 bg-gradient-to-br from-indigo-50/60 via-white to-amber-50/40 ring-1 ring-indigo-500/20'
+                            : 'border-slate-200 hover:border-indigo-200 bg-white hover:bg-slate-50/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${activeCat.badge}`}>
+                              {activeCat.icon}
+                              {subItem.subNomor}: {subItem.judulSub}
+                            </span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0 hidden sm:inline-block">
+                              {subItem.gaya}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Tooltip content="Salin teks narasi ke clipboard" position="top">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyText(subItem.text, subItem.id)}
+                                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer"
+                              >
+                                {copiedId === subItem.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                                <span className="text-[11px]">{copiedId === subItem.id ? 'Tersalin' : 'Salin'}</span>
+                              </button>
+                            </Tooltip>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyAISuggestion(selectedStudentForAI.id, subItem.text, flatIdx >= 0 ? flatIdx : sIdx)}
+                              className={`px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1 shadow-2xs transition cursor-pointer active:scale-95 ${
+                                activeCat.isMaster
+                                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+                                  : 'bg-slate-800 hover:bg-slate-900 text-white'
+                              }`}
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Terapkan</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50/80 p-3 rounded-lg border border-slate-100">
+                          "{subItem.text}"
+                        </p>
+
+                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                          <span className="italic">ℹ️ {subItem.ringkasan}</span>
+                          {(() => {
+                            const r = getReadabilityBadge(subItem.text);
+                            if (!r) return null;
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold border ${r.badgeClass}`}>
+                                <span className={`w-1 h-1 rounded-full ${r.dotClass}`} />
+                                <span>{r.len} kar • {r.status}</span>
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
-                    </div>
-
-                    <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50/80 p-3 rounded-lg border border-slate-100">
-                      "{sug.text}"
-                    </p>
-
-                    <p className="text-[10px] text-slate-400 italic">
-                      ℹ️ {sug.ringkasan}
-                    </p>
-                  </div>
-                ))}
+                    );
+                  });
+                })()}
               </div>
 
             </div>

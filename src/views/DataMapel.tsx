@@ -445,8 +445,8 @@ export default function DataMapel() {
                 </Tooltip>
               </th>
               <th className="px-3 py-2 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
-              <th className="px-4 py-2 w-32 text-left text-[10px] uppercase tracking-wider">Kode Mapel</th>
-              <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wider">Nama Mata Pelajaran</th>
+              <th className="px-4 py-2 w-32 text-center text-[10px] uppercase tracking-wider">Kode Mapel</th>
+              <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wider">Nama Mata Pelajaran</th>
               <th className="px-4 py-2 w-40 text-center text-[10px] uppercase tracking-wider">Kelompok</th>
               <th className="px-4 py-2 w-52 text-center text-[10px] uppercase tracking-wider">
                 <Tooltip content="Metode Pengolahan Nilai & Rasio Komposit Rapor (SLM : SAS)" position="bottom">

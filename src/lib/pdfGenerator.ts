@@ -1020,7 +1020,7 @@ export const buildRaporPDF = (
       fontSize: baseBodySize - 1,
       textColor: [0, 0, 0],
       valign: 'middle',
-      cellPadding: { top: 2.8, bottom: 2.8, left: 2.5, right: 2.5 },
+      cellPadding: { top: 2.8, bottom: 2.8, left: 2.5, right: 3.8 },
       lineWidth: 0.25,
       lineColor: [0, 0, 0],
       font: fontName
@@ -1029,13 +1029,13 @@ export const buildRaporPDF = (
       ? {
           0: { cellWidth: 10, halign: 'center', valign: 'middle' },
           1: { cellWidth: 50, fontStyle: 'bold', valign: 'middle' },
-          2: { cellWidth: availableTableWidth - 60, halign: 'justify', valign: 'middle' }
+          2: { cellWidth: availableTableWidth - 60, halign: 'justify', valign: 'middle', cellPadding: { top: 2.8, bottom: 2.8, left: 2.8, right: 4.2 } }
         }
       : {
           0: { cellWidth: 10, halign: 'center', valign: 'middle' },
           1: { cellWidth: 46, fontStyle: 'bold', valign: 'middle' },
           2: { cellWidth: 18, halign: 'center', valign: 'middle', fontStyle: 'bold' },
-          3: { cellWidth: availableTableWidth - 74, halign: 'justify', valign: 'middle' }
+          3: { cellWidth: availableTableWidth - 74, halign: 'justify', valign: 'middle', cellPadding: { top: 2.8, bottom: 2.8, left: 2.8, right: 4.2 } }
         }
   });
 
@@ -1091,7 +1091,7 @@ export const buildRaporPDF = (
       textColor: [0, 0, 0],
       halign: 'justify',
       valign: 'middle',
-      cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 },
+      cellPadding: { top: 2.8, bottom: 2.8, left: 3.0, right: 4.5 },
       lineWidth: 0.25,
       lineColor: [0, 0, 0],
       font: fontName
@@ -1152,7 +1152,7 @@ export const buildRaporPDF = (
       fontSize: baseBodySize - 1,
       textColor: [0, 0, 0],
       valign: 'middle',
-      cellPadding: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 },
+      cellPadding: { top: 2.5, bottom: 2.5, left: 2.5, right: 3.8 },
       lineWidth: 0.25,
       lineColor: [0, 0, 0],
       font: fontName
@@ -1160,12 +1160,12 @@ export const buildRaporPDF = (
     columnStyles: isSingleEkskul
       ? {
           0: { cellWidth: 46, fontStyle: 'bold', valign: 'middle' },
-          1: { cellWidth: availableTableWidth - 46, halign: 'justify', valign: 'middle' }
+          1: { cellWidth: availableTableWidth - 46, halign: 'justify', valign: 'middle', cellPadding: { top: 2.5, bottom: 2.5, left: 2.8, right: 4.2 } }
         }
       : {
           0: { cellWidth: 10, halign: 'center', valign: 'middle' },
           1: { cellWidth: 46, fontStyle: 'bold', valign: 'middle' },
-          2: { cellWidth: availableTableWidth - 56, halign: 'justify', valign: 'middle' }
+          2: { cellWidth: availableTableWidth - 56, halign: 'justify', valign: 'middle', cellPadding: { top: 2.5, bottom: 2.5, left: 2.8, right: 4.2 } }
         }
   });
 
@@ -1179,7 +1179,7 @@ export const buildRaporPDF = (
 
   // 4. KETIDAKHADIRAN & CATATAN WALI KELAS (2 Kotak Terpisah Berdampingan dengan Celah Presisi)
   const gapWidth = 3.5;
-  const widthKetidakhadiran = 65;
+  const widthKetidakhadiran = 66;
   const widthCatatan = availableTableWidth - widthKetidakhadiran - gapWidth;
   const startKetidakhadiranX = 15;
   const startCatatanX = 15 + widthKetidakhadiran + gapWidth;
@@ -1190,28 +1190,37 @@ export const buildRaporPDF = (
   const izinCount = studentDp.izin ?? 0;
   const alpaCount = studentDp.alpa ?? 0;
 
-  // 4A. Kotak Kiri: Ketidakhadiran (Garis Penutup Kanan Sendiri, Tanpa Garis Vertikal Pemisah di Tengah, Garis Dalam Tipis)
+  const formatKetidakhadiranCell = (c: number) => {
+    return c > 0
+      ? { content: `${c} hari`, colSpan: 2, styles: { halign: 'center' as const, fontStyle: 'bold' as const } }
+      : { content: '---', colSpan: 2, styles: { halign: 'center' as const, fontStyle: 'bold' as const } };
+  };
+
+  // 4A. Kotak Kiri: Ketidakhadiran (4-Kolom Presisi, 1 Baris Utuh Tanpa Wrap, Dotted Dividers Sesuai Standar Formal)
   autoTable(doc, {
     startY: blockStartY,
     margin: { left: startKetidakhadiranX, right: pageWidth - startKetidakhadiranX - widthKetidakhadiran, bottom: 20 },
     tableWidth: widthKetidakhadiran,
     head: [
       [
-        { content: 'Ketidakhadiran', colSpan: 2, styles: { halign: 'center' as const } }
+        { content: 'Ketidakhadiran', colSpan: 4, styles: { halign: 'center' as const } }
       ]
     ],
     body: [
       [
-        { content: 'Sakit', styles: { fontStyle: 'bold' as const } },
-        { content: `: ${sakitCount} hari` }
+        { content: 'Sakit', styles: { fontStyle: 'normal' as const } },
+        { content: ':', styles: { halign: 'center' as const } },
+        formatKetidakhadiranCell(sakitCount)
       ],
       [
-        { content: 'Izin', styles: { fontStyle: 'bold' as const } },
-        { content: `: ${izinCount} hari` }
+        { content: 'Izin', styles: { fontStyle: 'normal' as const } },
+        { content: ':', styles: { halign: 'center' as const } },
+        formatKetidakhadiranCell(izinCount)
       ],
       [
-        { content: 'Tanpa Keterangan', styles: { fontStyle: 'bold' as const } },
-        { content: `: ${alpaCount} hari` }
+        { content: 'Tanpa Keterangan', styles: { fontStyle: 'normal' as const } },
+        { content: ':', styles: { halign: 'center' as const } },
+        formatKetidakhadiranCell(alpaCount)
       ]
     ],
     theme: 'plain',
@@ -1231,11 +1240,13 @@ export const buildRaporPDF = (
       textColor: [0, 0, 0],
       valign: 'middle',
       font: fontName,
-      cellPadding: { top: 2.4, bottom: 2.4, left: 3, right: 3 }
+      cellPadding: { top: 2.4, bottom: 2.4, left: 2, right: 2 }
     },
     columnStyles: {
-      0: { cellWidth: 38 },
-      1: { cellWidth: widthKetidakhadiran - 38 }
+      0: { cellWidth: 39, cellPadding: { top: 2.4, bottom: 2.4, left: 2.8, right: 1.5 } },
+      1: { cellWidth: 3.5, halign: 'center', cellPadding: { top: 2.4, bottom: 2.4, left: 0, right: 0 } },
+      2: { cellWidth: 10.5, halign: 'center', fontStyle: 'bold', cellPadding: { top: 2.4, bottom: 2.4, left: 1, right: 1.5 } },
+      3: { cellWidth: 13, halign: 'left', cellPadding: { top: 2.4, bottom: 2.4, left: 1.5, right: 3 } }
     },
     didDrawCell: (data) => {
       const { cell, section, column, row } = data;
@@ -1248,15 +1259,19 @@ export const buildRaporPDF = (
         doc.line(cell.x, cell.y, cell.x, cell.y + cell.height); // Kiri
         doc.line(cell.x + cell.width, cell.y, cell.x + cell.width, cell.y + cell.height); // Kanan
       } else if (section === 'body') {
-        // Garis pembatas horizontal: baris 0 & 1 (di bawah Sakit & Izin) tipis & halus (0.12), baris terakhir (bawah kotak) 0.25
-        if (row.index === 2) {
-          doc.setDrawColor(0, 0, 0);
-          doc.setLineWidth(0.25);
-        } else {
-          doc.setDrawColor(180, 190, 205);
-          doc.setLineWidth(0.12);
+        // Garis horizontal pemisah dalam: SOLID LINE halus & tipis (0.12)
+        if (column.index === 0) {
+          if (row.index < 2) {
+            doc.setDrawColor(200, 208, 218);
+            doc.setLineWidth(0.12);
+            doc.line(startKetidakhadiranX, cell.y + cell.height, startKetidakhadiranX + widthKetidakhadiran, cell.y + cell.height);
+          } else {
+            // Garis pembatas bawah kotak luar solid hitam tegas (0.25)
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.25);
+            doc.line(startKetidakhadiranX, cell.y + cell.height, startKetidakhadiranX + widthKetidakhadiran, cell.y + cell.height);
+          }
         }
-        doc.line(cell.x, cell.y + cell.height, cell.x + cell.width, cell.y + cell.height);
 
         // Garis batas luar kiri (hanya kolom 0)
         if (column.index === 0) {
@@ -1264,8 +1279,8 @@ export const buildRaporPDF = (
           doc.setLineWidth(0.25);
           doc.line(cell.x, cell.y, cell.x, cell.y + cell.height);
         }
-        // Garis batas luar kanan (hanya kolom 1)
-        if (column.index === 1) {
+        // Garis batas luar kanan (kolom 3 atau cell colSpan di kolom 2)
+        if (column.index === 3 || (column.index === 2 && cell.colSpan === 2)) {
           doc.setDrawColor(0, 0, 0);
           doc.setLineWidth(0.25);
           doc.line(cell.x + cell.width, cell.y, cell.x + cell.width, cell.y + cell.height);
@@ -1281,7 +1296,7 @@ export const buildRaporPDF = (
   const catatanWaliKelas = studentDp.catatanWaliKelas?.trim() || 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
 
   // Kalkulasi Shrink to Fit dinamis untuk Catatan Wali Kelas agar selalu muat rapi di luas kotak
-  const availableTextWidth = widthCatatan - 7;
+  const availableTextWidth = widthCatatan - 8;
   const availableTextHeight = exactCatatanBodyHeight - 3.5;
   let catatanFontSize = baseBodySize - 1;
   let finalCatatanLines: string[] = [];
@@ -1329,7 +1344,7 @@ export const buildRaporPDF = (
       halign: 'justify',
       valign: 'middle',
       minCellHeight: exactCatatanBodyHeight,
-      cellPadding: { top: dynamicVerticalPadding, bottom: dynamicVerticalPadding, left: 3.5, right: 3.5 },
+      cellPadding: { top: dynamicVerticalPadding, bottom: dynamicVerticalPadding, left: 3.0, right: 4.8 },
       font: fontName
     },
     didDrawCell: (data) => {
@@ -1353,8 +1368,15 @@ export const buildRaporPDF = (
 
   currentY = finalYKetidakhadiran + 4;
 
-  // 5. TANGGAPAN ORANG TUA / WALI MURID (Ruang kosong yang lebih lapang dan proporsional)
-  if (currentY + 32 + 8 + 55 > maxUsableY) {
+  // 5. TANGGAPAN ORANG TUA / WALI MURID & BLOK TANDA TANGAN (ATOMIC / KEEP TOGETHER)
+  // Kalkulasi akurat seluruh kebutuhan ruang vertikal agar blok Tanggapan dan Tanda Tangan tidak terpotong / terbelah antarahalaman
+  const tanggapanHeight = 31.5; // Tinggi tabel Tanggapan Orang Tua (header 7.2mm + body 22mm + margins)
+  const spacingTanggapanToTtd = 6.5; // Jarak pemisah antara Tanggapan dan Blok Tanda Tangan
+  const signatureBlockHeight = 63.5; // Tinggi utuh Blok Tanda Tangan Segitiga (Titimangsa + Ortu/Guru + Jarak + Kepsek/NIP + TTD Digital)
+  const totalTanggapanAndTtdHeight = tanggapanHeight + spacingTanggapanToTtd + signatureBlockHeight;
+
+  // Proteksi 1: Jika Tanggapan + Tanda Tangan tidak muat bersama di sisa halaman saat ini, dorong keduanya secara utuh ke halaman baru
+  if (currentY + totalTanggapanAndTtdHeight > maxUsableY) {
     doc.addPage();
     currentY = 20;
   }
@@ -1380,7 +1402,7 @@ export const buildRaporPDF = (
     },
     bodyStyles: {
       fontSize: baseBodySize - 1,
-      minCellHeight: 24, // Ruang kosong yang luas dan nyaman untuk tulisan tangan orang tua
+      minCellHeight: 22, // Ruang kosong yang proporsional untuk tulisan tangan orang tua
       cellPadding: 3,
       lineWidth: 0.25,
       lineColor: [0, 0, 0],
@@ -1388,10 +1410,10 @@ export const buildRaporPDF = (
     }
   });
 
-  currentY = (doc as any).lastAutoTable.finalY + 8;
+  currentY = (doc as any).lastAutoTable.finalY + spacingTanggapanToTtd;
 
-  // 6. FORMASI TANDA TANGAN SEGITIGA BAKU RESMI
-  if (currentY + 55 > maxUsableY) {
+  // Proteksi 2: Garansi blok tanda tangan segitiga mutlak tidak terpotong (pindah halaman baru jika ruang tersisa < 63.5mm)
+  if (currentY + signatureBlockHeight > maxUsableY) {
     doc.addPage();
     currentY = 20;
   }
@@ -1586,7 +1608,7 @@ export const buildBukuIndukPDF = (
       1: { cellWidth: 46, fontStyle: 'bold', valign: 'middle' },
       2: { cellWidth: 20, halign: 'center', fontStyle: 'bold', valign: 'middle' },
       3: { cellWidth: 30, halign: 'center', valign: 'middle' },
-      4: { cellWidth: availableTableWidth - 106, halign: 'justify', valign: 'middle' }
+      4: { cellWidth: availableTableWidth - 106, halign: 'justify', valign: 'middle', cellPadding: { top: 2.8, bottom: 2.8, left: 2.8, right: 4.2 } }
     }
   });
 

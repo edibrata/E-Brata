@@ -734,9 +734,9 @@ export default function CetakRapor() {
             <table className="w-full border-collapse border border-slate-900 text-left text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-slate-900 text-center font-bold border-b border-slate-900">
-                  <th className="border border-slate-900 px-2 py-1.5 w-8">No</th>
-                  <th className="border border-slate-900 px-3 py-1.5 w-44 text-left">Mata Pelajaran</th>
-                  {!isTanpaAngka && <th className="border border-slate-900 px-2 py-1.5 w-16 leading-tight">Nilai<br/>Akhir</th>}
+                  <th className="border border-slate-900 px-2 py-1.5 w-8 text-center">No</th>
+                  <th className="border border-slate-900 px-3 py-1.5 w-44 text-center">Mata Pelajaran</th>
+                  {!isTanpaAngka && <th className="border border-slate-900 px-2 py-1.5 w-16 leading-tight text-center">Nilai<br/>Akhir</th>}
                   <th className="border border-slate-900 px-3 py-1.5 text-center">Capaian Kompetensi</th>
                 </tr>
               </thead>
@@ -754,7 +754,7 @@ export default function CetakRapor() {
                           {finalScore !== null ? finalScore : '-'}
                         </td>
                       )}
-                      <td className="border border-slate-900 px-3 py-1.5 text-slate-900 text-[10.5px] text-justify leading-relaxed align-middle">
+                      <td className="border border-slate-900 pl-3 pr-4 py-1.5 text-slate-900 text-[10.5px] text-justify leading-relaxed align-middle">
                         {fullDeskripsi}
                       </td>
                     </tr>
@@ -774,7 +774,7 @@ export default function CetakRapor() {
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-slate-900 px-3 py-2 text-slate-900 text-[10.5px] text-justify leading-relaxed">
+                  <td className="border border-slate-900 pl-3 pr-4 py-2 text-slate-900 text-[10.5px] text-justify leading-relaxed">
                     {kokurikulerText}
                   </td>
                 </tr>
@@ -790,10 +790,10 @@ export default function CetakRapor() {
               return (
                 <table className="w-full border-collapse border border-slate-900 text-left text-[11px]">
                   <thead>
-                    <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
+                    <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900 text-center">
                       {!isSingle && <th className="border border-slate-900 px-2 py-1 w-8 text-center">No</th>}
-                      <th className="border border-slate-900 px-3 py-1 w-48">Ekstrakurikuler</th>
-                      <th className="border border-slate-900 px-3 py-1">Keterangan</th>
+                      <th className="border border-slate-900 px-3 py-1 w-48 text-center">Ekstrakurikuler</th>
+                      <th className="border border-slate-900 px-3 py-1 text-center">Keterangan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -806,7 +806,7 @@ export default function CetakRapor() {
                               <td className="border border-slate-900 px-2 py-1 text-center font-mono align-middle">{idx + 1}</td>
                             )}
                             <td className="border border-slate-900 px-3 py-1 font-bold align-middle">{e.nama}</td>
-                            <td className="border border-slate-900 px-3 py-1 text-[10.5px] text-justify align-middle">{ne?.deskripsi || `Aktif dan berpartisipasi baik dalam kegiatan ${e.nama}.`}</td>
+                            <td className="border border-slate-900 pl-3 pr-4 py-1 text-[10.5px] text-justify align-middle">{ne?.deskripsi || `Aktif dan berpartisipasi baik dalam kegiatan ${e.nama}.`}</td>
                           </tr>
                         );
                       })
@@ -829,27 +829,66 @@ export default function CetakRapor() {
             const alpaVal = studentDp.alpa ?? 0;
             const catatanText = studentDp.catatanWaliKelas?.trim() || 'Pertahankan semangat belajarmu, tingkatkan terus prestasi dan akhlak mulia dalam segala kegiatan pembelajaran.';
             const len = catatanText.length;
-            const fontSizeClass = len > 260 ? 'text-[8px] leading-snug' : len > 190 ? 'text-[8.5px] leading-tight' : len > 130 ? 'text-[9.5px] leading-normal' : 'text-[10.5px] leading-relaxed';
+            const fontSizeClass = len > 260 
+              ? 'text-[8.5px] leading-tight' 
+              : len > 200 
+                ? 'text-[9px] leading-snug' 
+                : len > 150 
+                  ? 'text-[9.5px] leading-snug' 
+                  : 'text-[10px] leading-relaxed';
 
             return (
-              <div className="grid grid-cols-[210px_1fr] gap-3 text-[11px]">
-                {/* Kotak Kiri: Ketidakhadiran */}
+              <div className="grid grid-cols-[195px_1fr] gap-3 text-[11px]">
+                {/* Kotak Kiri: Ketidakhadiran (4-Kolom Presisi, 1 Baris Utuh, Garis Pembatas Halus Sesuai Standar Formal) */}
                 <div className="border border-slate-900 flex flex-col bg-white">
                   <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
                     Ketidakhadiran
                   </div>
-                  <div className="flex-1 flex flex-col divide-y divide-slate-300">
-                    <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
-                      <span className="font-bold text-slate-900">Sakit</span>
-                      <span className="font-mono text-slate-900">: {sakitVal} hari</span>
+                  <div className="flex-1 flex flex-col justify-between py-0.5">
+                    {/* Sakit */}
+                    <div className="flex items-center px-3 py-1.5 border-b border-slate-300">
+                      <span className="w-[118px] text-slate-900 font-normal whitespace-nowrap">Sakit</span>
+                      <span className="w-3 text-center text-slate-900">:</span>
+                      {sakitVal > 0 ? (
+                        <div className="flex-1 flex items-center justify-center gap-1.5 text-slate-900 pr-1">
+                          <span className="font-bold text-slate-900 font-mono text-xs">{sakitVal}</span>
+                          <span className="text-slate-900">hari</span>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center text-slate-900 pr-1">
+                          <span className="font-bold text-slate-900 font-mono text-xs">---</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
-                      <span className="font-bold text-slate-900">Izin</span>
-                      <span className="font-mono text-slate-900">: {izinVal} hari</span>
+                    {/* Izin */}
+                    <div className="flex items-center px-3 py-1.5 border-b border-slate-300">
+                      <span className="w-[118px] text-slate-900 font-normal whitespace-nowrap">Izin</span>
+                      <span className="w-3 text-center text-slate-900">:</span>
+                      {izinVal > 0 ? (
+                        <div className="flex-1 flex items-center justify-center gap-1.5 text-slate-900 pr-1">
+                          <span className="font-bold text-slate-900 font-mono text-xs">{izinVal}</span>
+                          <span className="text-slate-900">hari</span>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center text-slate-900 pr-1">
+                          <span className="font-bold text-slate-900 font-mono text-xs">---</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between px-3 py-1.5 font-semibold">
-                      <span className="font-bold text-slate-900">Tanpa Keterangan</span>
-                      <span className="font-mono text-slate-900">: {alpaVal} hari</span>
+                    {/* Tanpa Keterangan */}
+                    <div className="flex items-center px-3 py-1.5">
+                      <span className="w-[118px] text-slate-900 font-normal whitespace-nowrap">Tanpa Keterangan</span>
+                      <span className="w-3 text-center text-slate-900">:</span>
+                      {alpaVal > 0 ? (
+                        <div className="flex-1 flex items-center justify-center gap-1.5 text-slate-900 pr-1">
+                          <span className="font-bold text-slate-900 font-mono text-xs">{alpaVal}</span>
+                          <span className="text-slate-900">hari</span>
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center text-slate-900 pr-1">
+                          <span className="font-bold text-slate-900 font-mono text-xs">---</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -859,7 +898,7 @@ export default function CetakRapor() {
                   <div className="bg-slate-100 text-slate-900 font-bold px-3 py-1.5 text-center border-b border-slate-900">
                     Catatan Wali Kelas
                   </div>
-                  <div className={`p-3 text-slate-900 font-normal text-justify flex-1 flex items-center overflow-hidden ${fontSizeClass}`}>
+                  <div className={`py-2.5 pl-3 pr-4 text-slate-900 font-normal text-justify flex-1 flex items-center overflow-hidden ${fontSizeClass}`}>
                     {catatanText}
                   </div>
                 </div>
@@ -867,75 +906,78 @@ export default function CetakRapor() {
             );
           })()}
 
-          {/* 5. Tanggapan Orang Tua/ Wali Murid */}
-          <div>
-            <table className="w-full border-collapse border border-slate-900 text-[11px]">
-              <thead>
-                <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
-                  <th className="border border-slate-900 px-3 py-1.5 text-center">Tanggapan Orang Tua/ Wali Murid</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-slate-900 p-4 h-24 text-slate-400 italic">
-                    &nbsp;
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {/* 5. Tanggapan Orang Tua & 6. Blok Tanda Tangan Segitiga Baku (Atomic: Tidak Terpotong / Terbelah) */}
+          <div className="space-y-4 break-inside-avoid print:break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+            {/* 5. Tanggapan Orang Tua/ Wali Murid */}
+            <div>
+              <table className="w-full border-collapse border border-slate-900 text-[11px]">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-900 font-bold border-b border-slate-900">
+                    <th className="border border-slate-900 px-3 py-1.5 text-center">Tanggapan Orang Tua/ Wali Murid</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-900 p-4 h-24 text-slate-400 italic">
+                      &nbsp;
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-          {/* 6. Titimangsa & Tanda Tangan Segitiga Baku (Transparan, Proporsional, In Front of Text) */}
-          <div className="pt-2 space-y-4">
-            <div className="grid grid-cols-2 text-center text-xs">
-              <div>
-                <p className="font-semibold text-slate-900">Orang Tua/ Wali,</p>
-                <div className="h-16" />
-                <p className="font-bold border-b border-dotted border-slate-900 inline-block px-6 pb-0.5 text-slate-900">
-                  {currentStudent.namaAyah || currentStudent.namaIbu || '.......................................'}
-                </p>
+            {/* 6. Titimangsa & Tanda Tangan Segitiga Baku (Transparan, Proporsional, In Front of Text) */}
+            <div className="pt-2 space-y-4 break-inside-avoid print:break-inside-avoid" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+              <div className="grid grid-cols-2 text-center text-xs">
+                <div>
+                  <p className="font-semibold text-slate-900">Orang Tua/ Wali,</p>
+                  <div className="h-16" />
+                  <p className="font-bold border-b border-dotted border-slate-900 inline-block px-6 pb-0.5 text-slate-900">
+                    {currentStudent.namaAyah || currentStudent.namaIbu || '.......................................'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs mb-1 font-normal text-slate-900">
+                    {titimangsaStr}
+                  </p>
+                  <p className="font-semibold text-slate-900">Guru Kelas,</p>
+                  <div className="relative h-16 flex items-center justify-center">
+                    {sekolah.useDigitalSignature && sekolah.ttdWaliKelas && (
+                      <img 
+                        src={sekolah.ttdWaliKelas} 
+                        alt="TTD Guru Kelas" 
+                        style={{
+                          transform: `translate(${sekolah.ttdWaliKelasOffsetX || 0}px, ${sekolah.ttdWaliKelasOffsetY || 0}px) rotate(${sekolah.ttdWaliKelasRotation || 0}deg) scale(${(sekolah.ttdWaliKelasScale || 100) / 100})`,
+                          transformOrigin: 'center center'
+                        }}
+                        className="absolute max-h-16 max-w-[130px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
+                      />
+                    )}
+                  </div>
+                  <p className="font-bold uppercase underline text-slate-900">{sekolah.waliKelas || '.......................................'}</p>
+                  <p className="text-[10px] font-mono text-slate-700">NIP. {sekolah.nipWaliKelas || '-'}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs mb-1 font-normal text-slate-900">
-                  {titimangsaStr}
-                </p>
-                <p className="font-semibold text-slate-900">Guru Kelas,</p>
+
+              <div className="text-center text-xs">
+                <p className="font-semibold text-slate-900">Mengetahui:</p>
+                <p className="font-semibold text-slate-900">Kepala Sekolah,</p>
                 <div className="relative h-16 flex items-center justify-center">
-                  {sekolah.useDigitalSignature && sekolah.ttdWaliKelas && (
+                  {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
                     <img 
-                      src={sekolah.ttdWaliKelas} 
-                      alt="TTD Guru Kelas" 
+                      src={sekolah.ttdKepsek} 
+                      alt="TTD Kepala Sekolah" 
                       style={{
-                        transform: `translate(${sekolah.ttdWaliKelasOffsetX || 0}px, ${sekolah.ttdWaliKelasOffsetY || 0}px) rotate(${sekolah.ttdWaliKelasRotation || 0}deg) scale(${(sekolah.ttdWaliKelasScale || 100) / 100})`,
+                        transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
                         transformOrigin: 'center center'
                       }}
-                      className="absolute max-h-16 max-w-[130px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
+                      className="absolute max-h-16 max-w-[140px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
                     />
                   )}
                 </div>
-                <p className="font-bold uppercase underline text-slate-900">{sekolah.waliKelas || '.......................................'}</p>
-                <p className="text-[10px] font-mono text-slate-700">NIP. {sekolah.nipWaliKelas || '-'}</p>
+                <p className="font-bold uppercase underline text-slate-900">{sekolah.kepsek || '.......................................'}</p>
+                <p className="text-[10px] font-mono text-slate-700">NIP. {sekolah.nipKepsek || '-'}</p>
               </div>
-            </div>
-
-            <div className="text-center text-xs">
-              <p className="font-semibold text-slate-900">Mengetahui:</p>
-              <p className="font-semibold text-slate-900">Kepala Sekolah,</p>
-              <div className="relative h-16 flex items-center justify-center">
-                {sekolah.useDigitalSignature && sekolah.ttdKepsek && (
-                  <img 
-                    src={sekolah.ttdKepsek} 
-                    alt="TTD Kepala Sekolah" 
-                    style={{
-                      transform: `translate(${sekolah.ttdKepsekOffsetX || 0}px, ${sekolah.ttdKepsekOffsetY || 0}px) rotate(${sekolah.ttdKepsekRotation || 0}deg) scale(${(sekolah.ttdKepsekScale || 100) / 100})`,
-                      transformOrigin: 'center center'
-                    }}
-                    className="absolute max-h-16 max-w-[140px] object-contain mix-blend-multiply pointer-events-none z-10 transition-transform" 
-                  />
-                )}
-              </div>
-              <p className="font-bold uppercase underline text-slate-900">{sekolah.kepsek || '.......................................'}</p>
-              <p className="text-[10px] font-mono text-slate-700">NIP. {sekolah.nipKepsek || '-'}</p>
             </div>
           </div>
 
@@ -968,11 +1010,11 @@ export default function CetakRapor() {
             <table className="w-full border-collapse border border-slate-400 text-[11px]">
               <thead>
                 <tr className="bg-slate-100 text-center font-bold">
-                  <th className="border border-slate-400 p-2 w-8">No</th>
-                  <th className="border border-slate-400 p-2 text-left">Mata Pelajaran</th>
-                  <th className="border border-slate-400 p-2 w-20">Nilai Akhir</th>
-                  <th className="border border-slate-400 p-2 w-24">Predikat</th>
-                  <th className="border border-slate-400 p-2 text-left">Catatan Kemajuan Belajar</th>
+                  <th className="border border-slate-400 p-2 w-8 text-center">No</th>
+                  <th className="border border-slate-400 p-2 text-center">Mata Pelajaran</th>
+                  <th className="border border-slate-400 p-2 w-20 text-center">Nilai Akhir</th>
+                  <th className="border border-slate-400 p-2 w-24 text-center">Predikat</th>
+                  <th className="border border-slate-400 p-2 text-center">Catatan Kemajuan Belajar</th>
                 </tr>
               </thead>
               <tbody>
@@ -1467,8 +1509,8 @@ export default function CetakRapor() {
                   </Tooltip>
                 </th>
                 <th className="px-2 py-3 w-9 text-center text-[10px] uppercase tracking-wider">No</th>
-                <th className="px-3 py-3 min-w-[160px] text-left text-[10px] uppercase tracking-wider">Nama Peserta Didik</th>
-                <th className="px-3 py-3 w-24 text-left text-[10px] uppercase tracking-wider">NISN</th>
+                <th className="px-3 py-3 min-w-[160px] text-center text-[10px] uppercase tracking-wider">Nama Peserta Didik</th>
+                <th className="px-3 py-3 w-24 text-center text-[10px] uppercase tracking-wider">NISN</th>
                 
                 {/* Jilid (Sampul) + Tombol Bulk Header */}
                 <th className="px-2 py-3 text-center text-[10px] uppercase tracking-wider">

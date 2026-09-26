@@ -326,8 +326,8 @@ export default function TabTPEkskul() {
                 </Tooltip>
               </th>
               <th className="px-3 py-2 w-12 text-center text-[10px] uppercase tracking-wider">No</th>
-              <th className="px-4 py-2 w-36 text-left text-[10px] uppercase tracking-wider">Kode TP</th>
-              <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wider">Deskripsi Tujuan Pembelajaran (Capaian)</th>
+              <th className="px-4 py-2 w-36 text-center text-[10px] uppercase tracking-wider">Kode TP</th>
+              <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wider">Deskripsi Tujuan Pembelajaran (Capaian)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

@@ -36,6 +36,18 @@ export default function ManajemenDataView({ initialTab = 'sampah' }: ManajemenDa
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  // Helper format timestamp: YYYYMMDD HH.MM.SS
+  const formatTimestampFileName = (d: Date = new Date()) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth() + 1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const min = pad(d.getMinutes());
+    const ss = pad(d.getSeconds());
+    return `${yyyy}${mm}${dd} ${hh}.${min}.${ss}`;
+  };
+
   // --- EKSPOR EXCEL LENGKAP ---
   const handleExportFullExcel = () => {
     try {
@@ -108,8 +120,7 @@ export default function ManajemenDataView({ initialTab = 'sampah' }: ManajemenDa
       const wsTp = XLSX.utils.aoa_to_sheet([tpHeaders, ...tpRows]);
       XLSX.utils.book_append_sheet(wb, wsTp, 'Tujuan Pembelajaran');
 
-      const now = new Date();
-      const filename = `E-Rapor_Edi_Brata_Semua_Data_${now.toISOString().slice(0, 10)}.xlsx`;
+      const filename = `E-Rapor Edi Brata Data Seluruhnya ${formatTimestampFileName()}.xlsx`;
       XLSX.writeFile(wb, filename);
       showToast('Seluruh data berhasil diekspor ke Excel!');
     } catch (err) {
@@ -130,7 +141,7 @@ export default function ManajemenDataView({ initialTab = 'sampah' }: ManajemenDa
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `E-Rapor_Edi_Brata_Backup_Lengkap_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `E-Rapor Edi Brata Backup ${formatTimestampFileName()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       showToast('File Backup JSON berhasil diunduh!');

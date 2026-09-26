@@ -271,7 +271,7 @@ export default function DataPendukung() {
             <thead className="sticky top-0 z-10 bg-slate-100 shadow-xs border-b border-slate-200">
               <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-3 w-12 text-center bg-slate-100">No</th>
-                <th className="py-3 px-4 min-w-[220px] bg-slate-100">Nama Peserta Didik</th>
+                <th className="py-3 px-4 min-w-[220px] text-center bg-slate-100">Nama Peserta Didik</th>
                 <th className="py-3 px-3 w-28 text-center bg-blue-100/70 border-x border-slate-200">
                   <div className="flex flex-col items-center">
                     <span>Sakit (S)</span>

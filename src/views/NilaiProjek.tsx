@@ -291,7 +291,7 @@ export default function NilaiProjek() {
                   </th>
                   <th 
                     rowSpan={2} 
-                    className="border border-slate-200 p-2.5 text-left min-w-[200px] sticky left-12 z-30 bg-slate-100 shadow-[1px_0_0_0_#e2e8f0] font-bold"
+                    className="border border-slate-200 p-2.5 text-center min-w-[200px] sticky left-12 z-30 bg-slate-100 shadow-[1px_0_0_0_#e2e8f0] font-bold"
                   >
                     Nama Murid
                   </th>

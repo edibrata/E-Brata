@@ -74,9 +74,9 @@ export default function KotakSampah() {
         <table className="w-full text-left text-xs whitespace-nowrap">
           <thead className="bg-[#F8FAFC] text-slate-500 font-bold border-b border-gray-200 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-6 py-2 w-32 text-left text-[10px] uppercase tracking-wider">Tipe Data</th>
-              <th className="px-4 py-2 text-left text-[10px] uppercase tracking-wider">Keterangan / Label</th>
-              <th className="px-4 py-2 w-48 text-left text-[10px] uppercase tracking-wider">Dihapus Pada</th>
+              <th className="px-6 py-2 w-32 text-center text-[10px] uppercase tracking-wider">Tipe Data</th>
+              <th className="px-4 py-2 text-center text-[10px] uppercase tracking-wider">Keterangan / Label</th>
+              <th className="px-4 py-2 w-48 text-center text-[10px] uppercase tracking-wider">Dihapus Pada</th>
               <th className="px-4 py-2 w-24 text-center text-[10px] uppercase tracking-wider">Aksi</th>
             </tr>
           </thead>
