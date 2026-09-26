@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore, deepMerge } from '@/store';
 import { INITIAL_STATE, getDefaultMapelForKelas } from '@/constants';
-import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2, RotateCcw, History, ArrowLeft, MessageCircle, X, ShieldAlert, KeyRound } from 'lucide-react';
+import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2, RotateCcw, History, ArrowLeft, MessageCircle, X, ShieldAlert, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import DeveloperProfileModal from './DeveloperProfileModal';
 
@@ -17,6 +17,7 @@ export default function LoginModal() {
   // State for password protection
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [targetPassword, setTargetPassword] = useState('');
   const [schoolNamePrompt, setSchoolNamePrompt] = useState('');
 
@@ -633,16 +634,26 @@ export default function LoginModal() {
                       <span className="font-bold">{schoolNamePrompt}</span>
                     </div>
                     <label htmlFor="akses_password" className="block text-sm font-semibold text-zinc-700">Kata Sandi Akses Sekolah</label>
-                    <input
-                      id="akses_password"
-                      type="password"
-                      placeholder="Masukkan Kata Sandi Akses"
-                      value={passwordInput}
-                      onChange={(e) => setPasswordInput(e.target.value)}
-                      className="w-full px-4 py-3 border border-zinc-300 rounded-xl shadow-xs focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-base font-semibold text-center text-zinc-800 placeholder:text-sm placeholder:font-normal"
-                      disabled={isLoading}
-                      autoFocus
-                    />
+                    <div className="relative">
+                      <input
+                        id="akses_password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Masukkan Kata Sandi Akses"
+                        value={passwordInput}
+                        onChange={(e) => setPasswordInput(e.target.value)}
+                        className="w-full pl-4 pr-11 py-3 border border-zinc-300 rounded-xl shadow-xs focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-base font-semibold text-center text-zinc-800 placeholder:text-sm placeholder:font-normal"
+                        disabled={isLoading}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 p-1.5 rounded-lg hover:bg-zinc-100 transition cursor-pointer flex items-center justify-center"
+                        title={showPassword ? "Sembunyikan Password" : "Tampilkan Password"}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                 )}
 
