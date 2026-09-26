@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore, deepMerge } from '@/store';
 import { INITIAL_STATE, getDefaultMapelForKelas } from '@/constants';
-import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil } from 'lucide-react';
+import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import DeveloperProfileModal from './DeveloperProfileModal';
 
@@ -335,6 +335,30 @@ export default function LoginModal() {
     }
   };
 
+  const handleDeleteWorkspace = async (e: React.MouseEvent, ws: any) => {
+    e.stopPropagation();
+    const confirmDelete = window.confirm(
+      `Apakah Anda yakin ingin menghapus permanen ruang kerja Kelas ${ws.sekolah?.kelas || ''} - ${ws.sekolah?.ruangRombel || ''}?`
+    );
+    if (!confirmDelete) return;
+
+    setError('');
+    try {
+      const { error: deleteErr } = await supabase
+        .from('aplikasirapor')
+        .delete()
+        .eq('npsn', ws.npsn);
+
+      if (deleteErr) {
+        setError('Gagal menghapus ruang kerja dari database server.');
+      } else {
+        setAvailableWorkspaces(prev => prev.filter(w => w.npsn !== ws.npsn));
+      }
+    } catch (err) {
+      setError('Terjadi kesalahan saat menghapus ruang kerja.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-xl border border-zinc-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300">
@@ -376,7 +400,7 @@ export default function LoginModal() {
                     placeholder="Masukkan 8 Digit NPSN"
                     value={npsn}
                     onChange={(e) => setNpsn(e.target.value)}
-                    className="w-full px-4 py-3 border border-zinc-300 rounded-lg shadow-sm focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-zinc-800"
+                    className="w-full px-4 py-3.5 border border-zinc-300 rounded-xl shadow-xs focus:outline-none focus:ring-4 focus:ring-zinc-500/10 focus:border-zinc-500 text-xl font-bold text-center tracking-wider text-zinc-800 placeholder:text-sm placeholder:font-normal placeholder:tracking-normal"
                     disabled={isLoading}
                   />
                 </div>
@@ -504,6 +528,14 @@ export default function LoginModal() {
                                                 className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                                             >
                                                 <Pencil size={15} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                title="Hapus Ruang Kerja"
+                                                onClick={(e) => handleDeleteWorkspace(e, ws)}
+                                                className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={15} />
                                             </button>
                                             <div className="p-1.5 text-zinc-400 group-hover:text-zinc-900 transition-colors">
                                                 <ArrowRight size={16} />
