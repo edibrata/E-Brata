@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore, deepMerge } from '@/store';
 import { INITIAL_STATE, getDefaultMapelForKelas } from '@/constants';
-import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2 } from 'lucide-react';
+import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil, Trash2, RotateCcw, History, ArrowLeft } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import DeveloperProfileModal from './DeveloperProfileModal';
 
@@ -18,6 +18,7 @@ export default function LoginModal() {
   const [baselineData, setBaselineData] = useState<any>(null);
   const [availableWorkspaces, setAvailableWorkspaces] = useState<any[]>([]);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [showTrashBin, setShowTrashBin] = useState(false);
   const [newWorkspace, setNewWorkspace] = useState({
     tahunAjaran: '',
     semester: '1',
@@ -34,6 +35,11 @@ export default function LoginModal() {
     ruangRombel: 'satu'
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // State for Soft Delete & Permanent Delete
+  const [workspaceToSoftDelete, setWorkspaceToSoftDelete] = useState<any | null>(null);
+  const [workspaceToPermanentDelete, setWorkspaceToPermanentDelete] = useState<any | null>(null);
+  const [isDeletingWorkspace, setIsDeletingWorkspace] = useState(false);
 
   const handleVerifyNpsn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +61,7 @@ export default function LoginModal() {
           .from('registrasirapor')
           .select('*')
           .eq('data_payload->>npsn', npsn.trim())
-          .single();
+          .maybeSingle();
         data = dbData;
         sbError = error;
       } catch (fetchErr) {
@@ -133,7 +139,7 @@ export default function LoginModal() {
       try {
         const res = await supabase
           .from('aplikasirapor')
-          .select('npsn, data_payload->sekolah')
+          .select('npsn, data_payload')
           .like('npsn', `${npsn.trim()}_%`)
           .order('created_at', { ascending: false });
         workspacesData = res.data;
@@ -143,7 +149,14 @@ export default function LoginModal() {
       }
 
       if (!workspacesError && workspacesData) {
-        setAvailableWorkspaces(workspacesData);
+        const mapped = workspacesData.map((row: any) => ({
+          npsn: row.npsn,
+          data_payload: row.data_payload || {},
+          sekolah: row.data_payload?.sekolah || row.sekolah || {},
+          is_deleted: !!(row.data_payload?.is_deleted),
+          deleted_at: row.data_payload?.deleted_at || null
+        }));
+        setAvailableWorkspaces(mapped);
       }
 
       setStep(2);
@@ -162,7 +175,7 @@ export default function LoginModal() {
         .from('aplikasirapor')
         .select('*')
         .eq('npsn', workspaceNpsn)
-        .single();
+        .maybeSingle();
       const appData = res.data;
       const appError = res.error;
         
@@ -208,15 +221,19 @@ export default function LoginModal() {
           }
         }
 
+        const baseNpsn = workspaceNpsn.split('_')[0];
+
         setState(prev => {
           const merged = deepMerge(INITIAL_STATE, appData.data_payload);
           return {
             ...merged,
+            npsn: workspaceNpsn,
             isAuthenticated: true,
             sekolah: {
               ...merged.sekolah,
               ...baselineData,
               ...latestGlobalSekolah,
+              npsn: baseNpsn,
               fase: faseFallback || appData.data_payload.sekolah?.fase
             }
           };
@@ -280,7 +297,7 @@ export default function LoginModal() {
         .from('aplikasirapor')
         .select('data_payload')
         .eq('npsn', editingWorkspace.npsn)
-        .single();
+        .maybeSingle();
 
       if (fetchErr || !data) {
         setError('Gagal membaca data ruang kerja dari server.');
@@ -294,8 +311,12 @@ export default function LoginModal() {
       else if (num === 3 || num === 4) fase = 'B';
       else if (num === 5 || num === 6) fase = 'C';
 
+      const baseNpsn = editingWorkspace.npsn.split('_')[0];
+      const newCompositeNpsn = `${baseNpsn}_${editWorkspaceData.tahunAjaran}_${editWorkspaceData.semester}_${editWorkspaceData.kelas}_${editWorkspaceData.ruangRombel}`.replace(/\s+/g, '-');
+
       const updatedSekolah = {
         ...(data.data_payload?.sekolah || {}),
+        npsn: baseNpsn,
         tahunAjaran: editWorkspaceData.tahunAjaran,
         semester: editWorkspaceData.semester,
         kelas: editWorkspaceData.kelas,
@@ -306,17 +327,44 @@ export default function LoginModal() {
 
       const updatedPayload = {
         ...data.data_payload,
+        npsn: newCompositeNpsn,
         sekolah: updatedSekolah
       };
 
-      const { error: updateErr } = await supabase
-        .from('aplikasirapor')
-        .update({ data_payload: updatedPayload })
-        .eq('npsn', editingWorkspace.npsn);
+      if (newCompositeNpsn !== editingWorkspace.npsn) {
+        const { error: upsertErr } = await supabase
+          .from('aplikasirapor')
+          .upsert({ npsn: newCompositeNpsn, data_payload: updatedPayload }, { onConflict: 'npsn' });
 
-      if (updateErr) {
-        setError('Gagal menyimpan perubahan ruang kerja.');
+        if (upsertErr) {
+          setError('Gagal memperbarui data ruang kerja di server.');
+          setIsSavingEdit(false);
+          return;
+        }
+
+        await supabase.from('aplikasirapor').delete().eq('npsn', editingWorkspace.npsn);
+
+        setAvailableWorkspaces(prev => prev.map(w => {
+          if (w.npsn === editingWorkspace.npsn) {
+            return {
+              npsn: newCompositeNpsn,
+              sekolah: updatedSekolah
+            };
+          }
+          return w;
+        }));
       } else {
+        const { error: updateErr } = await supabase
+          .from('aplikasirapor')
+          .update({ data_payload: updatedPayload })
+          .eq('npsn', editingWorkspace.npsn);
+
+        if (updateErr) {
+          setError('Gagal menyimpan perubahan ruang kerja.');
+          setIsSavingEdit(false);
+          return;
+        }
+
         setAvailableWorkspaces(prev => prev.map(w => {
           if (w.npsn === editingWorkspace.npsn) {
             return {
@@ -326,8 +374,8 @@ export default function LoginModal() {
           }
           return w;
         }));
-        setEditingWorkspace(null);
       }
+      setEditingWorkspace(null);
     } catch (err) {
       setError('Terjadi kesalahan saat menyimpan perubahan.');
     } finally {
@@ -335,27 +383,131 @@ export default function LoginModal() {
     }
   };
 
-  const handleDeleteWorkspace = async (e: React.MouseEvent, ws: any) => {
+  const handleStartSoftDelete = (e: React.MouseEvent, ws: any) => {
     e.stopPropagation();
-    const confirmDelete = window.confirm(
-      `Apakah Anda yakin ingin menghapus permanen ruang kerja Kelas ${ws.sekolah?.kelas || ''} - ${ws.sekolah?.ruangRombel || ''}?`
-    );
-    if (!confirmDelete) return;
-
     setError('');
+    setEditingWorkspace(null);
+    setWorkspaceToSoftDelete(ws);
+  };
+
+  const confirmSoftDeleteWorkspace = async () => {
+    if (!workspaceToSoftDelete) return;
+    setIsDeletingWorkspace(true);
+    setError('');
+
     try {
+      const targetNpsn = workspaceToSoftDelete.npsn;
+      const currentPayload = workspaceToSoftDelete.data_payload || { sekolah: workspaceToSoftDelete.sekolah };
+      const updatedPayload = {
+        ...currentPayload,
+        is_deleted: true,
+        deleted_at: new Date().toISOString()
+      };
+
+      const { error: updateErr } = await supabase
+        .from('aplikasirapor')
+        .update({ data_payload: updatedPayload })
+        .eq('npsn', targetNpsn);
+
+      if (updateErr) {
+        console.error("Soft delete error:", updateErr);
+        setError('Gagal memindahkan ruang kerja ke Tempat Sampah.');
+      } else {
+        setAvailableWorkspaces(prev => prev.map(w => {
+          if (w.npsn === targetNpsn) {
+            return {
+              ...w,
+              data_payload: updatedPayload,
+              is_deleted: true,
+              deleted_at: updatedPayload.deleted_at
+            };
+          }
+          return w;
+        }));
+        setWorkspaceToSoftDelete(null);
+      }
+    } catch (err: any) {
+      console.error("Soft delete exception:", err);
+      setError('Terjadi kesalahan saat memindahkan ke tempat sampah.');
+    } finally {
+      setIsDeletingWorkspace(false);
+    }
+  };
+
+  const handleRestoreWorkspace = async (e: React.MouseEvent, ws: any) => {
+    e.stopPropagation();
+    setIsDeletingWorkspace(true);
+    setError('');
+
+    try {
+      const targetNpsn = ws.npsn;
+      const currentPayload = ws.data_payload || { sekolah: ws.sekolah };
+      const updatedPayload = {
+        ...currentPayload,
+        is_deleted: false,
+        deleted_at: null
+      };
+
+      const { error: updateErr } = await supabase
+        .from('aplikasirapor')
+        .update({ data_payload: updatedPayload })
+        .eq('npsn', targetNpsn);
+
+      if (updateErr) {
+        console.error("Restore error:", updateErr);
+        setError('Gagal memulihkan ruang kerja dari Tempat Sampah.');
+      } else {
+        setAvailableWorkspaces(prev => prev.map(w => {
+          if (w.npsn === targetNpsn) {
+            return {
+              ...w,
+              data_payload: updatedPayload,
+              is_deleted: false,
+              deleted_at: null
+            };
+          }
+          return w;
+        }));
+      }
+    } catch (err: any) {
+      console.error("Restore exception:", err);
+      setError('Terjadi kesalahan saat memulihkan ruang kerja.');
+    } finally {
+      setIsDeletingWorkspace(false);
+    }
+  };
+
+  const handleStartPermanentDelete = (e: React.MouseEvent, ws: any) => {
+    e.stopPropagation();
+    setError('');
+    setEditingWorkspace(null);
+    setWorkspaceToPermanentDelete(ws);
+  };
+
+  const confirmPermanentDeleteWorkspace = async () => {
+    if (!workspaceToPermanentDelete) return;
+    setIsDeletingWorkspace(true);
+    setError('');
+
+    try {
+      const targetNpsn = workspaceToPermanentDelete.npsn;
       const { error: deleteErr } = await supabase
         .from('aplikasirapor')
         .delete()
-        .eq('npsn', ws.npsn);
+        .eq('npsn', targetNpsn);
 
       if (deleteErr) {
-        setError('Gagal menghapus ruang kerja dari database server.');
+        console.error("Permanent delete error:", deleteErr);
+        setError('Gagal menghapus permanen ruang kerja dari database server.');
       } else {
-        setAvailableWorkspaces(prev => prev.filter(w => w.npsn !== ws.npsn));
+        setAvailableWorkspaces(prev => prev.filter(w => w.npsn !== targetNpsn));
+        setWorkspaceToPermanentDelete(null);
       }
-    } catch (err) {
-      setError('Terjadi kesalahan saat menghapus ruang kerja.');
+    } catch (err: any) {
+      console.error("Permanent delete exception:", err);
+      setError('Terjadi kesalahan saat menghapus permanen ruang kerja.');
+    } finally {
+      setIsDeletingWorkspace(false);
     }
   };
 
@@ -502,59 +654,145 @@ export default function LoginModal() {
                     </form>
                 ) : !isCreatingNew ? (
                     <div className="space-y-4">
-                        {availableWorkspaces.length > 0 && (
-                            <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Lanjutkan Pekerjaan</label>
-                                {availableWorkspaces.map((ws, i) => (
-                                    <div 
-                                        key={i} 
-                                        onClick={() => loadWorkspace(ws.npsn)}
-                                        className="w-full flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50/50 transition-colors text-left group cursor-pointer"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-zinc-100 text-zinc-900 rounded-lg group-hover:bg-zinc-200 transition-colors">
-                                                <FolderOpen size={18} />
-                                            </div>
-                                            <div>
-                                                 <p className="font-semibold text-zinc-800 text-sm">Kelas {ws.sekolah?.kelas} - {ws.sekolah?.ruangRombel}</p>
-                                                 <p className="text-xs text-zinc-500">{ws.sekolah?.tahunAjaran} | Smt {ws.sekolah?.semester}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                type="button"
-                                                title="Edit Identitas Ruang Kerja"
-                                                onClick={(e) => handleStartEditWorkspace(e, ws)}
-                                                className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        {!showTrashBin ? (
+                            <>
+                                {availableWorkspaces.filter(w => !w.is_deleted).length > 0 ? (
+                                    <div className="space-y-3 mb-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Lanjutkan Pekerjaan</label>
+                                        {availableWorkspaces.filter(w => !w.is_deleted).map((ws, i) => (
+                                            <div 
+                                                key={i} 
+                                                onClick={() => loadWorkspace(ws.npsn)}
+                                                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50/50 transition-colors text-left group cursor-pointer shadow-xs"
                                             >
-                                                <Pencil size={15} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                title="Hapus Ruang Kerja"
-                                                onClick={(e) => handleDeleteWorkspace(e, ws)}
-                                                className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
-                                            <div className="p-1.5 text-zinc-400 group-hover:text-zinc-900 transition-colors">
-                                                <ArrowRight size={16} />
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-zinc-100 text-zinc-900 rounded-lg group-hover:bg-zinc-200 transition-colors">
+                                                        <FolderOpen size={18} />
+                                                    </div>
+                                                    <div>
+                                                         <p className="font-semibold text-zinc-800 text-sm">Kelas {ws.sekolah?.kelas || '-'} - {ws.sekolah?.ruangRombel || '-'}</p>
+                                                         <p className="text-xs text-zinc-500">{ws.sekolah?.tahunAjaran || '-'} | Smt {ws.sekolah?.semester || '-'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        title="Edit Identitas Ruang Kerja"
+                                                        onClick={(e) => handleStartEditWorkspace(e, ws)}
+                                                        className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        title="Pindahkan ke Tempat Sampah"
+                                                        onClick={(e) => handleStartSoftDelete(e, ws)}
+                                                        className="p-2 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                    <div className="p-1.5 text-zinc-400 group-hover:text-zinc-900 transition-colors">
+                                                        <ArrowRight size={16} />
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
+                                ) : (
+                                    <div className="text-center py-6 border border-dashed border-zinc-200 rounded-xl mb-4">
+                                        <p className="text-xs text-zinc-500">Belum ada ruang kerja aktif.</p>
+                                    </div>
+                                )}
+
+                                <div className="pt-2 border-t border-zinc-100 space-y-2">
+                                     <button
+                                        type="button"
+                                        onClick={() => setIsCreatingNew(true)}
+                                        className="w-full border-2 border-dashed border-zinc-300 text-zinc-600 hover:border-indigo-400 hover:text-zinc-900 hover:bg-zinc-50 font-medium flex items-center justify-center py-3 px-4 rounded-xl transition-all focus:outline-none"
+                                    >
+                                        <Plus size={18} className="mr-2" />
+                                        Buat Ruang Kerja Baru
+                                    </button>
+
+                                    {availableWorkspaces.filter(w => w.is_deleted).length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowTrashBin(true)}
+                                            className="w-full text-xs font-semibold text-amber-700 bg-amber-50/60 hover:bg-amber-100/80 border border-amber-200/80 py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Trash2 size={14} className="text-amber-600" />
+                                            Lihat Tempat Sampah ({availableWorkspaces.filter(w => w.is_deleted).length})
+                                        </button>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between pb-2 border-b border-zinc-100">
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowTrashBin(false)}
+                                            className="p-1.5 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 rounded-lg transition-colors"
+                                        >
+                                            <ArrowLeft size={16} />
+                                        </button>
+                                        <span className="font-bold text-sm text-zinc-800 flex items-center gap-1.5">
+                                            <Trash2 size={16} className="text-amber-600" /> Tempat Sampah
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTrashBin(false)}
+                                        className="text-xs text-indigo-600 font-semibold hover:underline"
+                                    >
+                                        Kembali
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                                    {availableWorkspaces.filter(w => w.is_deleted).length === 0 ? (
+                                        <p className="text-xs text-zinc-400 text-center py-6">Tempat sampah kosong.</p>
+                                    ) : (
+                                        availableWorkspaces.filter(w => w.is_deleted).map((ws, i) => (
+                                            <div 
+                                                key={i} 
+                                                className="w-full flex items-center justify-between p-3 rounded-xl border border-amber-200/70 bg-amber-50/30 text-left"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-amber-100/80 text-amber-800 rounded-lg">
+                                                        <FolderOpen size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-zinc-800 text-sm">Kelas {ws.sekolah?.kelas || '-'} - {ws.sekolah?.ruangRombel || '-'}</p>
+                                                        <p className="text-xs text-zinc-500">{ws.sekolah?.tahunAjaran || '-'} | Smt {ws.sekolah?.semester || '-'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        title="Pulihkan Ruang Kerja"
+                                                        onClick={(e) => handleRestoreWorkspace(e, ws)}
+                                                        className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-semibold"
+                                                    >
+                                                        <RotateCcw size={15} />
+                                                        <span className="hidden sm:inline">Pulihkan</span>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        title="Hapus Permanen"
+                                                        onClick={(e) => handleStartPermanentDelete(e, ws)}
+                                                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </div>
                         )}
-
-                        <div className="pt-2 border-t border-zinc-100">
-                             <button
-                                onClick={() => setIsCreatingNew(true)}
-                                className="w-full border-2 border-dashed border-zinc-300 text-zinc-600 hover:border-indigo-400 hover:text-zinc-900 hover:bg-zinc-50 font-medium flex items-center justify-center py-3 px-4 rounded-xl transition-all focus:outline-none"
-                            >
-                                <Plus size={18} className="mr-2" />
-                                Buat Ruang Kerja Baru
-                            </button>
-                        </div>
                     </div>
                 ) : (
                     <form onSubmit={createNewWorkspace} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 mb-2">
@@ -627,6 +865,110 @@ export default function LoginModal() {
         </div>
       </div>
       <DeveloperProfileModal isOpen={showDevProfileModal} onClose={() => setShowDevProfileModal(false)} />
+
+      {/* Pop-up Overlay Modal: Soft Delete / Pindahkan ke Tempat Sampah */}
+      {workspaceToSoftDelete && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-zinc-950/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-zinc-200 w-full max-w-sm overflow-hidden p-6 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+              <Trash2 size={24} />
+            </div>
+            <h3 className="text-lg font-bold text-zinc-900 text-center">Pindahkan ke Tempat Sampah?</h3>
+            <p className="text-xs text-zinc-500 text-center mt-1">
+              Ruang kerja ini akan dipindahkan ke Tempat Sampah dan disembunyikan dari daftar utama.
+            </p>
+
+            <div className="mt-4 p-3.5 bg-zinc-50 rounded-xl border border-zinc-200/80 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-500 font-medium">Kelas / Rombel:</span>
+                <span className="font-bold text-zinc-800">
+                  Kelas {workspaceToSoftDelete.sekolah?.kelas || '-'} - {workspaceToSoftDelete.sekolah?.ruangRombel || '-'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-500 font-medium">Tahun / Semester:</span>
+                <span className="font-semibold text-zinc-700">
+                  {workspaceToSoftDelete.sekolah?.tahunAjaran || '-'} | Smt {workspaceToSoftDelete.sekolah?.semester || '-'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 mt-6">
+              <button
+                type="button"
+                disabled={isDeletingWorkspace}
+                onClick={() => setWorkspaceToSoftDelete(null)}
+                className="flex-1 px-4 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-100 border border-zinc-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingWorkspace}
+                onClick={confirmSoftDeleteWorkspace}
+                className="flex-1 px-4 py-2.5 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-70"
+              >
+                {isDeletingWorkspace ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                Pindahkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pop-up Overlay Modal: Permanent Delete */}
+      {workspaceToPermanentDelete && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-zinc-950/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl border border-rose-100 w-full max-w-sm overflow-hidden p-6 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+              <AlertCircle size={26} />
+            </div>
+            <h3 className="text-lg font-bold text-zinc-900 text-center">Hapus Permanen Ruang Kerja?</h3>
+            <p className="text-xs text-rose-600 text-center font-medium mt-1">
+              Peringatan: Tindakan ini tidak dapat dibatalkan.
+            </p>
+
+            <div className="mt-4 p-3.5 bg-rose-50/60 rounded-xl border border-rose-200/60 space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-rose-700/70 font-medium">Kelas / Rombel:</span>
+                <span className="font-bold text-rose-950">
+                  Kelas {workspaceToPermanentDelete.sekolah?.kelas || '-'} - {workspaceToPermanentDelete.sekolah?.ruangRombel || '-'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-rose-700/70 font-medium">Tahun / Semester:</span>
+                <span className="font-semibold text-rose-900">
+                  {workspaceToPermanentDelete.sekolah?.tahunAjaran || '-'} | Smt {workspaceToPermanentDelete.sekolah?.semester || '-'}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-zinc-500 text-center mt-3">
+              Semua data murid, nilai, dan rekapitulasi rapor pada ruang kerja ini akan dihapus selamanya dari database server cloud.
+            </p>
+
+            <div className="flex gap-2.5 mt-6">
+              <button
+                type="button"
+                disabled={isDeletingWorkspace}
+                onClick={() => setWorkspaceToPermanentDelete(null)}
+                className="flex-1 px-4 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-100 border border-zinc-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingWorkspace}
+                onClick={confirmPermanentDeleteWorkspace}
+                className="flex-1 px-4 py-2.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-70"
+              >
+                {isDeletingWorkspace ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                Hapus Permanen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

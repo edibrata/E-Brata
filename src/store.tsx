@@ -104,8 +104,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const currentState = stateRef.current;
     if (!currentState.isAuthenticated || !currentState.sekolah?.npsn) return;
     
+    const baseNpsn = currentState.sekolah.npsn.trim();
     // Create Composite Key: NPSN_TahunAjaran_Semester_Kelas_Rombel
-    const compositeNpsn = `${currentState.sekolah.npsn}_${currentState.sekolah.tahunAjaran || ''}_${currentState.sekolah.semester || ''}_${currentState.sekolah.kelas || ''}_${currentState.sekolah.ruangRombel || ''}`.replace(/\s+/g, '-');
+    const compositeNpsn = `${baseNpsn}_${currentState.sekolah.tahunAjaran || ''}_${currentState.sekolah.semester || ''}_${currentState.sekolah.kelas || ''}_${currentState.sekolah.ruangRombel || ''}`.replace(/\s+/g, '-');
+
+    // Ensure data_payload has matching npsn values
+    const sanitizedPayload = {
+      ...currentState,
+      npsn: compositeNpsn,
+      sekolah: {
+        ...currentState.sekolah,
+        npsn: baseNpsn
+      }
+    };
 
     setSyncStatus('syncing');
     try {
@@ -114,7 +125,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .upsert(
           { 
             npsn: compositeNpsn, 
-            data_payload: currentState 
+            data_payload: sanitizedPayload 
           },
           { onConflict: 'npsn' }
         );
@@ -192,7 +203,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             .eq('data_payload->>npsn', currentState.sekolah.npsn.trim())
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
           dbData = res.data;
           dbError = res.error;
         } catch (fetchErr) {
