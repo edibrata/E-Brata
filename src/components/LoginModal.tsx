@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore, deepMerge } from '@/store';
 import { INITIAL_STATE, getDefaultMapelForKelas } from '@/constants';
-import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen } from 'lucide-react';
+import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen, Pencil } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import DeveloperProfileModal from './DeveloperProfileModal';
 
@@ -24,6 +24,16 @@ export default function LoginModal() {
     kelas: '',
     ruangRombel: ''
   });
+
+  // State for Edit Ruang Kerja
+  const [editingWorkspace, setEditingWorkspace] = useState<any | null>(null);
+  const [editWorkspaceData, setEditWorkspaceData] = useState({
+    tahunAjaran: '',
+    semester: '1',
+    kelas: '1',
+    ruangRombel: 'satu'
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const handleVerifyNpsn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +257,84 @@ export default function LoginModal() {
     updateState('isAuthenticated', true);
   };
 
+  const handleStartEditWorkspace = (e: React.MouseEvent, ws: any) => {
+    e.stopPropagation();
+    setError('');
+    setEditingWorkspace(ws);
+    setEditWorkspaceData({
+      tahunAjaran: ws.sekolah?.tahunAjaran || '',
+      semester: String(ws.sekolah?.semester || '1'),
+      kelas: String(ws.sekolah?.kelas || '1'),
+      ruangRombel: ws.sekolah?.ruangRombel || 'satu'
+    });
+  };
+
+  const handleSaveEditWorkspace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWorkspace) return;
+    setIsSavingEdit(true);
+    setError('');
+
+    try {
+      const { data, error: fetchErr } = await supabase
+        .from('aplikasirapor')
+        .select('data_payload')
+        .eq('npsn', editingWorkspace.npsn)
+        .single();
+
+      if (fetchErr || !data) {
+        setError('Gagal membaca data ruang kerja dari server.');
+        setIsSavingEdit(false);
+        return;
+      }
+
+      let fase = '';
+      const num = parseInt(editWorkspaceData.kelas, 10);
+      if (num === 1 || num === 2) fase = 'A';
+      else if (num === 3 || num === 4) fase = 'B';
+      else if (num === 5 || num === 6) fase = 'C';
+
+      const updatedSekolah = {
+        ...(data.data_payload?.sekolah || {}),
+        tahunAjaran: editWorkspaceData.tahunAjaran,
+        semester: editWorkspaceData.semester,
+        kelas: editWorkspaceData.kelas,
+        fase: fase,
+        ruangRombel: editWorkspaceData.ruangRombel,
+        timestamp: Date.now()
+      };
+
+      const updatedPayload = {
+        ...data.data_payload,
+        sekolah: updatedSekolah
+      };
+
+      const { error: updateErr } = await supabase
+        .from('aplikasirapor')
+        .update({ data_payload: updatedPayload })
+        .eq('npsn', editingWorkspace.npsn);
+
+      if (updateErr) {
+        setError('Gagal menyimpan perubahan ruang kerja.');
+      } else {
+        setAvailableWorkspaces(prev => prev.map(w => {
+          if (w.npsn === editingWorkspace.npsn) {
+            return {
+              ...w,
+              sekolah: updatedSekolah
+            };
+          }
+          return w;
+        }));
+        setEditingWorkspace(null);
+      }
+    } catch (err) {
+      setError('Terjadi kesalahan saat menyimpan perubahan.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-xl border border-zinc-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300">
@@ -327,28 +415,101 @@ export default function LoginModal() {
                     </div>
                 )}
 
-                {!isCreatingNew ? (
+                {editingWorkspace ? (
+                    <form onSubmit={handleSaveEditWorkspace} className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 mb-2">
+                        <label className="block text-xs font-bold text-indigo-700 uppercase tracking-wider mb-2 border-b border-indigo-100 pb-2 flex items-center justify-between">
+                            <span>Edit Ruang Kerja</span>
+                            <span className="text-[10px] text-zinc-400 font-normal">Perbarui Identitas</span>
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-zinc-700">Tahun Ajaran</label>
+                                <input required type="text" placeholder="2023/2024" value={editWorkspaceData.tahunAjaran} onChange={(e) => setEditWorkspaceData({...editWorkspaceData, tahunAjaran: e.target.value})} className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-zinc-700">Semester</label>
+                                <select value={editWorkspaceData.semester} onChange={(e) => setEditWorkspaceData({...editWorkspaceData, semester: e.target.value})} className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                    <option value="1">1 (Ganjil)</option>
+                                    <option value="2">2 (Genap)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-zinc-700">Kelas</label>
+                                <select required value={editWorkspaceData.kelas} onChange={(e) => setEditWorkspaceData({...editWorkspaceData, kelas: e.target.value})} className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                    <option value="6">6</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-semibold text-zinc-700">Rombel</label>
+                                <select required value={editWorkspaceData.ruangRombel} onChange={(e) => setEditWorkspaceData({...editWorkspaceData, ruangRombel: e.target.value})} className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                    <option value="satu">Hanya Satu (Default)</option>
+                                    <option value="A">A</option>
+                                    <option value="B">B</option>
+                                    <option value="C">C</option>
+                                    <option value="D">D</option>
+                                    <option value="E">E</option>
+                                    <option value="F">F</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-6 mt-6 border-t border-zinc-100">
+                            <button
+                                type="button"
+                                onClick={() => setEditingWorkspace(null)}
+                                disabled={isSavingEdit}
+                                className="flex-1 border bg-zinc-100 hover:bg-zinc-200 border-zinc-200 text-zinc-700 font-semibold flex items-center justify-center py-2.5 px-4 rounded-lg transition-colors focus:outline-none"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isSavingEdit}
+                                className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white font-semibold flex items-center justify-center py-2.5 px-4 rounded-lg transition-colors focus:outline-none shadow-sm disabled:opacity-70"
+                            >
+                                {isSavingEdit ? <Loader2 size={18} className="animate-spin" /> : 'Simpan Perubahan'}
+                            </button>
+                        </div>
+                    </form>
+                ) : !isCreatingNew ? (
                     <div className="space-y-4">
                         {availableWorkspaces.length > 0 && (
                             <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider">Lanjutkan Pekerjaan</label>
                                 {availableWorkspaces.map((ws, i) => (
-                                    <button 
+                                    <div 
                                         key={i} 
                                         onClick={() => loadWorkspace(ws.npsn)}
-                                        className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50/50 transition-colors text-left group"
+                                        className="w-full flex items-center justify-between p-3.5 rounded-xl border border-zinc-200 hover:border-indigo-300 hover:bg-zinc-50/50 transition-colors text-left group cursor-pointer"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-zinc-100 text-zinc-900 rounded-lg group-hover:bg-zinc-200 transition-colors">
                                                 <FolderOpen size={18} />
                                             </div>
                                             <div>
-                                                 <p className="font-semibold text-zinc-800">Kelas {ws.sekolah?.kelas} - {ws.sekolah?.ruangRombel}</p>
+                                                 <p className="font-semibold text-zinc-800 text-sm">Kelas {ws.sekolah?.kelas} - {ws.sekolah?.ruangRombel}</p>
                                                  <p className="text-xs text-zinc-500">{ws.sekolah?.tahunAjaran} | Smt {ws.sekolah?.semester}</p>
                                             </div>
                                         </div>
-                                        <ArrowRight size={16} className="text-zinc-400 group-hover:text-zinc-900" />
-                                    </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                title="Edit Identitas Ruang Kerja"
+                                                onClick={(e) => handleStartEditWorkspace(e, ws)}
+                                                className="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            >
+                                                <Pencil size={15} />
+                                            </button>
+                                            <div className="p-1.5 text-zinc-400 group-hover:text-zinc-900 transition-colors">
+                                                <ArrowRight size={16} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         )}
