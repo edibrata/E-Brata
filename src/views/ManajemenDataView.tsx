@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import KotakSampah from './KotakSampah';
+import Tooltip from '@/components/Tooltip';
 
 interface ManajemenDataViewProps {
   initialTab?: 'sampah' | 'ekspor' | 'impor' | 'backup' | 'restore';
@@ -206,92 +207,104 @@ export default function ManajemenDataView({ initialTab = 'sampah' }: ManajemenDa
         </div>
       )}
 
-      {/* Header Panel */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-800 to-indigo-900 text-white flex items-center justify-center shadow-md shadow-slate-200 shrink-0">
-            <Database className="w-6 h-6" />
+      {/* Unified Compact Header & Tab Toolbar */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-indigo-900 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Database className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              Pusat Manajemen Data
-              <span className="text-[11px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                Backup & Pemulihan
-              </span>
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Kelola cadangan data, ekspor & impor lembar kerja Excel, kotak sampah, serta pemulihan menyeluruh.
-            </p>
+            <h1 className="text-base font-bold text-slate-800">Pusat Manajemen Data</h1>
           </div>
+        </div>
+
+        {/* Compact Segmented Control Pills Navigation with Tooltips */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80 overflow-x-auto self-start lg:self-auto max-w-full">
+          <Tooltip content="Kotak Sampah (Kelola & pulihkan data terhapus)" position="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveTab('sampah')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'sampah'
+                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <span>Kotak Sampah</span>
+              {(state.trash || []).length > 0 && (
+                <span className="px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500 text-white leading-none">
+                  {(state.trash || []).length}
+                </span>
+              )}
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Ekspor seluruh data rapor ke format Excel (.xlsx)" position="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveTab('ekspor')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'ekspor'
+                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Ekspor Excel</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Impor pendaftaran data murid atau data dasar lembaga" position="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveTab('impor')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'impor'
+                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent'
+              }`}
+            >
+              <Upload className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>Impor Excel</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Cadangkan 100% data aplikasi ke berkas JSON aman" position="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveTab('backup')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'backup'
+                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent'
+              }`}
+            >
+              <FileJson className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span>Backup JSON</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Pulihkan keadaan aplikasi dari berkas backup JSON" position="bottom">
+            <button
+              type="button"
+              onClick={() => setActiveTab('restore')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'restore'
+                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 border border-transparent'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <span>Restore JSON</span>
+            </button>
+          </Tooltip>
         </div>
       </div>
 
-      {/* Main Tab Navigation */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="flex border-b border-slate-200 bg-slate-50/70 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('sampah')}
-            className={`flex items-center gap-2 px-6 py-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-              activeTab === 'sampah'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            <Trash2 className="w-4 h-4" />
-            Kotak Sampah
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ekspor')}
-            className={`flex items-center gap-2 px-6 py-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-              activeTab === 'ekspor'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            <Download className="w-4 h-4" />
-            Ekspor Excel
-          </button>
-
-          <button
-            onClick={() => setActiveTab('impor')}
-            className={`flex items-center gap-2 px-6 py-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-              activeTab === 'impor'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            <Upload className="w-4 h-4" />
-            Impor Excel
-          </button>
-
-          <button
-            onClick={() => setActiveTab('backup')}
-            className={`flex items-center gap-2 px-6 py-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-              activeTab === 'backup'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            <FileJson className="w-4 h-4" />
-            Backup JSON
-          </button>
-
-          <button
-            onClick={() => setActiveTab('restore')}
-            className={`flex items-center gap-2 px-6 py-3.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
-              activeTab === 'restore'
-                ? 'border-indigo-600 text-indigo-700 bg-white shadow-xs'
-                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            <RotateCcw className="w-4 h-4" />
-            Restore JSON
-          </button>
-        </div>
-
-        {/* Tab Contents */}
-        <div className="p-6">
+      {/* Main Tab Content Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5">
           
           {/* 1. KOTAK SAMPAH */}
           {activeTab === 'sampah' && (
