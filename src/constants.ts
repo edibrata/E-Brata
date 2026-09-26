@@ -1,17 +1,37 @@
 import { Mapel, AppState } from './types';
 import { DEFAULT_LOGO_TUT_WURI } from './data/defaultLogoTutWuri';
 
-export const DAFTAR_MAPEL: Mapel[] = [
-  { id: 'm1', nama: 'Pendidikan Agama dan Budi Pekerti', kode: 'pabp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm2', nama: 'Pendidikan Pancasila', kode: 'pp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm3', nama: 'Bahasa Indonesia', kode: 'ind', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm4', nama: 'Matematika', kode: 'mtk', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm5', nama: 'Ilmu Pengetahuan Alam dan Sosial', kode: 'ipas', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm6', nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode: 'pjok', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm7', nama: 'Seni dan Budaya', kode: 'sdb', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm8', nama: 'Bahasa Inggris', kode: 'eng', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-  { id: 'm9', nama: 'Bahasa Sunda', kode: 'sunda', kelompok: 'Muatan Lokal', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: { slm: 75, sas: 25 } },
-];
+export const getDefaultMapelForKelas = (kelasStr?: string | number): Mapel[] => {
+  const num = parseInt(String(kelasStr || '1').replace(/[^0-9]/g, ''), 10);
+  const commonRatio = { slm: 75, sas: 25 };
+
+  const pabp: Mapel = { id: 'm_pabp', nama: 'Pendidikan Agama dan Budi Pekerti', kode: 'pabp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const pancasila: Mapel = { id: 'm_pp', nama: 'Pendidikan Pancasila', kode: 'pp', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const ind: Mapel = { id: 'm_ind', nama: 'Bahasa Indonesia', kode: 'ind', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const mtk: Mapel = { id: 'm_mtk', nama: 'Matematika', kode: 'mtk', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const ipas: Mapel = { id: 'm_ipas', nama: 'Ilmu Pengetahuan Alam dan Sosial', kode: 'ipas', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const pjok: Mapel = { id: 'm_pjok', nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode: 'pjok', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const sdb: Mapel = { id: 'm_sdb', nama: 'Seni dan Budaya', kode: 'sdb', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const eng: Mapel = { id: 'm_eng', nama: 'Bahasa Inggris', kode: 'eng', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const koding: Mapel = { id: 'm_koding', nama: 'Koding dan Kecerdasan Artifisial', kode: 'koding', kelompok: 'Pokok', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+  const mulok: Mapel = { id: 'm_mulok', nama: '--Silakan Ganti Mapel Muatan Lokal--', kode: 'mulok', kelompok: 'Muatan Lokal', tampilRapor: true, opsiPengolahan: 'rata-rata', pakaiSas: true, rasioSlmSas: commonRatio };
+
+  if (num === 1 || num === 2) {
+    // Kelas 1 dan Kelas 2: 7 Mapel
+    return [pabp, pancasila, ind, mtk, pjok, sdb, mulok];
+  } else if (num === 3 || num === 4) {
+    // Kelas 3 dan Kelas 4: 9 Mapel
+    return [pabp, pancasila, ind, mtk, ipas, pjok, sdb, eng, mulok];
+  } else if (num === 5 || num === 6) {
+    // Kelas 5 dan Kelas 6: 10 Mapel
+    return [pabp, pancasila, ind, mtk, ipas, pjok, sdb, eng, koding, mulok];
+  }
+
+  // Default fallback (Kelas 1)
+  return [pabp, pancasila, ind, mtk, pjok, sdb, mulok];
+};
+
+export const DAFTAR_MAPEL: Mapel[] = getDefaultMapelForKelas('1');
 
 const now = new Date();
 const currentYear = now.getFullYear();

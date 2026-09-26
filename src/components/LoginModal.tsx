@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAppStore, deepMerge } from '@/store';
-import { INITIAL_STATE } from '@/constants';
+import { INITIAL_STATE, getDefaultMapelForKelas } from '@/constants';
 import { Lock, AlertCircle, Loader2, ArrowRight, Home, Plus, FolderOpen } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import DeveloperProfileModal from './DeveloperProfileModal';
@@ -243,6 +243,7 @@ export default function LoginModal() {
         fase: fase,
         ruangRombel: newWorkspace.ruangRombel
     });
+    updateState('mapel', getDefaultMapelForKelas(newWorkspace.kelas));
     updateState('isAuthenticated', true);
   };
 

@@ -612,26 +612,19 @@ export default function DataSekolah() {
               
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
-                  <label htmlFor="kelas" className={getLabelClass('kelas')}>Kelas</label>
-                  {isLocked ? (
-                    <input id="kelas" type="text" value={sekolah.kelas || ''} className={getFieldClass('kelas')} readOnly />
-                  ) : (
-                    <select id="kelas" name="kelas" value={getSelectValue(sekolah.kelas)} onChange={handleChange} className={getFieldClass('kelas')}>
-                      <option value="">Pilih Kelas</option>
-                      {(() => {
-                        if (sekolah.allowedKelas && sekolah.allowedKelas.length > 0) {
-                          const sorted = [...sekolah.allowedKelas].sort((a, b) => parseInt(a.toString(), 10) - parseInt(b.toString(), 10));
-                          return sorted.map((k) => (
-                            <option key={k} value={k.toString()}>{k}</option>
-                          ));
-                        } else {
-                           return [1, 2, 3, 4, 5, 6].map(k => (
-                             <option key={k} value={k.toString()}>{k}</option>
-                           ));
-                        }
-                      })()}
-                    </select>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="kelas" className={getLabelClass('kelas')}>Kelas</label>
+                    <span className="text-[10px] text-slate-400 font-normal">(Terkunci saat login)</span>
+                  </div>
+                  <input
+                    id="kelas"
+                    name="kelas"
+                    type="text"
+                    value={sekolah.kelas ? `Kelas ${sekolah.kelas}` : ''}
+                    readOnly
+                    placeholder="Terkunci saat login"
+                    className="w-full rounded-lg px-3.5 py-2.5 text-sm font-bold transition-all focus:outline-none border shadow-sm border-slate-200 bg-slate-100 text-slate-700 cursor-not-allowed"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <label htmlFor="fase" className="block text-[10px] font-bold uppercase tracking-wider mb-1.5 text-slate-600">Fase</label>
